@@ -8,6 +8,7 @@
     "dev": "bun run --watch src/index.ts"
   },
   "dependencies": {
+    "ajv": "^8.18.0",
     "elysia": "latest",
     "logixlysia": "^6.2.0",
     "umzug": "^3.8.2"
