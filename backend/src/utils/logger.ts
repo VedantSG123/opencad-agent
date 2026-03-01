@@ -1,18 +1,11 @@
-import os from 'os'
 import path from 'path'
-import fs from 'fs'
 import logixlysia from 'logixlysia'
 
-const baseDir = path.join(os.homedir(), '.opencad-agent')
-const logsDir = path.join(baseDir, 'logs')
-
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true })
-}
+import { LOGS_DIR } from './storageDirectories'
 
 export const logixlysiaIns = logixlysia({
   config: {
-    logFilePath: path.join(logsDir, 'app.log'),
+    logFilePath: path.join(LOGS_DIR, 'app.log'),
     pino: {
       level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
       base: {

@@ -1,13 +1,5 @@
-import os from 'os'
-import path from 'path'
-import fs from 'fs'
 import { Database } from 'bun:sqlite'
 
-const baseDir = path.join(os.homedir(), '.opencad-agent')
-const dbPath = path.join(baseDir, 'opencad.sqlite')
+import { DB_PATH } from '../utils/storageDirectories'
 
-if (!fs.existsSync(baseDir)) {
-  fs.mkdirSync(baseDir, { recursive: true })
-}
-
-export const db = new Database(dbPath)
+export const db = new Database(DB_PATH)

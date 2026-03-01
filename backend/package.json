@@ -8,10 +8,18 @@
     "dev": "bun run --watch src/index.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.46",
+    "@ai-sdk/google": "^3.0.30",
+    "@ai-sdk/openai": "^3.0.31",
+    "@opeoginni/github-copilot-openai-compatible": "^1.0.0",
+    "ai": "^6.0.97",
     "ajv": "^8.18.0",
     "elysia": "latest",
+    "env-paths": "^4.0.0",
+    "fastest-levenshtein": "^1.0.16",
     "logixlysia": "^6.2.0",
-    "umzug": "^3.8.2"
+    "umzug": "^3.8.2",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
