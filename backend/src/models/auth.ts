@@ -1,5 +1,6 @@
 import z from 'zod'
 
+import { createLazyStore } from '../utils/lazyStore'
 import { DATA_DIR } from '../utils/storageDirectories'
 
 export const OAuth = z.object({
@@ -20,11 +21,10 @@ export type Auth = z.infer<typeof Auth>
 
 const AUTH_FILE = `${DATA_DIR}/auth.json`
 
-export async function all(): Promise<Record<string, Auth>> {
-  const file = Bun.file(AUTH_FILE)
-  const data: unknown = await (file.json() as Promise<unknown>).catch(
-    () => ({}),
-  )
+async function loadFromFile(): Promise<Record<string, Auth>> {
+  const data: unknown = await Bun.file(AUTH_FILE)
+    .json()
+    .catch(() => ({}))
   const entries =
     typeof data === 'object' && data !== null
       ? Object.entries(data as Record<string, unknown>)
@@ -33,23 +33,29 @@ export async function all(): Promise<Record<string, Auth>> {
   return entries.reduce(
     (acc, [key, value]) => {
       const parsed = Auth.safeParse(value)
-      if (parsed.success) {
-        acc[key] = parsed.data
-      }
+      if (parsed.success) acc[key] = parsed.data
       return acc
     },
     {} as Record<string, Auth>,
   )
 }
 
+const store = createLazyStore(loadFromFile)
+
+export const all = () => store.get()
+
+async function _persist(state: Record<string, Auth>) {
+  await Bun.write(AUTH_FILE, JSON.stringify(state, null, 2))
+}
+
 export async function set(key: string, auth: Auth) {
-  const allAuth = await all()
-  allAuth[key] = auth
-  await Bun.write(AUTH_FILE, JSON.stringify(allAuth, null, 2))
+  const state = await store.get()
+  state[key] = auth
+  await _persist(state)
 }
 
 export async function remove(key: string) {
-  const allAuth = await all()
-  delete allAuth[key]
-  await Bun.write(AUTH_FILE, JSON.stringify(allAuth, null, 2))
+  const state = await store.get()
+  delete state[key]
+  await _persist(state)
 }
