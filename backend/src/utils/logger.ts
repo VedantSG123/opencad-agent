@@ -1,5 +1,5 @@
-import path from 'path'
 import logixlysia from 'logixlysia'
+import path from 'path'
 
 import { LOGS_DIR } from './storageDirectories'
 

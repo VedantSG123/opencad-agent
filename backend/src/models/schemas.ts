@@ -1,4 +1,3 @@
-import { name } from 'eslint-plugin-prettier/recommended'
 import z from 'zod'
 
 export const Model = z.object({

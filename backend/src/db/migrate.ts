@@ -1,8 +1,9 @@
-import { Umzug } from 'umzug'
 import path from 'path'
+import { Umzug } from 'umzug'
+
+import { logger } from '../utils/logger'
 import { db } from '.'
 import { BunSqliteStorage } from './BunSqliteStorage'
-import { logger } from '../utils/logger'
 
 export const umzug = new Umzug({
   migrations: { glob: path.join(__dirname, 'migrations', '*.{ts,js}') },

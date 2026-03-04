@@ -1,5 +1,6 @@
-import type { ApiDocEntityType } from './generateApiDocsChunks'
 import path from 'path'
+
+import type { ApiDocEntityType } from './generateApiDocsChunks'
 
 const entityTypeMap: Record<string, ApiDocEntityType> = {
   'classes/': 'class',

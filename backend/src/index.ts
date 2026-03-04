@@ -1,7 +1,12 @@
 import { Elysia } from 'elysia'
-import { logixlysiaIns, logger } from './utils/logger'
 
-const app = new Elysia().use(logixlysiaIns).get('/', () => 'Hello Elysia')
+import { providersRoutes } from './routes/providers/index'
+import { logger, logixlysiaIns } from './utils/logger'
+
+const app = new Elysia()
+  .use(logixlysiaIns)
+  .get('/', () => 'Hello Elysia')
+  .use(providersRoutes)
 
 app.listen(3000)
 

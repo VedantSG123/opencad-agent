@@ -1,6 +1,7 @@
 import type { Migration } from '../migrate'
 
 const up: Migration = async ({ context: db }) => {
+  await Promise.resolve()
   db.run(`
       CREATE TABLE IF NOT EXISTS replicad_api_documentation_store (
         id TEXT PRIMARY KEY NOT NULL,
@@ -16,6 +17,7 @@ const up: Migration = async ({ context: db }) => {
 }
 
 const down: Migration = async ({ context: db }) => {
+  await Promise.resolve()
   db.run(`DROP TABLE IF EXISTS replicad_api_documentation_store`)
 }
 

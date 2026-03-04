@@ -1,7 +1,6 @@
+import envPaths from 'env-paths'
 import fs from 'fs'
 import path from 'path'
-
-import envPaths from 'env-paths'
 
 const paths = envPaths('opencad-agent', { suffix: '' })
 

@@ -1,11 +1,11 @@
-import { getModelsDev } from './modelsDev'
-import type {
-  Provider as ModelsDevProvider,
-  Model as ModelsDevModel,
-} from './modelsDev'
-import type { Model, Provider } from './schemas'
-import { SUPPORTED_PROVIDERS, SDKConfig } from './sdkConfig'
 import { all as getAllAuth } from './auth'
+import type {
+  Model as ModelsDevModel,
+  Provider as ModelsDevProvider,
+} from './modelsDev'
+import { getModelsDev } from './modelsDev'
+import type { Model, Provider } from './schemas'
+import { SDKConfig, SUPPORTED_PROVIDERS } from './sdkConfig'
 
 function transformModelsDevModel(
   provider: ModelsDevProvider,

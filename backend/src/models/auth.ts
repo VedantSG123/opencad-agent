@@ -1,4 +1,5 @@
 import z from 'zod'
+
 import { DATA_DIR } from '../utils/storageDirectories'
 
 export const OAuth = z.object({
@@ -21,9 +22,15 @@ const AUTH_FILE = `${DATA_DIR}/auth.json`
 
 export async function all(): Promise<Record<string, Auth>> {
   const file = Bun.file(AUTH_FILE)
-  const data = await file.json().catch(() => ({}))
+  const data: unknown = await (file.json() as Promise<unknown>).catch(
+    () => ({}),
+  )
+  const entries =
+    typeof data === 'object' && data !== null
+      ? Object.entries(data as Record<string, unknown>)
+      : []
 
-  return Object.entries(data).reduce(
+  return entries.reduce(
     (acc, [key, value]) => {
       const parsed = Auth.safeParse(value)
       if (parsed.success) {
@@ -35,7 +42,7 @@ export async function all(): Promise<Record<string, Auth>> {
   )
 }
 
-export async function add(key: string, auth: Auth) {
+export async function set(key: string, auth: Auth) {
   const allAuth = await all()
   allAuth[key] = auth
   await Bun.write(AUTH_FILE, JSON.stringify(allAuth, null, 2))

@@ -1,5 +1,5 @@
-import { Database } from 'bun:sqlite'
-import { type UmzugStorage, type MigrationParams } from 'umzug'
+import type { Database } from 'bun:sqlite'
+import { type MigrationParams, type UmzugStorage } from 'umzug'
 
 export class BunSqliteStorage implements UmzugStorage<Database> {
   private database: Database
@@ -24,6 +24,7 @@ export class BunSqliteStorage implements UmzugStorage<Database> {
    * Mark migration as executed
    */
   async logMigration({ name }: MigrationParams<Database>): Promise<void> {
+    await Promise.resolve()
     const stmt = this.database.prepare(`
       INSERT INTO "SequelizeMeta" (name)
       VALUES ($migrationName)
@@ -37,6 +38,7 @@ export class BunSqliteStorage implements UmzugStorage<Database> {
    * Mark migration as pending (rollback)
    */
   async unlogMigration({ name }: MigrationParams<Database>): Promise<void> {
+    await Promise.resolve()
     const stmt = this.database.prepare(`
       DELETE FROM "SequelizeMeta"
       WHERE name = $migrationName
@@ -51,6 +53,7 @@ export class BunSqliteStorage implements UmzugStorage<Database> {
   async executed(
     _meta: Pick<MigrationParams<Database>, 'context'>,
   ): Promise<string[]> {
+    await Promise.resolve()
     const stmt = this.database.prepare(`
       SELECT name FROM "SequelizeMeta"
       ORDER BY name ASC

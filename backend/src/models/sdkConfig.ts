@@ -1,8 +1,8 @@
-import z from 'zod'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createGitHubCopilotOpenAICompatible } from '@opeoginni/github-copilot-openai-compatible'
+import z from 'zod'
 
 export const SUPPORTED_PROVIDERS = [
   'google',
@@ -12,9 +12,9 @@ export const SUPPORTED_PROVIDERS = [
 ] as const
 
 const SupportedProviderIdsSchema = z.enum(SUPPORTED_PROVIDERS)
-type SupportedProviderIds = z.infer<typeof SupportedProviderIdsSchema>
+export type SupportedProviderIds = z.infer<typeof SupportedProviderIdsSchema>
 
-const sdkConfigSchema = z.object({
+export const sdkConfigSchema = z.object({
   providerId: SupportedProviderIdsSchema,
   envMapping: z.record(z.string(), z.string()).optional(),
 })

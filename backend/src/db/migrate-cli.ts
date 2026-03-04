@@ -1,7 +1,8 @@
 import path from 'path'
-import { umzug } from './migrate'
-import { db } from '.'
+
 import { logger } from '../utils/logger'
+import { db } from '.'
+import { umzug } from './migrate'
 
 async function main() {
   const [command, migrationArg] = process.argv.slice(2)
@@ -21,13 +22,14 @@ async function main() {
         }
         break
 
-      case 'pending':
+      case 'pending': {
         const pending = await umzug.pending()
         logger.info(
           { pending: pending.map((m) => m.name) },
           'Pending migrations',
         )
         break
+      }
 
       default:
         console.log(`

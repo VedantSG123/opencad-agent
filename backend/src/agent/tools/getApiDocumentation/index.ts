@@ -1,9 +1,10 @@
+import '../../../utils/logger'
+
 import { tool } from 'ai'
 import { z } from 'zod'
 
 import { getChunkById } from '../../../utils/dbUtils/replicadApiDocumentationStore'
 import { API_DOC_CHUNK_ENTITY_TYPES } from '../../../utils/knowledge-base/replicad/generateApiDocsChunks'
-import '../../../utils/logger'
 import { logger } from '../../../utils/logger'
 
 export const getApiDocumentation = tool({
@@ -19,13 +20,13 @@ export const getApiDocumentation = tool({
       .enum(API_DOC_CHUNK_ENTITY_TYPES)
       .describe('The type of the API entity to retrieve documentation for.'),
   }),
-  execute: async ({ entityName, entityType }): Promise<string> => {
+  execute: ({ entityName, entityType }): string => {
     try {
       // Construct the chunk ID using the format: type:name
       const chunkId = `${entityType}:${entityName}`
 
       // Retrieve the chunk from the database
-      const chunk = await getChunkById(chunkId)
+      const chunk = getChunkById(chunkId)
 
       if (!chunk) {
         return `No documentation found for ${entityType} "${entityName}". Please verify the name and type are correct.`

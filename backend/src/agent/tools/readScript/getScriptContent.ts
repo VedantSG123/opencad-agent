@@ -11,6 +11,7 @@ export async function getScriptContent(): Promise<string> {
     console.error('Error reading script file:', error)
     throw new Error(
       `Failed to read script file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { cause: error },
     )
   }
 }

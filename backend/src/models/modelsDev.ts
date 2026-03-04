@@ -1,10 +1,9 @@
 import fs from 'fs'
 import path from 'path'
-
 import { z } from 'zod'
 
-import { CACHE_DIR } from '../utils/storageDirectories'
 import { logger } from '../utils/logger'
+import { CACHE_DIR } from '../utils/storageDirectories'
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -96,7 +95,7 @@ export async function syncModelsDev(): Promise<void> {
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} ${response.statusText}`)
     }
-    const raw = await response.json()
+    const raw: unknown = await (response.json() as Promise<unknown>)
     const data = ModelsDevResponse.parse(raw)
     fs.writeFileSync(
       MODELS_DEV_CACHE_FILE,
@@ -133,7 +132,7 @@ export async function getModelsDev(): Promise<ModelsDevResponse> {
 
   try {
     const raw = fs.readFileSync(MODELS_DEV_CACHE_FILE, 'utf-8')
-    const cache = JSON.parse(raw) as ModelsDevCache
+    const cache = JSON.parse(raw) as unknown as ModelsDevCache
     return ModelsDevResponse.parse(cache.models)
   } catch (err) {
     logger.error({ err }, 'Failed to read models-dev cache file')
@@ -162,7 +161,7 @@ export function startModelsDevSync(intervalMs: number = SYNC_INTERVAL_MS): {
   } else {
     try {
       const raw = fs.readFileSync(MODELS_DEV_CACHE_FILE, 'utf-8')
-      const cache: ModelsDevCache = JSON.parse(raw)
+      const cache = JSON.parse(raw) as unknown as ModelsDevCache
       const age = Date.now() - new Date(cache.fetchedAt).getTime()
       if (age >= intervalMs) {
         syncModelsDev()

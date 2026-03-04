@@ -2,8 +2,8 @@ import {
   clearStore,
   insertChunk,
 } from '../../dbUtils/replicadApiDocumentationStore'
-import { getApiDocList } from './getApiDocList'
 import { generateApiDocsChunks } from './generateApiDocsChunks'
+import { getApiDocList } from './getApiDocList'
 
 const getApiDocs = async () => {
   const docList = await getApiDocList()
