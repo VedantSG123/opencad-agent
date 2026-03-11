@@ -3,6 +3,7 @@ You can perform multiple distinct search and replace operations within a single 
 The SEARCH section must exactly match existing content including whitespace and indentation.
 If you're not confident in the exact content to search for, use the \`readScript\` tool first to get the exact content.
 When applying the diffs, be extra careful to remember to change any closing brackets or other syntax that may be affected by the diff farther down in the file.
+If the actual code contains diff marker lines like \`<<<<<<<\`, \`=======\`, \`>>>>>>> REPLACE\`, or \`-------\`, escape those lines inside SEARCH/REPLACE content with a leading backslash.
 ALWAYS make as many changes in a single \`applyDiff\` request as possible using multiple SEARCH/REPLACE blocks.
 
 Diff format:

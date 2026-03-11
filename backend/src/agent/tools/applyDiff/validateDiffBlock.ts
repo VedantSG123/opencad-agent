@@ -4,6 +4,8 @@ const SEARCH_DISPLAY_STRING = '<<<<<<< SEARCH'
 
 const REPLACE_STRING = '>>>>>>> REPLACE'
 const SEPERATOR_STRING = '======='
+const SEARCH_PREFIX = '<<<<<<<'
+const REPLACE_PREFIX = '>>>>>>>'
 
 const enum ParsingState {
   START,
@@ -63,6 +65,33 @@ const reportLineMarkerInReplaceContentError = (
   error: getLineMarkerInReplaceContentErrorMessage(marker, lineNumber),
 })
 
+const getEscapedMarkerErrorMessage = (marker: string, lineNumber: number) =>
+  `ERROR: Special marker "${marker}" found in diff content at line ${lineNumber}.
+
+When the actual code contains diff markers, escape them with a leading backslash in SEARCH or REPLACE content.
+
+CORRECT FORMAT:
+
+<<<<<<< SEARCH
+content before
+\\${marker}
+content after
+=======
+replacement content
+>>>>>>> REPLACE
+
+Escape any marker lines that appear inside the content:
+\\<<<<<<< SEARCH
+\\=======
+\\>>>>>>> REPLACE
+\\-------
+`
+
+const reportEscapedMarkerError = (marker: string, lineNumber: number) => ({
+  success: false,
+  error: getEscapedMarkerErrorMessage(marker, lineNumber),
+})
+
 export function validateDiffBlock(diffBlock: string): DiffResult {
   const lines = diffBlock.split('\n')
   if (lines.length === 0 || (lines.length === 1 && lines[0].trim() === '')) {
@@ -77,9 +106,13 @@ export function validateDiffBlock(diffBlock: string): DiffResult {
   for (const line of lines) {
     state.lineNumber += 1
     const marker = line.trim()
+    const isEscaped = marker.startsWith('\\')
 
     if (state.current === ParsingState.AFTER_SEPERATOR) {
-      if (marker === ':start_line:' || marker === ':end_line:') {
+      if (
+        !isEscaped &&
+        (marker.startsWith(':start_line:') || marker.startsWith(':end_line:'))
+      ) {
         return reportLineMarkerInReplaceContentError(marker, state.lineNumber)
       }
     }
@@ -104,6 +137,10 @@ export function validateDiffBlock(diffBlock: string): DiffResult {
 
         if (SEARCH_PATTERN.test(marker)) {
           state.current = ParsingState.AFTER_SEARCH
+        } else if (!isEscaped && marker.startsWith(SEARCH_PREFIX)) {
+          return reportEscapedMarkerError(marker, state.lineNumber)
+        } else if (!isEscaped && marker.startsWith(REPLACE_PREFIX)) {
+          return reportEscapedMarkerError(marker, state.lineNumber)
         }
         break
       }
@@ -116,12 +153,20 @@ export function validateDiffBlock(diffBlock: string): DiffResult {
           )
         }
 
+        if (!isEscaped && marker.startsWith(SEARCH_PREFIX)) {
+          return reportEscapedMarkerError(marker, state.lineNumber)
+        }
+
         if (marker === REPLACE_STRING) {
           return reportInvalidDiffError(
             REPLACE_STRING,
             SEPERATOR_STRING,
             state.lineNumber,
           )
+        }
+
+        if (!isEscaped && marker.startsWith(REPLACE_PREFIX)) {
+          return reportEscapedMarkerError(marker, state.lineNumber)
         }
 
         if (marker === SEPERATOR_STRING) {
@@ -138,6 +183,10 @@ export function validateDiffBlock(diffBlock: string): DiffResult {
           )
         }
 
+        if (!isEscaped && marker.startsWith(SEARCH_PREFIX)) {
+          return reportEscapedMarkerError(marker, state.lineNumber)
+        }
+
         if (marker === SEPERATOR_STRING) {
           return reportInvalidDiffError(
             SEPERATOR_STRING,
@@ -148,6 +197,8 @@ export function validateDiffBlock(diffBlock: string): DiffResult {
 
         if (marker === REPLACE_STRING) {
           state.current = ParsingState.START
+        } else if (!isEscaped && marker.startsWith(REPLACE_PREFIX)) {
+          return reportEscapedMarkerError(marker, state.lineNumber)
         }
         break
       }

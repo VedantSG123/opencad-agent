@@ -38,7 +38,9 @@ export function fuzzySearch(
   let leftPointer = middleIndex
   let rightPointer = middleIndex + 1
 
-  while (leftPointer >= startIndex || rightPointer <= endIndex - searchLength) {
+  const maxCandidateStart = endIndex - searchLength + 1
+
+  while (leftPointer >= startIndex || rightPointer <= maxCandidateStart) {
     if (leftPointer >= startIndex) {
       const candidate = content
         .slice(leftPointer, leftPointer + searchLength)
@@ -53,7 +55,7 @@ export function fuzzySearch(
       leftPointer--
     }
 
-    if (rightPointer <= endIndex - searchLength) {
+    if (rightPointer <= maxCandidateStart) {
       const candidate = content
         .slice(rightPointer, rightPointer + searchLength)
         .join('\n')
