@@ -1,5 +1,10 @@
+import type { Auth } from '../auth'
+import type { Provider } from '../schemas'
 import type { SupportedProviderIds } from '../sdkConfig'
-import { githubCopilotOAuthProvider } from './github-copilot'
+import {
+  githubCopilotOAuthProvider,
+  loadCopilotProviderWithAuth,
+} from './github-copilot'
 
 export const OAUTH_SUPPORTED_PROVIDERS = [
   'github-copilot',
@@ -70,3 +75,19 @@ export const oauthPendingState = new Map<
   OAuthSupportedProviderIds,
   OAuthFlowState
 >()
+
+export function loadProviderWithOAuth(
+  auth: Auth,
+  provider: Provider,
+): Provider {
+  if (auth.type !== 'oauth') {
+    return provider
+  }
+
+  switch (provider.id) {
+    case 'github-copilot':
+      return loadCopilotProviderWithAuth(auth, provider)
+    default:
+      return provider
+  }
+}

@@ -4,6 +4,7 @@ import type {
   Provider as ModelsDevProvider,
 } from './modelsDev'
 import { getModelsDev } from './modelsDev'
+import { loadProviderWithOAuth } from './oauth'
 import type { Model, Provider } from './schemas'
 import { SDKConfig, SUPPORTED_PROVIDERS } from './sdkConfig'
 
@@ -157,6 +158,15 @@ async function initProviderCache(): Promise<ProviderCache> {
       ...allProviders[authProviderId],
       options,
     }
+  }
+
+  // Third pass: For all oauth providers
+  for (const [authProviderId, auth] of Object.entries(allAuth)) {
+    if (auth.type !== 'oauth') continue
+    detectedProviders[authProviderId] = loadProviderWithOAuth(
+      auth,
+      allProviders[authProviderId],
+    )
   }
 
   return {
