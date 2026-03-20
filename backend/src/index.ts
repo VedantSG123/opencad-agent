@@ -1,5 +1,6 @@
 import { Elysia } from 'elysia'
 
+import { projectsRoutes } from './routes/projects/index'
 import { providersRoutes } from './routes/providers/index'
 import { logger, logixlysiaIns } from './utils/logger'
 
@@ -7,6 +8,7 @@ const app = new Elysia()
   .use(logixlysiaIns)
   .get('/', () => 'Hello Elysia')
   .use(providersRoutes)
+  .use(projectsRoutes)
 
 app.listen(3000)
 

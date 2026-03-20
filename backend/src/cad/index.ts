@@ -2,7 +2,7 @@ import z from 'zod'
 
 export const SUPPORTED_CAD_KERNELS = z.enum(['replicad'])
 
-type SupportedCADKernels = z.infer<typeof SUPPORTED_CAD_KERNELS>
+export type SupportedCADKernels = z.infer<typeof SUPPORTED_CAD_KERNELS>
 
 type KernelInfo = {
   fileExtension: string
