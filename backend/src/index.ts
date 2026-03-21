@@ -7,8 +7,7 @@ import { logger, logixlysiaIns } from './utils/logger'
 const app = new Elysia()
   .use(logixlysiaIns)
   .get('/', () => 'Hello Elysia')
-  .use(providersRoutes)
-  .use(projectsRoutes)
+  .group('/api', (app) => app.use(providersRoutes).use(projectsRoutes))
 
 app.listen(3000)
 
