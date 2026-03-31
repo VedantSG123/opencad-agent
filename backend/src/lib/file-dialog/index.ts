@@ -16,6 +16,7 @@ export async function openFileDialog(
   fileTypes: string[],
   multiple = false,
   title: string = 'Select files',
+  directoryOnly = false,
 ): Promise<FileDialogResult> {
   const platform = os.platform()
 
@@ -25,6 +26,7 @@ export async function openFileDialog(
         title,
         multiple,
         fileTypes,
+        directoryOnly,
       })
       return { files, canceled: files.length === 0 }
     }
@@ -33,6 +35,7 @@ export async function openFileDialog(
       return await openFinderDialog(directory, {
         filters: fileTypes,
         limit: multiple ? 100 : 1,
+        directoryOnly,
       })
     }
 
@@ -42,6 +45,7 @@ export async function openFileDialog(
         multiple,
         title,
         filter,
+        directoryOnly,
       })
     }
 

@@ -14,6 +14,7 @@ interface FileDialogOptions {
   title?: string
   defaultExtension?: string
   maxTimeout?: number
+  directoryOnly?: boolean
 }
 
 interface FileDialogResult {
@@ -88,15 +89,42 @@ export const openWindowsFileDialog = async (
     title: 'Select File(s)',
     defaultExtension: '',
     maxTimeout: 5 * 60 * 1000, // 5 minutes
+    directoryOnly: false,
     ...options,
   }
 
   const escapedPath = escapeForPowerShell(normalizedPath)
   const escapedTitle = escapeForPowerShell(opts.title)
-  const filterString = buildFilterString(opts.filter)
   const pathSeparator = '|<<PATH_SEPARATOR>>|'
 
-  const powershellScript = `
+  let powershellScript: string
+
+  if (opts.directoryOnly) {
+    powershellScript = `
+      try {
+        Add-Type -AssemblyName System.Windows.Forms
+        [System.Windows.Forms.Application]::EnableVisualStyles()
+
+        $FolderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
+        $FolderBrowser.Description = "${escapedTitle}"
+        $FolderBrowser.SelectedPath = "${escapedPath}"
+        $FolderBrowser.ShowNewFolderButton = $true
+
+        $DialogResult = $FolderBrowser.ShowDialog()
+
+        if ($DialogResult -eq [System.Windows.Forms.DialogResult]::OK) {
+          Write-Host $FolderBrowser.SelectedPath
+        } else {
+          Write-Host "CANCELLED"
+        }
+      } catch {
+        Write-Error $_.Exception.Message
+        exit 1
+      }
+    `
+  } else {
+    const filterString = buildFilterString(opts.filter)
+    powershellScript = `
     try {
       Add-Type -AssemblyName System.Windows.Forms
       [System.Windows.Forms.Application]::EnableVisualStyles()
@@ -129,6 +157,7 @@ export const openWindowsFileDialog = async (
       exit 1
     }
   `
+  }
 
   return new Promise((resolve, reject) => {
     const child = cp.spawn(

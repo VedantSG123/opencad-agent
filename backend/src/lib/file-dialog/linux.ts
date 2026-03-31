@@ -11,6 +11,7 @@ interface FileDialogOptions {
   multiple?: boolean
   title?: string
   fileTypes?: string[] // e.g., ['*.txt', '*.md']
+  directoryOnly?: boolean
 }
 
 interface DialogTool {
@@ -50,6 +51,10 @@ const zenityTool: DialogTool = {
   buildCommand: (initialDirectory: string, options: FileDialogOptions) => {
     const args = ['zenity', '--file-selection']
 
+    if (options.directoryOnly) {
+      args.push('--directory')
+    }
+
     if (options.multiple) {
       args.push('--multiple', '--separator=\\n')
     }
@@ -58,7 +63,11 @@ const zenityTool: DialogTool = {
       args.push('--title', escapeShellArg(options.title))
     }
 
-    if (options.fileTypes && options.fileTypes.length > 0) {
+    if (
+      !options.directoryOnly &&
+      options.fileTypes &&
+      options.fileTypes.length > 0
+    ) {
       for (const type of options.fileTypes) {
         args.push('--file-filter', escapeShellArg(type))
       }
@@ -75,16 +84,21 @@ const kdialogTool: DialogTool = {
   buildCommand: (initialDirectory: string, options: FileDialogOptions) => {
     const args = ['kdialog']
 
-    if (options.multiple) {
-      args.push('--getopenfilenames')
+    if (options.directoryOnly) {
+      args.push('--getexistingdirectory')
+      args.push(escapeShellArg(initialDirectory))
     } else {
-      args.push('--getopenfilename')
-    }
+      if (options.multiple) {
+        args.push('--getopenfilenames')
+      } else {
+        args.push('--getopenfilename')
+      }
 
-    args.push(escapeShellArg(initialDirectory))
+      args.push(escapeShellArg(initialDirectory))
 
-    if (options.fileTypes && options.fileTypes.length > 0) {
-      args.push(escapeShellArg(options.fileTypes.join(' ')))
+      if (options.fileTypes && options.fileTypes.length > 0) {
+        args.push(escapeShellArg(options.fileTypes.join(' ')))
+      }
     }
 
     if (options.title) {
@@ -101,6 +115,10 @@ const yad: DialogTool = {
   buildCommand: (initialDirectory: string, options: FileDialogOptions) => {
     const args = ['yad', '--file-selection']
 
+    if (options.directoryOnly) {
+      args.push('--directory')
+    }
+
     if (options.multiple) {
       args.push('--multiple', '--separator=\\n')
     }
@@ -109,7 +127,11 @@ const yad: DialogTool = {
       args.push('--title', escapeShellArg(options.title))
     }
 
-    if (options.fileTypes && options.fileTypes.length > 0) {
+    if (
+      !options.directoryOnly &&
+      options.fileTypes &&
+      options.fileTypes.length > 0
+    ) {
       for (const type of options.fileTypes) {
         args.push('--file-filter', escapeShellArg(type))
       }
@@ -126,6 +148,10 @@ const qarma: DialogTool = {
   buildCommand: (initialDirectory: string, options: FileDialogOptions) => {
     const args = ['qarma', '--file-selection']
 
+    if (options.directoryOnly) {
+      args.push('--directory')
+    }
+
     if (options.multiple) {
       args.push('--multiple', '--separator=\\n')
     }
@@ -134,7 +160,11 @@ const qarma: DialogTool = {
       args.push('--title', escapeShellArg(options.title))
     }
 
-    if (options.fileTypes && options.fileTypes.length > 0) {
+    if (
+      !options.directoryOnly &&
+      options.fileTypes &&
+      options.fileTypes.length > 0
+    ) {
       for (const type of options.fileTypes) {
         args.push('--file-filter', escapeShellArg(type))
       }
@@ -150,6 +180,10 @@ const matedialog: DialogTool = {
   check: () => checkCommand('matedialog'),
   buildCommand: (initialDirectory: string, options: FileDialogOptions) => {
     const args = ['matedialog', '--file-selection']
+
+    if (options.directoryOnly) {
+      args.push('--directory')
+    }
 
     if (options.multiple) {
       args.push('--multiple', '--separator=\\n')
@@ -176,6 +210,14 @@ const osascript: DialogTool = {
     }
   },
   buildCommand: (initialDirectory: string, options: FileDialogOptions) => {
+    if (options.directoryOnly) {
+      const script =
+        `set theFolder to choose folder with prompt "${options.title || 'Select a folder'}" ` +
+        `default location POSIX file "${initialDirectory}"\n` +
+        'return POSIX path of theFolder'
+      return ['osascript', '-e', escapeShellArg(script)]
+    }
+
     let script = 'tell application "System Events" to activate\n'
 
     if (options.multiple) {
@@ -205,12 +247,12 @@ const rofi: DialogTool = {
   name: 'rofi',
   check: () => checkCommand('rofi'),
   buildCommand: (initialDirectory: string, options: FileDialogOptions) => {
-    // Rofi with file browser mode
+    const findType = options.directoryOnly ? 'd' : 'f'
     const args = [
       'bash',
       '-c',
       escapeShellArg(
-        `cd ${escapeShellArg(initialDirectory)} && find . -type f | rofi -dmenu -p "${options.title || 'Select file'}" -multi-select`,
+        `cd ${escapeShellArg(initialDirectory)} && find . -type ${findType} | rofi -dmenu -p "${options.title || 'Select file'}" -multi-select`,
       ),
     ]
 
@@ -235,12 +277,12 @@ const dmenu: DialogTool = {
   name: 'dmenu',
   check: () => checkCommand('dmenu'),
   buildCommand: (initialDirectory: string, options: FileDialogOptions) => {
-    // dmenu with file listing
+    const findType = options.directoryOnly ? 'd' : 'f'
     const args = [
       'bash',
       '-c',
       escapeShellArg(
-        `cd ${escapeShellArg(initialDirectory)} && find . -type f | dmenu -p "${options.title || 'Select file'}"`,
+        `cd ${escapeShellArg(initialDirectory)} && find . -type ${findType} | dmenu -p "${options.title || 'Select file'}"`,
       ),
     ]
 
@@ -263,6 +305,7 @@ const fzf: DialogTool = {
   name: 'fzf',
   check: () => checkCommand('fzf'),
   buildCommand: (initialDirectory: string, options: FileDialogOptions) => {
+    const findType = options.directoryOnly ? 'd' : 'f'
     const fzfOpts = ['--prompt', `"${options.title || 'Select file'}> "`]
 
     if (options.multiple) {
@@ -273,7 +316,7 @@ const fzf: DialogTool = {
       'bash',
       '-c',
       escapeShellArg(
-        `cd ${escapeShellArg(initialDirectory)} && find . -type f | fzf ${fzfOpts.join(' ')}`,
+        `cd ${escapeShellArg(initialDirectory)} && find . -type ${findType} | fzf ${fzfOpts.join(' ')}`,
       ),
     ]
 

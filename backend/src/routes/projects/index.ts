@@ -58,12 +58,19 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
             clearInterval(keepAlive)
           }
 
+          const isDirectoryMode = !isFileMode
           const fileTypes = isFileMode ? ['*.js', '*.scad'] : ['*']
           const title = isFileMode
             ? 'Select a CAD script file'
             : 'Select a project directory'
 
-          openFileDialog(getUserDocumentsDir(), fileTypes, false, title)
+          openFileDialog(
+            getUserDocumentsDir(),
+            fileTypes,
+            false,
+            title,
+            isDirectoryMode,
+          )
             .then((result) => {
               if (closed) return
               cleanup()

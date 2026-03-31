@@ -15,6 +15,7 @@ interface OpenDialogOptions {
   filters?: string[]
   limit?: number
   terminal?: string
+  directoryOnly?: boolean
 }
 
 /**
@@ -45,16 +46,49 @@ export const openFinderDialog = async (
   options: OpenDialogOptions = {},
 ): Promise<{ files: string[]; canceled: boolean }> => {
   return new Promise((resolve, reject) => {
-    const { filters = [], terminal = detectTerminal(), limit = 100 } = options
+    const {
+      filters = [],
+      terminal = detectTerminal(),
+      limit = 100,
+      directoryOnly = false,
+    } = options
 
     const maxFiles = Math.max(1, limit)
-    const command = buildCommand(limit > 1, filters)
     const escapedPath = escapeQuotedPath(initialDirectory)
     const pathSeparator = '<__PATH_SEPARATOR__>'
 
-    const appleScript = `
-      set defaultPath to POSIX file "${escapedPath}"
-      set limit to ${maxFiles}
+    let appleScript: string
+
+    if (directoryOnly) {
+      appleScript = `
+        set defaultPath to POSIX file "${escapedPath}"
+
+        try
+          tell application "SystemUIServer"
+            activate
+            delay 0.2
+            set theFolder to choose folder with prompt "Select a directory" default location defaultPath
+          end tell
+
+          set posixPath to POSIX path of theFolder
+
+          tell application "${terminal}"
+            activate
+          end tell
+
+          return posixPath
+        on error
+          tell application "${terminal}"
+            activate
+          end tell
+          return "CANCELLED"
+        end try
+      `
+    } else {
+      const command = buildCommand(limit > 1, filters)
+      appleScript = `
+        set defaultPath to POSIX file "${escapedPath}"
+        set limit to ${maxFiles}
 
       try
         -- Open the file dialog within SystemUIServer to bring it to focus
@@ -96,6 +130,7 @@ export const openFinderDialog = async (
         return "CANCELLED"
       end try
     `
+    }
 
     const child = cp.spawn('osascript', ['-'])
 
