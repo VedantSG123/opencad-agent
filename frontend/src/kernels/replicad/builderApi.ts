@@ -1,72 +1,72 @@
-import { wrap } from 'comlink';
-import type { CurveType, SurfaceType } from 'replicad';
+import { wrap } from 'comlink'
+import type { CurveType, SurfaceType } from 'replicad'
 
 import type {
   ExportConfiguration,
   ExportFileTypes,
   MeshRenderOutput,
   SvgRenderOutput,
-} from '@/types';
-import CadWorker from '@/workers/replicad/worker?worker';
+} from '@/types'
+import CadWorker from '@/workers/replicad/worker?worker'
 
 // Define the worker service interface based on the exposed service
 interface CadWorkerService {
-  init(): Promise<boolean>;
+  init(): Promise<boolean>
   buildFromCode(code: string): Promise<
     | {
-        error: true;
-        message: string;
-        stack?: string;
+        error: true
+        message: string
+        stack?: string
       }
     | Array<SvgRenderOutput | MeshRenderOutput>
-  >;
+  >
   exportToFile(
     fileType?: ExportFileTypes,
     memoKey?: string,
     config?: ExportConfiguration,
-  ): Promise<Array<{ blob: Blob; name: string }>>;
+  ): Promise<Array<{ blob: Blob; name: string }>>
   getFaceInfo(
     subShapeIndex: number,
     faceIndex: number,
     memoKey?: string,
   ): Promise<{
-    type: SurfaceType;
-    center: [number, number, number];
-    normal: [number, number, number];
-  } | null>;
+    type: SurfaceType
+    center: [number, number, number]
+    normal: [number, number, number]
+  } | null>
   getEdgeInfo(
     subShapeIndex: number,
     edgeIndex: number,
     memoKey?: string,
   ): Promise<{
-    type: CurveType;
-    start: [number, number, number];
-    end: [number, number, number];
-    direction: [number, number, number];
-  } | null>;
+    type: CurveType
+    start: [number, number, number]
+    end: [number, number, number]
+    direction: [number, number, number]
+  } | null>
 }
 
 class BuilderApi {
-  private worker: Worker;
-  private workerApi: CadWorkerService;
+  private worker: Worker
+  private workerApi: CadWorkerService
 
   constructor() {
-    this.worker = new CadWorker();
-    this.workerApi = wrap<CadWorkerService>(this.worker);
+    this.worker = new CadWorker()
+    this.workerApi = wrap<CadWorkerService>(this.worker)
   }
 
   /**
    * Initialize the worker
    */
   async init() {
-    return await this.workerApi.init();
+    return await this.workerApi.init()
   }
 
   /**
    * Build CAD shapes from code
    */
   async buildFromCode(code: string) {
-    return await this.workerApi.buildFromCode(code);
+    return await this.workerApi.buildFromCode(code)
   }
 
   /**
@@ -77,7 +77,7 @@ class BuilderApi {
     memoKey: string = 'default_shapes',
     config?: ExportConfiguration,
   ) {
-    return await this.workerApi.exportToFile(fileType, memoKey, config);
+    return await this.workerApi.exportToFile(fileType, memoKey, config)
   }
 
   /**
@@ -88,7 +88,7 @@ class BuilderApi {
     faceIndex: number,
     memoKey: string = 'default_shapes',
   ) {
-    return this.workerApi.getFaceInfo(subShapeIndex, faceIndex, memoKey);
+    return this.workerApi.getFaceInfo(subShapeIndex, faceIndex, memoKey)
   }
 
   /**
@@ -99,28 +99,28 @@ class BuilderApi {
     edgeIndex: number,
     memoKey: string = 'default_shapes',
   ) {
-    return this.workerApi.getEdgeInfo(subShapeIndex, edgeIndex, memoKey);
+    return this.workerApi.getEdgeInfo(subShapeIndex, edgeIndex, memoKey)
   }
 
   /**
    * Terminate the worker
    */
   terminate() {
-    this.worker.terminate();
+    this.worker.terminate()
   }
 }
 
 // Create a singleton instance
-let builderApiInstance: BuilderApi | null = null;
+let builderApiInstance: BuilderApi | null = null
 
 /**
  * Get the singleton instance of the BuilderApi
  */
 export function getBuilderApi(): BuilderApi {
   if (!builderApiInstance) {
-    builderApiInstance = new BuilderApi();
+    builderApiInstance = new BuilderApi()
   }
-  return builderApiInstance;
+  return builderApiInstance
 }
 
 /**
@@ -128,9 +128,9 @@ export function getBuilderApi(): BuilderApi {
  */
 export function terminateBuilderApi() {
   if (builderApiInstance) {
-    builderApiInstance.terminate();
-    builderApiInstance = null;
+    builderApiInstance.terminate()
+    builderApiInstance = null
   }
 }
 
-export default BuilderApi;
+export default BuilderApi

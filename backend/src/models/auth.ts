@@ -1,7 +1,7 @@
 import z from 'zod'
 
+import { DATA_DIR } from '../utils/directories'
 import { createLazyStore } from '../utils/lazyStore'
-import { DATA_DIR } from '../utils/storageDirectories'
 
 export const OAuth = z.object({
   type: z.literal('oauth'),

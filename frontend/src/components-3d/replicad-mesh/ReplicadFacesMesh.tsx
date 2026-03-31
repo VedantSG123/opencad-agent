@@ -1,11 +1,11 @@
-import { useTexture } from '@react-three/drei';
-import type { ThreeElements } from '@react-three/fiber';
-import type * as React from 'react';
-import type { ReplicadMeshedFaces } from 'replicad-threejs-helper';
+import { useTexture } from '@react-three/drei'
+import type { ThreeElements } from '@react-three/fiber'
+import type * as React from 'react'
+import type { ReplicadMeshedFaces } from 'replicad-threejs-helper'
 
-import { useApplyHighlights } from './hooks/useApplyHighlights';
-import { useReplicadFaceGeometry } from './hooks/useReplicadFaceGeometry';
-import getMeshColors from './meshColors';
+import { useApplyHighlights } from './hooks/useApplyHighlights'
+import { useReplicadFaceGeometry } from './hooks/useReplicadFaceGeometry'
+import getMeshColors from './meshColors'
 
 export const ReplicadFacesMesh: React.FC<ReplicadFacesMeshProps> = ({
   faces,
@@ -15,14 +15,14 @@ export const ReplicadFacesMesh: React.FC<ReplicadFacesMeshProps> = ({
   color,
   ...rest
 }) => {
-  const geometry = useReplicadFaceGeometry(faces, defaultHighlights || []);
-  useApplyHighlights(geometry, highlights);
+  const geometry = useReplicadFaceGeometry(faces, defaultHighlights || [])
+  useApplyHighlights(geometry, highlights)
 
-  const matcapTexture = useTexture('matcap-main.png');
+  const matcapTexture = useTexture('matcap-main.png')
 
-  const transparent = opacity !== undefined && opacity < 1;
+  const transparent = opacity !== undefined && opacity < 1
 
-  const meshColors = getMeshColors(color);
+  const meshColors = getMeshColors(color)
 
   return (
     <mesh {...rest}>
@@ -48,15 +48,15 @@ export const ReplicadFacesMesh: React.FC<ReplicadFacesMeshProps> = ({
         polygonOffsetUnits={1.0}
       />
     </mesh>
-  );
-};
+  )
+}
 
-useTexture.preload('matcap-main.png');
+useTexture.preload('matcap-main.png')
 
 type ReplicadFacesMeshProps = ThreeElements['mesh'] & {
-  faces: ReplicadMeshedFaces;
-  defaultHighlights?: number[];
-  highlights?: number[];
-  opacity?: number;
-  color?: string;
-};
+  faces: ReplicadMeshedFaces
+  defaultHighlights?: number[]
+  highlights?: number[]
+  opacity?: number
+  color?: string
+}

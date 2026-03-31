@@ -1,21 +1,21 @@
-import { create } from 'zustand';
+import { create } from 'zustand'
 
-import { getBuilderApi } from '@/kernels/replicad/builderApi';
-import { inSeries } from '@/kernels/replicad/inSeries';
-import type { MeshRenderOutput, SvgRenderOutput } from '@/types';
+import { getBuilderApi } from '@/kernels/replicad/builderApi'
+import { inSeries } from '@/kernels/replicad/inSeries'
+import type { MeshRenderOutput, SvgRenderOutput } from '@/types'
 
 type BuilderState = {
-  code: string;
-  shapes: (MeshRenderOutput | SvgRenderOutput)[] | null;
-  error: Error | null;
-  workerReady: boolean;
-};
+  code: string
+  shapes: (MeshRenderOutput | SvgRenderOutput)[] | null
+  error: Error | null
+  workerReady: boolean
+}
 
 type BuilderActions = {
-  setCode: (code: string) => void;
-  build: () => Promise<void>;
-  initWorker: () => Promise<void>;
-};
+  setCode: (code: string) => void
+  build: () => Promise<void>
+  initWorker: () => Promise<void>
+}
 
 const DEFAULT_SCRIPT = `
 const { draw } = replicad;
@@ -46,52 +46,52 @@ const main = () => {
     .shell(5, (f) => f.containsPoint([0, 0, height]))
     .fillet(1.7, (e) => e.inPlane("XY", height));
 };
-`;
+`
 
 export const useBuilderStore = create<BuilderState & BuilderActions>(
   (set, get) => {
-    const builderApi = getBuilderApi();
+    const builderApi = getBuilderApi()
 
     const initWorker = async () => {
       try {
-        const workerReady = await builderApi.init();
-        set({ workerReady });
+        const workerReady = await builderApi.init()
+        set({ workerReady })
       } catch (e) {
-        console.error('Error initializing worker:', e);
+        console.error('Error initializing worker:', e)
       }
-    };
+    }
 
     const build = async () => {
-      const { code } = get();
+      const { code } = get()
       if (!code) {
-        set({ shapes: null, error: null });
-        return;
+        set({ shapes: null, error: null })
+        return
       }
 
       try {
-        const result = await builderApi.buildFromCode(code);
+        const result = await builderApi.buildFromCode(code)
 
-        console.log('Build result:', result);
+        console.log('Build result:', result)
 
         // result is either shapes[] or an error object
         if (Array.isArray(result)) {
-          set({ shapes: result, error: null });
+          set({ shapes: result, error: null })
         } else {
           // if your worker returns an error object instead of throwing
           set({
             shapes: null,
             error: new Error(result.message),
-          });
+          })
         }
       } catch (e) {
         set({
           shapes: null,
           error: e instanceof Error ? e : new Error(String(e)),
-        });
+        })
       }
-    };
+    }
 
-    const runBuild = inSeries(build);
+    const runBuild = inSeries(build)
 
     return {
       code: DEFAULT_SCRIPT.trim(),
@@ -99,10 +99,10 @@ export const useBuilderStore = create<BuilderState & BuilderActions>(
       shapes: null,
       error: null,
       setCode: (code: string) => {
-        set({ code });
+        set({ code })
       },
       build: runBuild,
       initWorker,
-    };
+    }
   },
-);
+)

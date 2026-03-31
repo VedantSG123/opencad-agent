@@ -1,4 +1,4 @@
-import { darken, lighten } from 'polished';
+import { darken, lighten } from 'polished'
 
 const getMeshColorVariants = (baseColor: string = '#7E99A3') => {
   return {
@@ -6,7 +6,7 @@ const getMeshColorVariants = (baseColor: string = '#7E99A3') => {
     line: darken(0.2, baseColor),
     selected: lighten(0.15, baseColor),
     lineSelected: lighten(0.25, baseColor),
-  };
-};
+  }
+}
 
-export default getMeshColorVariants;
+export default getMeshColorVariants

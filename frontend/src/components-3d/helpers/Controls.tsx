@@ -1,5 +1,5 @@
-import { GizmoHelper, GizmoViewport, OrbitControls } from '@react-three/drei';
-import * as React from 'react';
+import { GizmoHelper, GizmoViewport, OrbitControls } from '@react-three/drei'
+import * as React from 'react'
 
 const Controls: React.FC<ControlsProps> = ({
   hideGizmo = false,
@@ -14,12 +14,12 @@ const Controls: React.FC<ControlsProps> = ({
         </GizmoHelper>
       )}
     </>
-  );
-};
+  )
+}
 
-export default Controls;
+export default Controls
 
 type ControlsProps = {
-  hideGizmo?: boolean;
-  enableDamping?: boolean;
-};
+  hideGizmo?: boolean
+  enableDamping?: boolean
+}

@@ -1,7 +1,7 @@
 import logixlysia from 'logixlysia'
 import path from 'path'
 
-import { LOGS_DIR } from './storageDirectories'
+import { LOGS_DIR } from './directories'
 
 export const logixlysiaIns = logixlysia({
   config: {

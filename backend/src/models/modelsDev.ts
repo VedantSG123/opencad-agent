@@ -2,8 +2,8 @@ import fs from 'fs'
 import path from 'path'
 import { z } from 'zod'
 
+import { CACHE_DIR } from '../utils/directories'
 import { logger } from '../utils/logger'
-import { CACHE_DIR } from '../utils/storageDirectories'
 
 // ---------------------------------------------------------------------------
 // Schemas

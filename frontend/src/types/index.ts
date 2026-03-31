@@ -1,1 +1,1 @@
-export type * from './replicad';
+export type * from './replicad'

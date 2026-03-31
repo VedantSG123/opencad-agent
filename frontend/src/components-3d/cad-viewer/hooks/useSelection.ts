@@ -1,14 +1,14 @@
-import debounce from 'debounce';
-import * as React from 'react';
+import debounce from 'debounce'
+import * as React from 'react'
 
 export function useSelection(
   selecedMode: string,
   validSelectedMode: string[],
 ): [SelectionType | null, (shapeId: string) => (index: number) => void] {
-  const [selection, setSelection] = React.useState<SelectionType | null>(null);
+  const [selection, setSelection] = React.useState<SelectionType | null>(null)
 
   if (!validSelectedMode.includes(selecedMode)) {
-    return [selection, () => () => {}];
+    return [selection, () => () => {}]
   }
 
   const select = (shapeId: string) => {
@@ -18,19 +18,19 @@ export function useSelection(
         selection.shapeId === shapeId &&
         selection.index === index
       ) {
-        setSelection(null);
+        setSelection(null)
       } else {
-        setSelection({ shapeId, index });
+        setSelection({ shapeId, index })
       }
-    }, 50);
+    }, 50)
 
-    return handleSelect;
-  };
+    return handleSelect
+  }
 
-  return [selection, select];
+  return [selection, select]
 }
 
 export type SelectionType = {
-  shapeId: string;
-  index: number;
-};
+  shapeId: string
+  index: number
+}

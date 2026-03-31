@@ -10,36 +10,36 @@
 export function inSeries<A extends any[], R>(
   func: (...args: A) => Promise<R>,
 ): (...args: A) => Promise<void> {
-  let currentlyRunning = false;
-  let refresh = false;
-  let lastArgs: A | null = null;
+  let currentlyRunning = false
+  let refresh = false
+  let lastArgs: A | null = null
 
   return async function (...args: A): Promise<void> {
     // Record the latest arguments for the next pass.
-    lastArgs = args;
+    lastArgs = args
 
     if (currentlyRunning) {
-      refresh = true;
-      return;
+      refresh = true
+      return
     }
 
-    currentlyRunning = true;
+    currentlyRunning = true
 
     try {
       while (true) {
-        refresh = false;
+        refresh = false
 
         // Snapshot and clear lastArgs so new calls during func can update it.
-        const runArgs = lastArgs!;
-        lastArgs = null;
+        const runArgs = lastArgs!
+        lastArgs = null
 
-        await func(...runArgs);
+        await func(...runArgs)
 
         // If any calls arrived while running, loop again with the newest args.
-        if (!refresh) break;
+        if (!refresh) break
       }
     } finally {
-      currentlyRunning = false;
+      currentlyRunning = false
     }
-  };
+  }
 }

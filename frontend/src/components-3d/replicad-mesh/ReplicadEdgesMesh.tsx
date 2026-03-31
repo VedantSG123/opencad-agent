@@ -1,10 +1,10 @@
-import type { ThreeElements } from '@react-three/fiber';
-import type * as React from 'react';
-import type { ReplicadMeshedEdges } from 'replicad-threejs-helper';
+import type { ThreeElements } from '@react-three/fiber'
+import type * as React from 'react'
+import type { ReplicadMeshedEdges } from 'replicad-threejs-helper'
 
-import { useApplyHighlights } from './hooks/useApplyHighlights';
-import { useReplicadEdgeGeometry } from './hooks/useReplicadEdgeGeometry';
-import getMeshColors from './meshColors';
+import { useApplyHighlights } from './hooks/useApplyHighlights'
+import { useReplicadEdgeGeometry } from './hooks/useReplicadEdgeGeometry'
+import getMeshColors from './meshColors'
 
 export const ReplicadEdgesMesh: React.FC<ReplicadEdgesMeshProps> = ({
   edges,
@@ -14,12 +14,12 @@ export const ReplicadEdgesMesh: React.FC<ReplicadEdgesMeshProps> = ({
   color,
   ...rest
 }) => {
-  const geometry = useReplicadEdgeGeometry(edges, defaultHighlights || []);
-  useApplyHighlights(geometry, highlights);
+  const geometry = useReplicadEdgeGeometry(edges, defaultHighlights || [])
+  useApplyHighlights(geometry, highlights)
 
-  const transparent = opacity !== undefined && opacity < 1;
+  const transparent = opacity !== undefined && opacity < 1
 
-  const meshColors = getMeshColors(color);
+  const meshColors = getMeshColors(color)
 
   return (
     <lineSegments {...rest}>
@@ -43,13 +43,13 @@ export const ReplicadEdgesMesh: React.FC<ReplicadEdgesMeshProps> = ({
         polygonOffsetUnits={1.0}
       />
     </lineSegments>
-  );
-};
+  )
+}
 
 type ReplicadEdgesMeshProps = ThreeElements['lineSegments'] & {
-  edges: ReplicadMeshedEdges;
-  defaultHighlights?: number[];
-  highlights?: number[];
-  opacity?: number;
-  color?: string;
-};
+  edges: ReplicadMeshedEdges
+  defaultHighlights?: number[]
+  highlights?: number[]
+  opacity?: number
+  color?: string
+}

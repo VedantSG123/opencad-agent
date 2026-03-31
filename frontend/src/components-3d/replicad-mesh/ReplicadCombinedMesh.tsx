@@ -1,9 +1,9 @@
-import type { MeshRenderOutput } from '@/types';
+import type { MeshRenderOutput } from '@/types'
 
-import { useEdgeEvent } from './hooks/useEdgeEvent';
-import { useFaceEvent } from './hooks/useFaceEvent';
-import { ReplicadEdgesMesh } from './ReplicadEdgesMesh';
-import { ReplicadFacesMesh } from './ReplicadFacesMesh';
+import { useEdgeEvent } from './hooks/useEdgeEvent'
+import { useFaceEvent } from './hooks/useFaceEvent'
+import { ReplicadEdgesMesh } from './ReplicadEdgesMesh'
+import { ReplicadFacesMesh } from './ReplicadFacesMesh'
 
 export function ReplicadCombinedMesh({
   shape,
@@ -12,11 +12,11 @@ export function ReplicadCombinedMesh({
   edgesHighlight,
   facesHighlight,
 }: ReplicadCombinedMeshProps) {
-  const { handleEdgeClick } = useEdgeEvent(onEdgeClick);
-  const { handleFaceClick } = useFaceEvent(onFaceClick);
+  const { handleEdgeClick } = useEdgeEvent(onEdgeClick)
+  const { handleFaceClick } = useFaceEvent(onFaceClick)
 
   if (!shape.mesh || !shape.edges) {
-    return null;
+    return null
   }
   return (
     <>
@@ -35,13 +35,13 @@ export function ReplicadCombinedMesh({
         color={shape.color}
       />
     </>
-  );
+  )
 }
 
 type ReplicadCombinedMeshProps = {
-  shape: MeshRenderOutput;
-  onEdgeClick: (index: number) => void;
-  onFaceClick: (index: number) => void;
-  edgesHighlight?: number[];
-  facesHighlight?: number[];
-};
+  shape: MeshRenderOutput
+  onEdgeClick: (index: number) => void
+  onFaceClick: (index: number) => void
+  edgesHighlight?: number[]
+  facesHighlight?: number[]
+}

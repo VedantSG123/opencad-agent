@@ -1,90 +1,90 @@
-import * as React from 'react';
-import { useRect } from 'react-use-rect';
+import * as React from 'react'
+import { useRect } from 'react-use-rect'
 
-import type { SvgRenderOutput } from '@/types';
+import type { SvgRenderOutput } from '@/types'
 
 const range = (start: number, end: number, step = 1) => {
-  const result = [];
+  const result = []
   for (let i = start; i < end; i += step) {
-    result.push(i);
+    result.push(i)
   }
-  return result;
-};
+  return result
+}
 
 const parseViewbox = (viewboxString: string): SVGViewBox => {
   const [xStart, yStart, width, height] = viewboxString
     .split(' ')
-    .map((v) => parseFloat(v));
-  return { xStart, yStart, width, height };
-};
+    .map((v) => parseFloat(v))
+  return { xStart, yStart, width, height }
+}
 
 const stringifyViewbox = (viewbox: SVGViewBox): string => {
-  const { xStart, yStart, width, height } = viewbox;
-  return `${xStart} ${yStart} ${width} ${height}`;
-};
+  const { xStart, yStart, width, height } = viewbox
+  return `${xStart} ${yStart} ${width} ${height}`
+}
 
 const mergeViewboxes = (viewboxes: string[]): SVGViewBox => {
-  const parsed = viewboxes.map(parseViewbox);
+  const parsed = viewboxes.map(parseViewbox)
 
-  const xStart = Math.min(...parsed.map((v) => v.xStart));
-  const yStart = Math.min(...parsed.map((v) => v.yStart));
-  const xEnd = Math.max(...parsed.map((v) => v.xStart + v.width));
-  const yEnd = Math.max(...parsed.map((v) => v.yStart + v.height));
+  const xStart = Math.min(...parsed.map((v) => v.xStart))
+  const yStart = Math.min(...parsed.map((v) => v.yStart))
+  const xEnd = Math.max(...parsed.map((v) => v.xStart + v.width))
+  const yEnd = Math.max(...parsed.map((v) => v.yStart + v.height))
 
   return {
     xStart,
     yStart,
     width: xEnd - xStart,
     height: yEnd - yStart,
-  };
-};
+  }
+}
 
 const addMarginToViewbox = (
   viewbox: SVGViewBox,
   marginRatio: number,
 ): SVGViewBox => {
-  const { xStart, yStart, width, height } = viewbox;
-  const marginX = width * marginRatio;
-  const marginY = height * marginRatio;
+  const { xStart, yStart, width, height } = viewbox
+  const marginX = width * marginRatio
+  const marginY = height * marginRatio
   return {
     xStart: xStart - marginX,
     yStart: yStart - marginY,
     width: width + marginX * 2,
     height: height + marginY * 2,
-  };
-};
+  }
+}
 
 const dashArray = (strokeType?: StrokeType): string | undefined => {
   switch (strokeType) {
     case 'dots':
-      return '1, 2';
+      return '1, 2'
     case 'dashes':
-      return '5, 5';
+      return '5, 5'
     case 'solid':
     default:
-      return undefined;
+      return undefined
   }
-};
+}
 
 const SVGGrid = ({ viewbox }: { viewbox: SVGViewBox }) => {
-  const { xStart, yStart, width, height } = viewbox;
+  const { xStart, yStart, width, height } = viewbox
 
   const { xRange, yRange } = React.useMemo(() => {
     const gridSpacing =
-      10 ** (Math.ceil(Math.log10(Math.max(width, height))) - 1);
+      10 ** (Math.ceil(Math.log10(Math.max(width, height))) - 1)
 
     const xRange = range(
       Math.floor(xStart / gridSpacing) * gridSpacing,
       Math.ceil((xStart + width) / gridSpacing) * gridSpacing,
       gridSpacing,
-    );
+    )
     const yRange = range(
       Math.floor(yStart / gridSpacing) * gridSpacing,
       Math.ceil((yStart + height) / gridSpacing) * gridSpacing,
       gridSpacing,
-    );
-    return { xRange, yRange };
-  }, [width, height, xStart, yStart]);
+    )
+    return { xRange, yRange }
+  }, [width, height, xStart, yStart])
 
   const grid = [
     ...xRange.map((x) => (
@@ -109,7 +109,7 @@ const SVGGrid = ({ viewbox }: { viewbox: SVGViewBox }) => {
         strokeWidth='0.5'
       />
     )),
-  ];
+  ]
 
   return (
     <>
@@ -131,11 +131,11 @@ const SVGGrid = ({ viewbox }: { viewbox: SVGViewBox }) => {
         strokeWidth='5'
       />
     </>
-  );
-};
+  )
+}
 
 const ShapePath: React.FC<ShapePathProps> = ({ shape }) => {
-  const pathData = shape.paths?.flat(Infinity).join(' ') ?? '';
+  const pathData = shape.paths?.flat(Infinity).join(' ') ?? ''
 
   return (
     <path
@@ -144,46 +144,46 @@ const ShapePath: React.FC<ShapePathProps> = ({ shape }) => {
       vectorEffect='non-scaling-stroke'
       style={{ stroke: shape.color }}
     />
-  );
-};
+  )
+}
 
 const SVGWindow: React.FC<SVGWindowProps> = ({ viewbox, children }) => {
-  const [adaptedViewbox, setAdaptedViewBox] = React.useState(viewbox);
+  const [adaptedViewbox, setAdaptedViewBox] = React.useState(viewbox)
   const [canvasRef] = useRect(
     (rect) => {
-      const viewBoxWithMargin = addMarginToViewbox(viewbox, 0.1);
-      const { width, height } = rect;
-      const { width: viewBoxWidth, height: viewBoxHeight } = viewBoxWithMargin;
+      const viewBoxWithMargin = addMarginToViewbox(viewbox, 0.1)
+      const { width, height } = rect
+      const { width: viewBoxWidth, height: viewBoxHeight } = viewBoxWithMargin
 
-      const rectAspect = width / height;
-      const viewBoxAspect = viewBoxWidth / viewBoxHeight;
+      const rectAspect = width / height
+      const viewBoxAspect = viewBoxWidth / viewBoxHeight
 
-      const resizeAlong = rectAspect > viewBoxAspect ? 'width' : 'height';
+      const resizeAlong = rectAspect > viewBoxAspect ? 'width' : 'height'
 
       if (resizeAlong === 'width') {
-        const spacing = viewBoxAspect * height - width;
+        const spacing = viewBoxAspect * height - width
         setAdaptedViewBox({
           ...viewBoxWithMargin,
           width: viewBoxWidth + spacing,
           xStart: viewBoxWithMargin.xStart - spacing / 2,
-        });
+        })
       } else {
-        const spacing = width / viewBoxAspect - height;
+        const spacing = width / viewBoxAspect - height
         setAdaptedViewBox({
           ...viewBoxWithMargin,
           height: viewBoxHeight + spacing,
           yStart: viewBoxWithMargin.yStart - spacing / 2,
-        });
+        })
       }
     },
     { resize: true },
-  );
+  )
   return (
     <div className='bg-background flex flex-1' ref={canvasRef}>
       <SVGCanvas viewbox={adaptedViewbox}>{children}</SVGCanvas>
     </div>
-  );
-};
+  )
+}
 
 const SVGCanvas: React.FC<SVGCanvasProps> = ({ viewbox, children }) => {
   return (
@@ -202,12 +202,12 @@ const SVGCanvas: React.FC<SVGCanvasProps> = ({ viewbox, children }) => {
         {children}
       </g>
     </svg>
-  );
-};
+  )
+}
 
 export const SVGViewer: React.FC<SvgViewerProps> = ({ shapes }) => {
   if (shapes && shapes.length && shapes[0].format === 'svg') {
-    const viewbox = mergeViewboxes(shapes.map((s) => s.viewbox));
+    const viewbox = mergeViewboxes(shapes.map((s) => s.viewbox))
     return (
       <SVGWindow viewbox={viewbox}>
         {shapes.map((s) => {
@@ -221,44 +221,44 @@ export const SVGViewer: React.FC<SvgViewerProps> = ({ shapes }) => {
                 }}
                 key={s.name}
               />
-            );
-          return null;
+            )
+          return null
         })}
       </SVGWindow>
-    );
+    )
   }
-  return null;
-};
+  return null
+}
 
 type SVGWindowProps = {
-  viewbox: SVGViewBox;
-  children: React.ReactNode;
-};
+  viewbox: SVGViewBox
+  children: React.ReactNode
+}
 
 type SVGCanvasProps = {
-  viewbox: SVGViewBox;
-  children: React.ReactNode;
-};
+  viewbox: SVGViewBox
+  children: React.ReactNode
+}
 
 type SVGViewBox = {
-  xStart: number;
-  yStart: number;
-  width: number;
-  height: number;
-};
+  xStart: number
+  yStart: number
+  width: number
+  height: number
+}
 
-type StrokeType = 'solid' | 'dots' | 'dashes' | undefined;
+type StrokeType = 'solid' | 'dots' | 'dashes' | undefined
 
 type SvgShape = {
-  paths?: (string | string[])[];
-  strokeType?: StrokeType;
-  color: string;
-};
+  paths?: (string | string[])[]
+  strokeType?: StrokeType
+  color: string
+}
 
 type ShapePathProps = {
-  shape: SvgShape;
-};
+  shape: SvgShape
+}
 
 type SvgViewerProps = {
-  shapes: SvgRenderOutput[];
-};
+  shapes: SvgRenderOutput[]
+}

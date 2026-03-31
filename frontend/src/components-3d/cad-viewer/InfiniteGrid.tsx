@@ -1,13 +1,13 @@
-import { Plane } from '@react-three/drei';
-import * as React from 'react';
-import * as THREE from 'three';
+import { Plane } from '@react-three/drei'
+import * as React from 'react'
+import * as THREE from 'three'
 
 interface InfiniteGridOptions {
-  size1?: number;
-  size2?: number;
-  color?: THREE.Color | string | number;
-  distance?: number;
-  axes?: 'xy' | 'xz' | 'yz';
+  size1?: number
+  size2?: number
+  color?: THREE.Color | string | number
+  distance?: number
+  axes?: 'xy' | 'xz' | 'yz'
 }
 
 export function InfiniteGridMaterial({
@@ -17,23 +17,23 @@ export function InfiniteGridMaterial({
   distance = 8000,
   axes = 'xy',
 }: InfiniteGridOptions = {}): THREE.ShaderMaterial {
-  const planeAxes = axes.slice(0, 2);
+  const planeAxes = axes.slice(0, 2)
 
   // GLSL expression for positioning depending on chosen axes
   function axisToVec3(axes: 'xy' | 'xz' | 'yz'): string {
     switch (axes) {
       case 'xz':
-        return 'vec3(position.xz * uDistance, 0.0)';
+        return 'vec3(position.xz * uDistance, 0.0)'
       case 'xy':
-        return 'vec3(position.xy * uDistance, 0.0)';
+        return 'vec3(position.xy * uDistance, 0.0)'
       case 'yz':
-        return 'vec3(0.0, position.yz * uDistance)';
+        return 'vec3(0.0, position.yz * uDistance)'
       default:
-        throw new Error(`Invalid axes`);
+        throw new Error(`Invalid axes`)
     }
   }
 
-  const positionExpr = axisToVec3(axes);
+  const positionExpr = axisToVec3(axes)
 
   return new THREE.ShaderMaterial({
     side: THREE.DoubleSide,
@@ -84,11 +84,11 @@ export function InfiniteGridMaterial({
         gl_FragColor = color;
       }
     `,
-  });
+  })
 }
 
 export function InfiniteGrid() {
-  const gridMaterial = React.useRef(InfiniteGridMaterial());
+  const gridMaterial = React.useRef(InfiniteGridMaterial())
 
-  return <Plane material={gridMaterial.current} />;
+  return <Plane material={gridMaterial.current} />
 }
