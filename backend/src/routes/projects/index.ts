@@ -1,6 +1,6 @@
 import { Elysia, t } from 'elysia'
 
-import { SUPPORTED_CAD_KERNELS } from '../../cad'
+import { SUPPORTED_CAD_KERNELS, SUPPORTED_EXTENSIONS } from '../../cad'
 import { getUserDocumentsDir, openFileDialog } from '../../lib/file-dialog'
 import { createProject } from '../../project/index'
 import {
@@ -26,6 +26,7 @@ const updateProjectBody = t.Object({
 
 const fileDialogQuery = t.Object({
   mode: t.Union([t.Literal('file'), t.Literal('directory')]),
+  extension: t.Optional(t.String()),
 })
 
 function sseEvent(event: string, data: Record<string, unknown>): string {
@@ -59,9 +60,14 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
           }
 
           const isDirectoryMode = !isFileMode
-          const fileTypes = isFileMode ? ['*.js', '*.scad'] : ['*']
+          const ext = query.extension
+          const fileTypes = isFileMode
+            ? ext
+              ? [`*${ext}`]
+              : SUPPORTED_EXTENSIONS.map((e) => `*${e}`)
+            : ['*']
           const title = isFileMode
-            ? 'Select a CAD script file'
+            ? `Select a CAD script file${ext ? ` (${ext})` : ''}`
             : 'Select a project directory'
 
           openFileDialog(
@@ -82,12 +88,36 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
                   ),
                 )
               } else {
+                const selectedPath = result.files[0]
+
+                if (isFileMode && ext) {
+                  if (!SUPPORTED_EXTENSIONS.includes(ext)) {
+                    controller.enqueue(
+                      encoder.encode(
+                        sseEvent('ERROR', {
+                          message: `Unsupported file extension "${ext}". Allowed: ${SUPPORTED_EXTENSIONS.join(', ')}`,
+                        }),
+                      ),
+                    )
+                    controller.close()
+                    return
+                  }
+                  if (!selectedPath.endsWith(ext)) {
+                    controller.enqueue(
+                      encoder.encode(
+                        sseEvent('ERROR', {
+                          message: `Invalid file type. Expected a ${ext} file.`,
+                        }),
+                      ),
+                    )
+                    controller.close()
+                    return
+                  }
+                }
+
                 controller.enqueue(
                   encoder.encode(
-                    sseEvent('DONE', {
-                      path: result.files[0],
-                      canceled: false,
-                    }),
+                    sseEvent('DONE', { path: selectedPath, canceled: false }),
                   ),
                 )
               }

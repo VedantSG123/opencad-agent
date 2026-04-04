@@ -42,29 +42,65 @@ export function ProjectWizard({
   }
 
   function handleActionSelect(action: 'create' | 'open') {
-    update('action', action)
+    setState((prev) => ({
+      ...prev,
+      action,
+      kernel: null,
+      name: '',
+      directory: '',
+      file: '',
+    }))
     setStep(2)
   }
 
   function handleKernelSelect(kernel: CadKernel) {
-    update('kernel', kernel)
+    setState((prev) => ({
+      ...prev,
+      kernel,
+      name: '',
+      directory: '',
+      file: '',
+    }))
     setStep(3)
   }
 
   function handleBack() {
-    setStep((s) => Math.max(1, s - 1))
+    setStep((s) => {
+      const prev = Math.max(1, s - 1)
+      if (prev === 1) {
+        setState((st) => ({
+          ...st,
+          kernel: null,
+          name: '',
+          directory: '',
+          file: '',
+        }))
+      } else if (prev === 2) {
+        setState((st) => ({ ...st, name: '', directory: '', file: '' }))
+      }
+      return prev
+    })
   }
 
   function handleSubmit() {
     if (!state.kernel || !state.name.trim() || !state.directory.trim()) return
-    onComplete({
-      name: state.name.trim(),
-      cad_kernel: state.kernel,
-      directory: state.directory.trim(),
-      ...(state.action === 'open' && state.file.trim()
-        ? { file: state.file.trim() }
-        : {}),
-    })
+    const trimmedName = state.name.trim()
+    const trimmedDir = state.directory.trim()
+
+    if (state.action === 'open') {
+      onComplete({
+        name: trimmedName,
+        cad_kernel: state.kernel,
+        directory: trimmedDir,
+        file: state.file.trim(),
+      })
+    } else {
+      onComplete({
+        name: trimmedName,
+        cad_kernel: state.kernel,
+        directory: `${trimmedDir}/${trimmedName}`,
+      })
+    }
   }
 
   const step3Valid =
@@ -76,7 +112,7 @@ export function ProjectWizard({
     <div className='space-y-5'>
       <StepIndicator step={step} />
       <Separator />
-      <div className='min-h-[220px]'>
+      <div className='min-h-55'>
         {step === 1 && (
           <ActionStep selected={state.action} onSelect={handleActionSelect} />
         )}
@@ -86,6 +122,7 @@ export function ProjectWizard({
         {step === 3 && (
           <DetailsStep
             action={state.action}
+            kernel={state.kernel}
             name={state.name}
             directory={state.directory}
             file={state.file}

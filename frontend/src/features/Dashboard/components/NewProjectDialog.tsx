@@ -27,7 +27,7 @@ export function NewProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-[520px]'>
+      <DialogContent className='max-w-130'>
         <DialogHeader>
           <DialogTitle>New Project</DialogTitle>
           <DialogDescription>Create or import a CAD project</DialogDescription>

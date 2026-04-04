@@ -65,8 +65,14 @@ export function useFileDialog() {
   >()
 
   const open = useCallback(
-    (mode: FileDialogMode, onSuccess: (path: string) => void) => {
-      const url = `${API_BASE}/projects/file-dialog?mode=${mode}`
+    (
+      mode: FileDialogMode,
+      onSuccess: (path: string) => void,
+      extension?: string,
+    ) => {
+      const params = new URLSearchParams({ mode })
+      if (extension) params.set('extension', extension)
+      const url = `${API_BASE}/projects/file-dialog?${params.toString()}`
 
       start({
         url,

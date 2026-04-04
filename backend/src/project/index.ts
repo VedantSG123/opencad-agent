@@ -14,8 +14,8 @@ export function createProject({
 }: Omit<Project, 'id' | 'time' | 'file'> & { file?: string }) {
   const id = generateIdWithPrefix('project', false)
 
-  const resolvedFile =
-    file ?? `${directory}/${name}/script${CADKernels[cad_kernel].fileExtension}`
+  const filename = file ?? `script${CADKernels[cad_kernel].fileExtension}`
+  const resolvedFile = `${directory}/${filename}`
   createProjectFile(resolvedFile)
 
   const project: Project = {

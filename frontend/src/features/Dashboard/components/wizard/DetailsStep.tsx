@@ -4,9 +4,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useFileDialog } from '@/hooks/useFileDialog'
+import type { CadKernel } from '@/types/project'
+
+const KERNEL_EXTENSION: Record<CadKernel, string> = {
+  replicad: '.js',
+  openscad: '.scad',
+}
 
 interface DetailsStepProps {
   action: 'create' | 'open' | null
+  kernel: CadKernel | null
   name: string
   directory: string
   file: string
@@ -17,6 +24,7 @@ interface DetailsStepProps {
 
 export function DetailsStep({
   action,
+  kernel,
   name,
   directory,
   file,
@@ -27,22 +35,33 @@ export function DetailsStep({
   const isOpen = action === 'open'
   const fileDialog = useFileDialog()
 
-  function handleFileChange(v: string) {
-    onFileChange(v)
-    const parts = v.replace(/\\/g, '/').split('/').filter(Boolean)
-    if (parts.length > 1) {
-      parts.pop()
-      onDirectoryChange('/' + parts.join('/'))
-      if (!name && parts.length > 0) {
-        onNameChange(parts[parts.length - 1])
-      }
+  // Open flow: input shows full path; on change split into directory + filename
+  function handleFullPathChange(fullPath: string) {
+    const normalized = fullPath.replace(/\\/g, '/')
+    const lastSlash = normalized.lastIndexOf('/')
+    if (lastSlash > 0) {
+      onDirectoryChange(normalized.slice(0, lastSlash))
+      onFileChange(normalized.slice(lastSlash + 1))
+    } else {
+      onDirectoryChange('')
+      onFileChange(normalized)
     }
   }
 
   function handleBrowseFile() {
-    fileDialog.open('file', (selectedPath) => {
-      handleFileChange(selectedPath)
-    })
+    const extension = kernel ? KERNEL_EXTENSION[kernel] : undefined
+    fileDialog.open(
+      'file',
+      (selectedPath) => {
+        handleFullPathChange(selectedPath)
+        // Auto-fill name from parent directory name if empty
+        const parts = selectedPath.replace(/\\/g, '/').split('/')
+        if (!name && parts.length >= 2) {
+          onNameChange(parts[parts.length - 2])
+        }
+      },
+      extension,
+    )
   }
 
   function handleBrowseDirectory() {
@@ -51,8 +70,13 @@ export function DetailsStep({
     })
   }
 
-  const projectPreview =
-    !isOpen && directory && name ? `${directory}/${name}` : ''
+  const fullOpenPath = isOpen
+    ? `${directory}${directory && file ? '/' : ''}${file}`
+    : ''
+  const scriptPathPreview =
+    !isOpen && directory && name && kernel
+      ? `${directory}/${name}/script${KERNEL_EXTENSION[kernel]}`
+      : ''
 
   return (
     <div className='space-y-4'>
@@ -72,8 +96,8 @@ export function DetailsStep({
               <Input
                 id='wiz-file'
                 placeholder='/home/user/projects/mymodel/script.scad'
-                value={file}
-                onChange={(e) => handleFileChange(e.target.value)}
+                value={fullOpenPath}
+                onChange={(e) => handleFullPathChange(e.target.value)}
                 autoFocus
               />
               <Button
@@ -106,18 +130,16 @@ export function DetailsStep({
             autoFocus={!isOpen}
           />
         </div>
-        <div className='space-y-1.5'>
-          <Label htmlFor='wiz-dir'>
-            {isOpen ? 'Working Directory' : 'Projects Directory'}
-          </Label>
-          <div className='flex gap-2'>
-            <Input
-              id='wiz-dir'
-              placeholder='/home/user/projects'
-              value={directory}
-              onChange={(e) => onDirectoryChange(e.target.value)}
-            />
-            {!isOpen && (
+        {!isOpen && (
+          <div className='space-y-1.5'>
+            <Label htmlFor='wiz-dir'>Projects Directory</Label>
+            <div className='flex gap-2'>
+              <Input
+                id='wiz-dir'
+                placeholder='/home/user/projects'
+                value={directory}
+                onChange={(e) => onDirectoryChange(e.target.value)}
+              />
               <Button
                 type='button'
                 variant='outline'
@@ -132,14 +154,14 @@ export function DetailsStep({
                   <FolderOpen className='h-4 w-4' />
                 )}
               </Button>
+            </div>
+            {scriptPathPreview && (
+              <p className='text-xs text-muted-foreground font-mono'>
+                Project script path: {scriptPathPreview}
+              </p>
             )}
           </div>
-          {projectPreview && (
-            <p className='text-xs text-muted-foreground font-mono'>
-              Project folder: {projectPreview}
-            </p>
-          )}
-        </div>
+        )}
       </div>
     </div>
   )

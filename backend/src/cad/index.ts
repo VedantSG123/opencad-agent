@@ -21,3 +21,7 @@ export const CADKernels: Record<SupportedCADKernels, KernelInfo> = {
       'OpenSCAD is a free software for creating solid 3D CAD models. It uses a scripting language to define models procedurally.',
   },
 }
+
+export const SUPPORTED_EXTENSIONS = Object.values(CADKernels).map(
+  (k) => k.fileExtension,
+)
