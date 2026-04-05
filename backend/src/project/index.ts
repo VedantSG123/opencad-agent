@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
 import { CADKernels } from '../cad'
@@ -6,7 +6,7 @@ import { upsertProject } from '../utils/dbUtils/projects'
 import { generateIdWithPrefix } from '../utils/generateId'
 import type { Project } from './schema'
 
-export function createProject({
+export async function createProject({
   name,
   cad_kernel,
   directory,
@@ -16,7 +16,7 @@ export function createProject({
 
   const filename = file ?? `script${CADKernels[cad_kernel].fileExtension}`
   const resolvedFile = `${directory}/${filename}`
-  createProjectFile(resolvedFile)
+  await createProjectFile(resolvedFile)
 
   const project: Project = {
     id,
@@ -32,9 +32,9 @@ export function createProject({
   return upsertProject(project)
 }
 
-function createProjectFile(filePath: string): void {
-  mkdirSync(dirname(filePath), { recursive: true })
-  if (!existsSync(filePath)) {
-    writeFileSync(filePath, '')
+async function createProjectFile(filePath: string): Promise<void> {
+  await mkdir(dirname(filePath), { recursive: true })
+  if (!(await Bun.file(filePath).exists())) {
+    await Bun.write(filePath, '')
   }
 }

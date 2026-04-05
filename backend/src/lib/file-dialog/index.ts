@@ -1,5 +1,4 @@
-import fs from 'node:fs'
-import os from 'node:os'
+import { existsSync } from 'node:fs'
 
 import { USER_DOCUMENTS_DIR, USER_HOME_DIR } from '../../utils/directories'
 import { openLinuxFileDialog } from './linux'
@@ -18,7 +17,7 @@ export async function openFileDialog(
   title: string = 'Select files',
   directoryOnly = false,
 ): Promise<FileDialogResult> {
-  const platform = os.platform()
+  const platform = process.platform
 
   switch (platform) {
     case 'linux': {
@@ -55,7 +54,7 @@ export async function openFileDialog(
 }
 
 export function getUserDocumentsDir(): string {
-  if (fs.existsSync(USER_DOCUMENTS_DIR)) {
+  if (existsSync(USER_DOCUMENTS_DIR)) {
     return USER_DOCUMENTS_DIR
   } else {
     return USER_HOME_DIR
