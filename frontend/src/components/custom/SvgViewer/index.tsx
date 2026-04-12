@@ -3,6 +3,10 @@ import { useRect } from 'react-use-rect'
 
 import type { SvgRenderOutput } from '@/types'
 
+// ---------------------------------------------------------------------------
+// Viewbox utilities (shared)
+// ---------------------------------------------------------------------------
+
 const range = (start: number, end: number, step = 1) => {
   const result = []
   for (let i = start; i < end; i += step) {
@@ -13,7 +17,7 @@ const range = (start: number, end: number, step = 1) => {
 
 const parseViewbox = (viewboxString: string): SVGViewBox => {
   const [xStart, yStart, width, height] = viewboxString
-    .split(' ')
+    .split(/[\s,]+/)
     .map((v) => parseFloat(v))
   return { xStart, yStart, width, height }
 }
@@ -25,18 +29,11 @@ const stringifyViewbox = (viewbox: SVGViewBox): string => {
 
 const mergeViewboxes = (viewboxes: string[]): SVGViewBox => {
   const parsed = viewboxes.map(parseViewbox)
-
   const xStart = Math.min(...parsed.map((v) => v.xStart))
   const yStart = Math.min(...parsed.map((v) => v.yStart))
   const xEnd = Math.max(...parsed.map((v) => v.xStart + v.width))
   const yEnd = Math.max(...parsed.map((v) => v.yStart + v.height))
-
-  return {
-    xStart,
-    yStart,
-    width: xEnd - xStart,
-    height: yEnd - yStart,
-  }
+  return { xStart, yStart, width: xEnd - xStart, height: yEnd - yStart }
 }
 
 const addMarginToViewbox = (
@@ -54,17 +51,9 @@ const addMarginToViewbox = (
   }
 }
 
-const dashArray = (strokeType?: StrokeType): string | undefined => {
-  switch (strokeType) {
-    case 'dots':
-      return '1, 2'
-    case 'dashes':
-      return '5, 5'
-    case 'solid':
-    default:
-      return undefined
-  }
-}
+// ---------------------------------------------------------------------------
+// SVGGrid — coordinate grid drawn inside the SVG canvas (shared)
+// ---------------------------------------------------------------------------
 
 const SVGGrid = ({ viewbox }: { viewbox: SVGViewBox }) => {
   const { xStart, yStart, width, height } = viewbox
@@ -134,21 +123,50 @@ const SVGGrid = ({ viewbox }: { viewbox: SVGViewBox }) => {
   )
 }
 
-const ShapePath: React.FC<ShapePathProps> = ({ shape }) => {
-  const pathData = shape.paths?.flat(Infinity).join(' ') ?? ''
+// ---------------------------------------------------------------------------
+// SVGCanvas — root SVG element with optional grid (shared)
+//
+// contentGroupProps: attributes applied to the <g> that wraps children.
+// Defaults to replicad's convention (white stroke, no fill). Pass {} to let
+// the SVG content manage its own presentation (e.g. OpenSCAD output).
+// ---------------------------------------------------------------------------
 
+const SVGCanvas: React.FC<SVGCanvasProps> = ({
+  viewbox,
+  children,
+  showGrid = true,
+  contentGroupProps = { stroke: '#fff', fill: 'none' },
+}) => {
   return (
-    <path
-      d={pathData}
-      strokeDasharray={dashArray(shape.strokeType)}
-      vectorEffect='non-scaling-stroke'
-      style={{ stroke: shape.color }}
-    />
+    <svg
+      viewBox={stringifyViewbox(viewbox)}
+      style={{ width: '100%', height: '100%' }}
+      xmlns='http://www.w3.org/2000/svg'
+    >
+      {showGrid && <SVGGrid viewbox={viewbox} />}
+      <g
+        id='raw-canvas'
+        vectorEffect='non-scaling-stroke'
+        {...contentGroupProps}
+      >
+        {children}
+      </g>
+    </svg>
   )
 }
 
-const SVGWindow: React.FC<SVGWindowProps> = ({ viewbox, children }) => {
+// ---------------------------------------------------------------------------
+// SVGWindow — responsive container that adapts the viewbox to its size (shared)
+// ---------------------------------------------------------------------------
+
+const SVGWindow: React.FC<SVGWindowProps> = ({
+  viewbox,
+  children,
+  showGrid,
+  contentGroupProps,
+}) => {
   const [adaptedViewbox, setAdaptedViewBox] = React.useState(viewbox)
+
   const [canvasRef] = useRect(
     (rect) => {
       const viewBoxWithMargin = addMarginToViewbox(viewbox, 0.1)
@@ -157,7 +175,6 @@ const SVGWindow: React.FC<SVGWindowProps> = ({ viewbox, children }) => {
 
       const rectAspect = width / height
       const viewBoxAspect = viewBoxWidth / viewBoxHeight
-
       const resizeAlong = rectAspect > viewBoxAspect ? 'width' : 'height'
 
       if (resizeAlong === 'width') {
@@ -178,67 +195,128 @@ const SVGWindow: React.FC<SVGWindowProps> = ({ viewbox, children }) => {
     },
     { resize: true },
   )
+
   return (
     <div className='bg-background flex flex-1' ref={canvasRef}>
-      <SVGCanvas viewbox={adaptedViewbox}>{children}</SVGCanvas>
+      <SVGCanvas
+        viewbox={adaptedViewbox}
+        showGrid={showGrid}
+        contentGroupProps={contentGroupProps}
+      >
+        {children}
+      </SVGCanvas>
     </div>
   )
 }
 
-const SVGCanvas: React.FC<SVGCanvasProps> = ({ viewbox, children }) => {
+// ---------------------------------------------------------------------------
+// Replicad-specific helpers
+// ---------------------------------------------------------------------------
+
+type StrokeType = 'solid' | 'dots' | 'dashes' | undefined
+
+const dashArray = (strokeType?: StrokeType): string | undefined => {
+  switch (strokeType) {
+    case 'dots':
+      return '1, 2'
+    case 'dashes':
+      return '5, 5'
+    case 'solid':
+    default:
+      return undefined
+  }
+}
+
+const ShapePath: React.FC<ShapePathProps> = ({ shape }) => {
+  const pathData = shape.paths?.flat(Infinity).join(' ') ?? ''
   return (
-    <svg
-      viewBox={stringifyViewbox(viewbox)}
-      style={{ width: '100%', height: '100%' }}
-      xmlns='http://www.w3.org/2000/svg'
-    >
-      <SVGGrid viewbox={viewbox} />
-      <g
-        stroke={'#fff'}
-        id='raw-canvas'
-        vectorEffect='non-scaling-stroke'
-        fill='none'
-      >
-        {children}
-      </g>
-    </svg>
+    <path
+      d={pathData}
+      strokeDasharray={dashArray(shape.strokeType)}
+      vectorEffect='non-scaling-stroke'
+      style={{ stroke: shape.color }}
+    />
   )
 }
 
-export const SVGViewer: React.FC<SvgViewerProps> = ({ shapes }) => {
-  if (shapes && shapes.length && shapes[0].format === 'svg') {
-    const viewbox = mergeViewboxes(shapes.map((s) => s.viewbox))
-    return (
-      <SVGWindow viewbox={viewbox}>
-        {shapes.map((s) => {
-          if (s && s.format === 'svg')
-            return (
-              <ShapePath
-                shape={{
-                  paths: s.paths,
-                  strokeType: s.strokeType as StrokeType,
-                  color: s.color || '#fff',
-                }}
-                key={s.name}
-              />
-            )
-          return null
-        })}
-      </SVGWindow>
-    )
-  }
-  return null
+// ---------------------------------------------------------------------------
+// ReplicadSVGViewer — renders replicad SvgRenderOutput shapes
+// ---------------------------------------------------------------------------
+
+export const ReplicadSVGViewer: React.FC<ReplicadSVGViewerProps> = ({
+  shapes,
+}) => {
+  if (!shapes?.length || shapes[0].format !== 'svg') return null
+
+  const viewbox = mergeViewboxes(shapes.map((s) => s.viewbox))
+
+  return (
+    <SVGWindow viewbox={viewbox}>
+      {shapes.map((s) =>
+        s.format === 'svg' ? (
+          <ShapePath
+            key={s.name}
+            shape={{
+              paths: s.paths,
+              strokeType: s.strokeType as StrokeType,
+              color: s.color || '#fff',
+            }}
+          />
+        ) : null,
+      )}
+    </SVGWindow>
+  )
 }
 
-type SVGWindowProps = {
-  viewbox: SVGViewBox
-  children: React.ReactNode
+// ---------------------------------------------------------------------------
+// OpenSCADSVGViewer — renders a raw SVG Blob from the OpenSCAD compiler
+//
+// The SVG document is parsed in the browser, its viewBox is extracted and
+// fed into the shared SVGWindow/SVGCanvas layout. The grid is disabled and
+// presentation attributes are not overridden so the compiler's own colours
+// and strokes are preserved.
+// ---------------------------------------------------------------------------
+
+export const OpenSCADSVGViewer: React.FC<OpenSCADSVGViewerProps> = ({
+  blob,
+}) => {
+  const [data, setData] = React.useState<{
+    viewbox: SVGViewBox
+    inner: string
+  } | null>(null)
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    blob.text().then((svgText) => {
+      if (cancelled) return
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(svgText, 'image/svg+xml')
+      const svgEl = doc.documentElement
+      const viewboxAttr =
+        svgEl.getAttribute('viewBox') ?? svgEl.getAttribute('viewbox')
+      if (!viewboxAttr) return
+      setData({ viewbox: parseViewbox(viewboxAttr), inner: svgEl.innerHTML })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [blob])
+
+  if (!data) return null
+
+  return (
+    // No grid, no presentation overrides — OpenSCAD SVG manages its own style
+    <SVGWindow viewbox={data.viewbox} showGrid={false} contentGroupProps={{}}>
+      <g dangerouslySetInnerHTML={{ __html: data.inner }} />
+    </SVGWindow>
+  )
 }
 
-type SVGCanvasProps = {
-  viewbox: SVGViewBox
-  children: React.ReactNode
-}
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 type SVGViewBox = {
   xStart: number
@@ -247,7 +325,19 @@ type SVGViewBox = {
   height: number
 }
 
-type StrokeType = 'solid' | 'dots' | 'dashes' | undefined
+type SVGCanvasProps = {
+  viewbox: SVGViewBox
+  showGrid?: boolean
+  contentGroupProps?: React.SVGAttributes<SVGGElement>
+  children: React.ReactNode
+}
+
+type SVGWindowProps = {
+  viewbox: SVGViewBox
+  showGrid?: boolean
+  contentGroupProps?: React.SVGAttributes<SVGGElement>
+  children: React.ReactNode
+}
 
 type SvgShape = {
   paths?: (string | string[])[]
@@ -259,6 +349,10 @@ type ShapePathProps = {
   shape: SvgShape
 }
 
-type SvgViewerProps = {
+type ReplicadSVGViewerProps = {
   shapes: SvgRenderOutput[]
+}
+
+type OpenSCADSVGViewerProps = {
+  blob: Blob
 }

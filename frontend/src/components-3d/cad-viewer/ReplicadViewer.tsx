@@ -1,6 +1,6 @@
 import type * as React from 'react'
 
-import { SVGViewer } from '@/components/custom/SvgViewer'
+import { ReplicadSVGViewer } from '@/components/custom/SvgViewer'
 import type { MeshRenderOutput, SvgRenderOutput } from '@/types'
 
 import { ReplicadCombinedMesh } from '../replicad-mesh/ReplicadCombinedMesh'
@@ -41,7 +41,7 @@ export const CadViewer: React.FC<CadViewerProps> = ({
   ])
 
   if (isSvgShapesArray(shapes)) {
-    ;<SVGViewer shapes={shapes} />
+    ;<ReplicadSVGViewer shapes={shapes} />
   }
 
   return (

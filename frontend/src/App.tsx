@@ -6,6 +6,7 @@ import { ThemeProvider } from './contexts/theme-context'
 import CadTest from './pages/CadTest'
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
+import OpenSCADTest from './pages/OpenSCADTest'
 
 const queryClient = new QueryClient()
 
@@ -16,6 +17,7 @@ export default function App() {
         <Routes>
           <Route path='/' element={<Home />} />
           <Route path='/cad-test' element={<CadTest />} />
+          <Route path='/openscad-test' element={<OpenSCADTest />} />
           <Route path='*' element={<NotFound />} />
         </Routes>
         <Toaster />

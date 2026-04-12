@@ -6,9 +6,12 @@ import { comlink } from 'vite-plugin-comlink'
 import topLevelAwait from 'vite-plugin-top-level-await'
 import wasm from 'vite-plugin-wasm'
 
+import { openscadPlugin } from './plugins/openscad-plugin'
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    openscadPlugin(),
     react({
       babel: {
         plugins: [['babel-plugin-react-compiler']],

@@ -1,17 +1,17 @@
 import * as React from 'react'
 import * as THREE from 'three'
 
-import { CadViewer } from '../components-3d/cad-viewer'
-import { useBuilderStore } from '../store/builder'
+import { CadViewer } from '../components-3d/cad-viewer/ReplicadViewer'
+import { useReplicad } from '../hooks/useReplicad'
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1)
 
 export default function CadTest() {
-  const shapes = useBuilderStore((state) => state.shapes)
-  const hasError = !!useBuilderStore((state) => state.error)
-  const build = useBuilderStore((state) => state.build)
-  const initWorker = useBuilderStore((state) => state.initWorker)
-  const workerReady = useBuilderStore((state) => state.workerReady)
+  const shapes = useReplicad((state) => state.shapes)
+  const hasError = !!useReplicad((state) => state.error)
+  const build = useReplicad((state) => state.build)
+  const initWorker = useReplicad((state) => state.initWorker)
+  const workerReady = useReplicad((state) => state.workerReady)
 
   React.useEffect(() => {
     initWorker()

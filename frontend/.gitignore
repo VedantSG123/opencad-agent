@@ -25,3 +25,10 @@ dist-ssr
 # AI agent files
 .agents
 skills-lock.json
+
+# OpenSCAD plugin — downloaded sources and generated artifacts
+# openscad.d.ts is intentionally kept (custom type definitions)
+libs/
+public/libraries/
+src/kernels/openscad/library/openscad.js
+src/kernels/openscad/library/openscad.wasm
