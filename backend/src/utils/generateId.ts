@@ -52,5 +52,5 @@ export function generateIdWithPrefix(
   prefix: keyof typeof ID_PREFIX_MAP,
   descending: boolean = false,
 ): string {
-  return ID_PREFIX_MAP[prefix] + generateId(descending)
+  return `${ID_PREFIX_MAP[prefix]}_${generateId(descending)}`
 }
