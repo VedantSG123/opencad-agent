@@ -19,13 +19,17 @@ interface ProjectCardProps {
   project: Project
   onRename: () => void
   onDelete: () => void
+  onClick: () => void
 }
 
-export function ProjectCard({ project, onRename, onDelete }: ProjectCardProps) {
+export function ProjectCard({ project, onRename, onDelete, onClick }: ProjectCardProps) {
   const kernel = KERNEL_INFO[project.cad_kernel] ?? KERNEL_INFO.replicad
 
   return (
-    <Card className='group overflow-hidden hover:shadow-md transition-all cursor-pointer gap-0 py-0'>
+    <Card
+      className='group overflow-hidden hover:shadow-md transition-all cursor-pointer gap-0 py-0'
+      onClick={onClick}
+    >
       <CardContent className='p-0'>
         <div className='relative bg-muted/40 flex items-center justify-center h-28 border-b'>
           <img
@@ -46,13 +50,13 @@ export function ProjectCard({ project, onRename, onDelete }: ProjectCardProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align='end'>
-                <DropdownMenuItem onClick={onRename}>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRename() }}>
                   <Pencil className='mr-2 h-4 w-4' />
                   Rename
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={onDelete}
+                  onClick={(e) => { e.stopPropagation(); onDelete() }}
                   className='text-destructive focus:text-destructive'
                 >
                   <Trash2 className='mr-2 h-4 w-4' />

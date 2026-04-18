@@ -1,5 +1,6 @@
 import { AlertCircle, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -14,6 +15,7 @@ import { ProjectCard, ProjectCardSkeleton } from './components/ProjectCard'
 import { RenameDialog } from './components/RenameDialog'
 
 export function Dashboard() {
+  const navigate = useNavigate()
   const { data: projects, isLoading, isError, refetch } = useProjects()
   const [renameTarget, setRenameTarget] = useState<Project | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
@@ -72,6 +74,7 @@ export function Dashboard() {
                 <ProjectCard
                   key={project.id}
                   project={project}
+                  onClick={() => navigate(`/project/${project.id}`)}
                   onRename={() => setRenameTarget(project)}
                   onDelete={() => setDeleteTarget(project)}
                 />
