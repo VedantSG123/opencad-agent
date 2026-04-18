@@ -17,11 +17,12 @@ const createProjectBody = t.Object({
   name: t.String({ minLength: 1 }),
   cad_kernel: t.Union(SUPPORTED_CAD_KERNELS.options.map((v) => t.Literal(v))),
   directory: t.String({ minLength: 1 }),
-  file: t.Optional(t.String()),
+  action: t.Union([t.Literal('create'), t.Literal('open')]),
 })
 
 const updateProjectBody = t.Object({
-  name: t.String({ minLength: 1 }),
+  name: t.Optional(t.String({ minLength: 1 })),
+  file: t.Optional(t.Union([t.String({ minLength: 1 }), t.Null()])),
 })
 
 const fileDialogQuery = t.Object({
@@ -173,10 +174,26 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
 
   .patch(
     '/:id',
-    ({ params, body, status }) => {
+    async ({ params, body, status }) => {
       const existing = getProjectById(params.id)
       if (!existing) return status(404, { message: 'Project not found' })
-      return upsertProject({ ...existing, name: body.name })
+
+      if ('file' in body && body.file != null) {
+        if (!body.file.startsWith(existing.directory + '/')) {
+          return status(400, {
+            message: 'File must be inside the project directory',
+          })
+        }
+        if (!(await Bun.file(body.file).exists())) {
+          return status(400, { message: `File not found: ${body.file}` })
+        }
+      }
+
+      return upsertProject({
+        ...existing,
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...('file' in body ? { file: body.file ?? null } : {}),
+      })
     },
     { params: projectIdParam, body: updateProjectBody },
   )

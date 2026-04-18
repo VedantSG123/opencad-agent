@@ -16,11 +16,10 @@ interface WizardState {
   kernel: CadKernel | null
   name: string
   directory: string
-  file: string
 }
 
 function initWizardState(): WizardState {
-  return { action: null, kernel: null, name: '', directory: '', file: '' }
+  return { action: null, kernel: null, name: '', directory: '' }
 }
 
 interface ProjectWizardProps {
@@ -48,7 +47,6 @@ export function ProjectWizard({
       kernel: null,
       name: '',
       directory: '',
-      file: '',
     }))
     setStep(2)
   }
@@ -59,7 +57,6 @@ export function ProjectWizard({
       kernel,
       name: '',
       directory: '',
-      file: '',
     }))
     setStep(3)
   }
@@ -73,10 +70,9 @@ export function ProjectWizard({
           kernel: null,
           name: '',
           directory: '',
-          file: '',
         }))
       } else if (prev === 2) {
-        setState((st) => ({ ...st, name: '', directory: '', file: '' }))
+        setState((st) => ({ ...st, name: '', directory: '' }))
       }
       return prev
     })
@@ -92,21 +88,20 @@ export function ProjectWizard({
         name: trimmedName,
         cad_kernel: state.kernel,
         directory: trimmedDir,
-        file: state.file.trim(),
+        action: 'open',
       })
     } else {
       onComplete({
         name: trimmedName,
         cad_kernel: state.kernel,
         directory: `${trimmedDir}/${trimmedName}`,
+        action: 'create',
       })
     }
   }
 
   const step3Valid =
-    state.name.trim().length > 0 &&
-    state.directory.trim().length > 0 &&
-    (state.action !== 'open' || state.file.trim().length > 0)
+    state.name.trim().length > 0 && state.directory.trim().length > 0
 
   return (
     <div className='space-y-5'>
@@ -125,10 +120,8 @@ export function ProjectWizard({
             kernel={state.kernel}
             name={state.name}
             directory={state.directory}
-            file={state.file}
             onNameChange={(v) => update('name', v)}
             onDirectoryChange={(v) => update('directory', v)}
-            onFileChange={(v) => update('file', v)}
           />
         )}
       </div>

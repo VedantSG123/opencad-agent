@@ -9,7 +9,7 @@ const up: Migration = async ({ context: db }) => {
           name TEXT NOT NULL,
           cad_kernel TEXT NOT NULL,
           directory TEXT NOT NULL,
-          file TEXT NOT NULL,
+          file TEXT,
           created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
         );

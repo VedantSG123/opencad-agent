@@ -5,7 +5,7 @@ export interface Project {
   name: string
   cad_kernel: CadKernel
   directory: string
-  file: string
+  file: string | null
   time: {
     created: string
     updated: string

@@ -10,13 +10,16 @@ export async function createProject({
   name,
   cad_kernel,
   directory,
-  file,
-}: Omit<Project, 'id' | 'time' | 'file'> & { file?: string }) {
+  action,
+}: Omit<Project, 'id' | 'time' | 'file'> & { action: 'create' | 'open' }) {
   const id = generateIdWithPrefix('project', false)
 
-  const filename = file ?? `script${CADKernels[cad_kernel].fileExtension}`
-  const resolvedFile = `${directory}/${filename}`
-  await createProjectFile(resolvedFile)
+  let resolvedFile: string | null = null
+  if (action === 'create') {
+    const filename = `script${CADKernels[cad_kernel].fileExtension}`
+    resolvedFile = `${directory}/${filename}`
+    await createProjectFile(resolvedFile)
+  }
 
   const project: Project = {
     id,

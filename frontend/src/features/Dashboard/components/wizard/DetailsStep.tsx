@@ -16,10 +16,8 @@ interface DetailsStepProps {
   kernel: CadKernel | null
   name: string
   directory: string
-  file: string
   onNameChange: (v: string) => void
   onDirectoryChange: (v: string) => void
-  onFileChange: (v: string) => void
 }
 
 export function DetailsStep({
@@ -27,52 +25,24 @@ export function DetailsStep({
   kernel,
   name,
   directory,
-  file,
   onNameChange,
   onDirectoryChange,
-  onFileChange,
 }: DetailsStepProps) {
   const isOpen = action === 'open'
   const fileDialog = useFileDialog()
 
-  // Open flow: input shows full path; on change split into directory + filename
-  function handleFullPathChange(fullPath: string) {
-    const normalized = fullPath.replace(/\\/g, '/')
-    const lastSlash = normalized.lastIndexOf('/')
-    if (lastSlash > 0) {
-      onDirectoryChange(normalized.slice(0, lastSlash))
-      onFileChange(normalized.slice(lastSlash + 1))
-    } else {
-      onDirectoryChange('')
-      onFileChange(normalized)
-    }
-  }
-
-  function handleBrowseFile() {
-    const extension = kernel ? KERNEL_EXTENSION[kernel] : undefined
-    fileDialog.open(
-      'file',
-      (selectedPath) => {
-        handleFullPathChange(selectedPath)
-        // Auto-fill name from parent directory name if empty
-        const parts = selectedPath.replace(/\\/g, '/').split('/')
-        if (!name && parts.length >= 2) {
-          onNameChange(parts[parts.length - 2])
-        }
-      },
-      extension,
-    )
-  }
-
   function handleBrowseDirectory() {
     fileDialog.open('directory', (selectedPath) => {
       onDirectoryChange(selectedPath)
+      // Auto-fill name from directory name if empty
+      if (!name) {
+        const parts = selectedPath.replace(/\\/g, '/').split('/')
+        const dirName = parts[parts.length - 1]
+        if (dirName) onNameChange(dirName)
+      }
     })
   }
 
-  const fullOpenPath = isOpen
-    ? `${directory}${directory && file ? '/' : ''}${file}`
-    : ''
   const scriptPathPreview =
     !isOpen && directory && name && kernel
       ? `${directory}/${name}/script${KERNEL_EXTENSION[kernel]}`
@@ -84,29 +54,29 @@ export function DetailsStep({
         <p className='font-semibold text-base'>Project Details</p>
         <p className='text-muted-foreground text-sm mt-0.5'>
           {isOpen
-            ? 'Tell us about your existing script'
+            ? 'Select the existing project directory'
             : 'Configure your new project'}
         </p>
       </div>
       <div className='space-y-3'>
         {isOpen && (
           <div className='space-y-1.5'>
-            <Label htmlFor='wiz-file'>Script File Path</Label>
+            <Label htmlFor='wiz-dir-open'>Project Directory</Label>
             <div className='flex gap-2'>
               <Input
-                id='wiz-file'
-                placeholder='/home/user/projects/mymodel/script.scad'
-                value={fullOpenPath}
-                onChange={(e) => handleFullPathChange(e.target.value)}
+                id='wiz-dir-open'
+                placeholder='/home/user/projects/mymodel'
+                value={directory}
+                onChange={(e) => onDirectoryChange(e.target.value)}
                 autoFocus
               />
               <Button
                 type='button'
                 variant='outline'
                 size='icon'
-                onClick={handleBrowseFile}
+                onClick={handleBrowseDirectory}
                 disabled={fileDialog.isActive}
-                title='Browse for script file'
+                title='Browse for project directory'
               >
                 {fileDialog.isActive ? (
                   <Loader2 className='h-4 w-4 animate-spin' />
@@ -116,7 +86,7 @@ export function DetailsStep({
               </Button>
             </div>
             <p className='text-xs text-muted-foreground'>
-              Full filesystem path to your existing CAD script
+              Root directory of your existing CAD project
             </p>
           </div>
         )}

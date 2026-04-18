@@ -11,11 +11,12 @@ interface CreateProjectPayload {
   name: string
   cad_kernel: CadKernel
   directory: string
-  file?: string
+  action: 'create' | 'open'
 }
 
 interface UpdateProjectPayload {
-  name: string
+  name?: string
+  file?: string | null
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

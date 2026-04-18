@@ -7,7 +7,7 @@ export const ProjectSchema = z.object({
   name: z.string(),
   cad_kernel: SUPPORTED_CAD_KERNELS,
   directory: z.string(),
-  file: z.string(),
+  file: z.string().nullable(),
   time: z.object({
     created: z.string(),
     updated: z.string(),

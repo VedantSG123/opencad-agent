@@ -6,7 +6,7 @@ type ProjectRow = {
   name: string
   cad_kernel: string
   directory: string
-  file: string
+  file: string | null
   created_at: string
   updated_at: string
 }
