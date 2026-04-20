@@ -16,7 +16,7 @@ export async function createProject({
 
   let resolvedFile: string | null = null
   if (action === 'create') {
-    const filename = `script${CADKernels[cad_kernel].fileExtension}`
+    const filename = `main${CADKernels[cad_kernel].fileExtension}`
     resolvedFile = `${directory}/${filename}`
     await createProjectFile(resolvedFile)
   }
