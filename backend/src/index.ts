@@ -1,5 +1,3 @@
-import './polyfills'
-
 import { cors } from '@elysiajs/cors'
 import { Elysia } from 'elysia'
 
