@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Route, Routes } from 'react-router'
 
 import { Toaster } from './components/ui/sonner'
+import { TooltipProvider } from './components/ui/tooltip'
 import { ThemeProvider } from './contexts/theme-context'
 import CadTest from './pages/CadTest'
 import Home from './pages/Home'
@@ -15,6 +16,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
+        <TooltipProvider>
         <Routes>
           <Route path='/' element={<Home />} />
           <Route path='/project/:id' element={<ProjectPage />} />
@@ -23,6 +25,7 @@ export default function App() {
           <Route path='*' element={<NotFound />} />
         </Routes>
         <Toaster />
+        </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
   )
