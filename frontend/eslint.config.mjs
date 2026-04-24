@@ -45,6 +45,10 @@ export default [
       '@typescript-eslint/consistent-type-exports': 'error',
       '@typescript-eslint/no-floating-promises': 'off',
       '@typescript-eslint/no-misused-promises': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { varsIgnorePattern: '^_', argsIgnorePattern: '^_' },
+      ],
     },
   },
   {

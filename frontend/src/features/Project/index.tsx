@@ -25,7 +25,7 @@ export function ProjectPage() {
       <ResizablePanelGroup orientation='horizontal' className='flex-1'>
         <ResizablePanel defaultSize={25} minSize={15}>
           <div className='h-full rounded-lg border-2 overflow-hidden'>
-            <CodeEditorPanel />
+            <CodeEditorPanel projectId={id!} />
           </div>
         </ResizablePanel>
 
