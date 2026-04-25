@@ -17,14 +17,14 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-        <Routes>
-          <Route path='/' element={<Home />} />
-          <Route path='/project/:id' element={<ProjectPage />} />
-          <Route path='/cad-test' element={<CadTest />} />
-          <Route path='/openscad-test' element={<OpenSCADTest />} />
-          <Route path='*' element={<NotFound />} />
-        </Routes>
-        <Toaster />
+          <Routes>
+            <Route path='/' element={<Home />} />
+            <Route path='/project/:id' element={<ProjectPage />} />
+            <Route path='/cad-test' element={<CadTest />} />
+            <Route path='/openscad-test' element={<OpenSCADTest />} />
+            <Route path='*' element={<NotFound />} />
+          </Routes>
+          <Toaster />
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
