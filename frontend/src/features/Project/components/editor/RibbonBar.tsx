@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Box,
+  Crown,
   PanelLeftClose,
   PanelLeftOpen,
   X,
@@ -39,6 +40,11 @@ export function RibbonBar() {
 
   const missingMainFile = project !== undefined && project.file === null
 
+  const mainFileVirtualPath =
+    project?.file && project.directory
+      ? project.file.slice(project.directory.length)
+      : null
+
   return (
     <div className='flex items-center gap-1 border-b px-1 h-10 shrink-0'>
       <Button
@@ -76,6 +82,7 @@ export function RibbonBar() {
       <div className='flex items-center gap-0.5 overflow-x-auto flex-1 min-w-0 scrollbar-none'>
         {openTabs.map((path) => {
           const isDirty = dirtyTabs.has(path)
+          const isMain = path === mainFileVirtualPath
           return (
             <button
               key={path}
@@ -87,6 +94,14 @@ export function RibbonBar() {
                   : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
               )}
             >
+              {isMain && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Crown className='h-3 w-3 shrink-0 text-amber-400' />
+                  </TooltipTrigger>
+                  <TooltipContent>Main entry file</TooltipContent>
+                </Tooltip>
+              )}
               <span className='truncate'>{fileName(path)}</span>
               {/* Close/dirty indicator — same slot, swap on hover */}
               <span className='relative h-3.5 w-3.5 shrink-0 flex items-center justify-center'>
