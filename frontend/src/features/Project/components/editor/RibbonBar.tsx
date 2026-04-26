@@ -16,7 +16,8 @@ export function RibbonBar() {
     openTabs,
     activeTab,
     setActiveTab,
-    closeTab,
+    requestCloseTab,
+    dirtyTabs,
   } = useEditor()
 
   return (
@@ -37,27 +38,36 @@ export function RibbonBar() {
       <div className='w-px h-5 bg-border mx-1 shrink-0' />
 
       <div className='flex items-center gap-0.5 overflow-x-auto flex-1 scrollbar-none'>
-        {openTabs.map((path) => (
-          <button
-            key={path}
-            onClick={() => setActiveTab(path)}
-            className={cn(
-              'flex items-center gap-1.5 px-3 h-7 text-xs rounded-md shrink-0 max-w-[160px] group transition-colors',
-              activeTab === path
-                ? 'bg-accent text-accent-foreground'
-                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
-            )}
-          >
-            <span className='truncate'>{fileName(path)}</span>
-            <span
-              role='button'
-              onClick={(e) => closeTab(path, e)}
-              className='h-3.5 w-3.5 shrink-0 rounded-sm flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-muted transition-opacity'
+        {openTabs.map((path) => {
+          const isDirty = dirtyTabs.has(path)
+          return (
+            <button
+              key={path}
+              onClick={() => setActiveTab(path)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 h-7 text-xs rounded-md shrink-0 max-w-[160px] group transition-colors',
+                activeTab === path
+                  ? 'bg-accent text-accent-foreground'
+                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+              )}
             >
-              <X className='h-2.5 w-2.5' />
-            </span>
-          </button>
-        ))}
+              <span className='truncate'>{fileName(path)}</span>
+              {/* Close/dirty indicator — same slot, swap on hover */}
+              <span className='relative h-3.5 w-3.5 shrink-0 flex items-center justify-center'>
+                {isDirty && (
+                  <span className='absolute h-1.5 w-1.5 rounded-full bg-current group-hover:opacity-0 transition-opacity' />
+                )}
+                <span
+                  role='button'
+                  onClick={(e) => requestCloseTab(path, e)}
+                  className='absolute inset-0 rounded-sm flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-muted transition-opacity'
+                >
+                  <X className='h-2.5 w-2.5' />
+                </span>
+              </span>
+            </button>
+          )
+        })}
       </div>
     </div>
   )

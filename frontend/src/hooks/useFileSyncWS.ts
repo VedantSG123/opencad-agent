@@ -23,6 +23,7 @@ export interface FileSyncWS {
   status: FileSyncStatus
   error: string | null
   readFile: (path: string) => Promise<string>
+  writeFile: (path: string, content: string) => Promise<void>
   readdir: (path: string) => Promise<string[]>
   readdirWithTypes: (path: string) => Promise<FSEntry[]>
   onWatch: (handler: (event: WatchEvent) => void) => () => void
@@ -85,6 +86,12 @@ export function useFileSyncWS(projectId: string): FileSyncWS {
     [],
   )
 
+  const writeFile = useCallback(
+    (path: string, content: string) =>
+      fs.promises.writeFile(path, content, 'utf8'),
+    [],
+  )
+
   const readdir = useCallback((path: string) => fs.promises.readdir(path), [])
 
   const readdirWithTypes = useCallback(
@@ -100,5 +107,13 @@ export function useFileSyncWS(projectId: string): FileSyncWS {
     }
   }, [])
 
-  return { status, error, readFile, readdir, readdirWithTypes, onWatch }
+  return {
+    status,
+    error,
+    readFile,
+    writeFile,
+    readdir,
+    readdirWithTypes,
+    onWatch,
+  }
 }

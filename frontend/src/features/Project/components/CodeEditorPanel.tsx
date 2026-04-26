@@ -1,4 +1,5 @@
 import { EditorProvider } from './editor/context'
+import { EditorDialog } from './editor/EditorDialog'
 import { FileContentView } from './editor/FileContentView'
 import { FileTree } from './editor/FileTree'
 import { RibbonBar } from './editor/RibbonBar'
@@ -17,6 +18,7 @@ export function CodeEditorPanel({ projectId }: CodeEditorPanelProps) {
           <FileContentView />
         </div>
       </div>
+      <EditorDialog />
     </EditorProvider>
   )
 }

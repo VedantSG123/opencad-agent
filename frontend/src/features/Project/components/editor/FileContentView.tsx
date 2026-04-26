@@ -1,8 +1,18 @@
 import { useEditor } from './context'
+import { MonacoEditor } from './MonacoEditor'
 
 export function FileContentView() {
-  const { activeTab, isLoadingContent, fileContent, setSidebarOpen } =
-    useEditor()
+  const {
+    activeTab,
+    isLoadingContent,
+    fileContent,
+    setSidebarOpen,
+    openTabs,
+    saveFile,
+    setTabDirty,
+    registerEditorAPI,
+    onExternalConflict,
+  } = useEditor()
 
   if (!activeTab) {
     return (
@@ -17,27 +27,23 @@ export function FileContentView() {
     )
   }
 
-  if (isLoadingContent) {
-    return (
-      <div className='flex-1 flex items-center justify-center bg-background'>
-        <span className='text-sm text-muted-foreground'>Loading…</span>
-      </div>
-    )
-  }
-
-  if (fileContent === null) {
-    return (
-      <div className='flex-1 flex items-center justify-center bg-background'>
-        <span className='text-sm text-destructive'>Failed to load file</span>
-      </div>
-    )
-  }
-
   return (
-    <div className='flex-1 overflow-auto bg-background'>
-      <pre className='p-4 text-xs font-mono whitespace-pre text-foreground leading-relaxed'>
-        {fileContent}
-      </pre>
+    <div className='flex-1 relative overflow-hidden bg-background'>
+      <MonacoEditor
+        path={activeTab}
+        content={fileContent}
+        isLoading={isLoadingContent}
+        openTabs={openTabs}
+        onSave={saveFile}
+        onDirtyChange={setTabDirty}
+        onExternalConflict={onExternalConflict}
+        onRegisterAPI={registerEditorAPI}
+      />
+      {isLoadingContent && (
+        <div className='absolute inset-0 flex items-center justify-center bg-background/60'>
+          <span className='text-sm text-muted-foreground'>Loading…</span>
+        </div>
+      )}
     </div>
   )
 }
