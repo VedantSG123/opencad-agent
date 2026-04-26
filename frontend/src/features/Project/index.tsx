@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useParams } from 'react-router'
 
 import {
@@ -6,11 +7,106 @@ import {
   ResizablePanelGroup,
 } from '@/components/ui/resizable'
 import { useProjects } from '@/hooks/useProjects'
+import { cn } from '@/lib/utils'
 
 import { AgentPanel } from './components/AgentPanel'
 import { CodeEditorPanel } from './components/CodeEditorPanel'
 import { TopBar } from './components/TopBar'
 import { ViewportPanel } from './components/ViewportPanel'
+import { PanelProvider, usePanelContext } from './context/PanelContext'
+
+function ProjectLayout({ id }: { id: string }) {
+  const { codeEditorRef, agentRef, isFocusMode, focusedPanel } =
+    usePanelContext()
+
+  const innerGroupRef = useRef<HTMLDivElement>(null)
+  const editorElementRef = useRef<HTMLDivElement>(null)
+  const viewportElementRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const groupEl = innerGroupRef.current
+    const editorEl = editorElementRef.current
+    const viewportEl = viewportElementRef.current
+
+    if (isFocusMode) {
+      if (groupEl) groupEl.style.position = 'relative'
+      if (editorEl) {
+        editorEl.style.position = 'absolute'
+        editorEl.style.inset = '0'
+        editorEl.style.zIndex = focusedPanel === 'editor' ? '10' : '0'
+      }
+      if (viewportEl) {
+        viewportEl.style.position = 'absolute'
+        viewportEl.style.inset = '0'
+        viewportEl.style.zIndex = focusedPanel === 'viewport' ? '10' : '0'
+      }
+    } else {
+      if (groupEl) groupEl.style.position = ''
+      if (editorEl) {
+        editorEl.style.position = ''
+        editorEl.style.inset = ''
+        editorEl.style.zIndex = ''
+      }
+      if (viewportEl) {
+        viewportEl.style.position = ''
+        viewportEl.style.inset = ''
+        viewportEl.style.zIndex = ''
+      }
+    }
+  }, [isFocusMode, focusedPanel])
+
+  return (
+    <ResizablePanelGroup orientation='horizontal' className='flex-1'>
+      <ResizablePanel defaultSize={75} minSize={20}>
+        <ResizablePanelGroup
+          orientation='horizontal'
+          elementRef={innerGroupRef}
+        >
+          <ResizablePanel
+            defaultSize={46}
+            minSize={15}
+            collapsible
+            collapsedSize={0}
+            panelRef={codeEditorRef}
+            elementRef={editorElementRef}
+          >
+            <div className='h-full overflow-hidden'>
+              <CodeEditorPanel projectId={id} />
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle
+            className={cn('bg-border w-px', isFocusMode && 'hidden')}
+          />
+
+          <ResizablePanel
+            defaultSize={54}
+            minSize={20}
+            elementRef={viewportElementRef}
+          >
+            <div className='h-full overflow-hidden'>
+              <ViewportPanel />
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </ResizablePanel>
+
+      <ResizableHandle className='bg-border w-px' />
+
+      <ResizablePanel
+        defaultSize={25}
+        minSize={15}
+        collapsible
+        collapsedSize={0}
+        panelRef={agentRef}
+      >
+        <div className='h-full overflow-hidden'>
+          <AgentPanel />
+        </div>
+      </ResizablePanel>
+    </ResizablePanelGroup>
+  )
+}
 
 export function ProjectPage() {
   const { id } = useParams<{ id: string }>()
@@ -18,36 +114,13 @@ export function ProjectPage() {
   const project = projects?.find((p) => p.id === id)
 
   return (
-    <div className='h-screen flex flex-col bg-background px-1 pb-1 overflow-hidden'>
-      <TopBar project={project} />
-
-      <ResizablePanelGroup orientation='horizontal' className='flex-1'>
-        <ResizablePanel defaultSize={35} minSize={15}>
-          <div className='h-full rounded-lg border-2 overflow-hidden'>
-            <CodeEditorPanel projectId={id!} />
-          </div>
-        </ResizablePanel>
-
-        <ResizableHandle className='mr-2 h-[calc(100%-24px)] mt-3 bg-transparent active:bg-border focus-visible:ring-border/50 focus-visible:ring-offset-0'>
-          {null}
-        </ResizableHandle>
-
-        <ResizablePanel defaultSize={40} minSize={20}>
-          <div className='h-full rounded-lg overflow-hidden'>
-            <ViewportPanel />
-          </div>
-        </ResizablePanel>
-
-        <ResizableHandle className='ml-2 h-[calc(100%-24px)] mt-3 bg-transparent active:bg-border focus-visible:ring-border/50 focus-visible:ring-offset-0'>
-          {null}
-        </ResizableHandle>
-
-        <ResizablePanel defaultSize={25} minSize={15}>
-          <div className='h-full rounded-lg border-2 overflow-hidden'>
-            <AgentPanel />
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-    </div>
+    <PanelProvider>
+      <div className='h-screen flex flex-col bg-background p-2 overflow-hidden'>
+        <TopBar project={project} />
+        <div className='flex-1 flex overflow-hidden rounded-lg border-2'>
+          <ProjectLayout id={id!} />
+        </div>
+      </div>
+    </PanelProvider>
   )
 }

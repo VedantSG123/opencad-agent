@@ -1,6 +1,7 @@
 import { GripVerticalIcon } from 'lucide-react'
 import type { PanelImperativeHandle } from 'react-resizable-panels'
 import * as ResizablePrimitive from 'react-resizable-panels'
+export { usePanelCallbackRef, usePanelRef } from 'react-resizable-panels'
 
 import { cn } from '@/lib/utils'
 

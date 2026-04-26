@@ -1,7 +1,8 @@
-import { PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
+import { Box, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { usePanelContext } from '@/features/Project/context/PanelContext'
 
 import { useEditor } from './context'
 
@@ -19,6 +20,7 @@ export function RibbonBar() {
     requestCloseTab,
     dirtyTabs,
   } = useEditor()
+  const { isFocusMode, setFocusedPanel } = usePanelContext()
 
   return (
     <div className='flex items-center gap-1 border-b px-1 h-10 shrink-0'>
@@ -37,7 +39,7 @@ export function RibbonBar() {
 
       <div className='w-px h-5 bg-border mx-1 shrink-0' />
 
-      <div className='flex items-center gap-0.5 overflow-x-auto flex-1 scrollbar-none'>
+      <div className='flex items-center gap-0.5 overflow-x-auto flex-1 min-w-0 scrollbar-none'>
         {openTabs.map((path) => {
           const isDirty = dirtyTabs.has(path)
           return (
@@ -69,6 +71,16 @@ export function RibbonBar() {
           )
         })}
       </div>
+
+      {isFocusMode && (
+        <button
+          onClick={() => setFocusedPanel('viewport')}
+          className='flex items-center gap-1.5 px-2 h-7 text-xs rounded-md shrink-0 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors'
+        >
+          <Box className='h-3.5 w-3.5' />
+          3D Viewport
+        </button>
+      )}
     </div>
   )
 }
