@@ -1,10 +1,23 @@
-import { Box, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  Box,
+  PanelLeftClose,
+  PanelLeftOpen,
+  X,
+} from 'lucide-react'
+import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { usePanelContext } from '@/features/Project/context/PanelContext'
+import { cn } from '@/lib/utils'
 
 import { useEditor } from './context'
+import { SetMainFileDialog } from './SetMainFileDialog'
 
 function fileName(path: string): string {
   return path.split('/').filter(Boolean).pop() ?? path
@@ -12,6 +25,7 @@ function fileName(path: string): string {
 
 export function RibbonBar() {
   const {
+    project,
     sidebarOpen,
     setSidebarOpen,
     openTabs,
@@ -21,6 +35,9 @@ export function RibbonBar() {
     dirtyTabs,
   } = useEditor()
   const { isFocusMode, setFocusedPanel } = usePanelContext()
+  const [mainFileDialogOpen, setMainFileDialogOpen] = useState(false)
+
+  const missingMainFile = project !== undefined && project.file === null
 
   return (
     <div className='flex items-center gap-1 border-b px-1 h-10 shrink-0'>
@@ -38,6 +55,23 @@ export function RibbonBar() {
       </Button>
 
       <div className='w-px h-5 bg-border mx-1 shrink-0' />
+
+      {missingMainFile && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setMainFileDialogOpen(true)}
+              className='flex items-center gap-1 px-2 h-7 text-xs rounded-md shrink-0 text-amber-500 hover:bg-amber-500/10 transition-colors'
+            >
+              <AlertTriangle className='h-3.5 w-3.5' />
+              No main file
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            This project has no main entry file set. Click to configure.
+          </TooltipContent>
+        </Tooltip>
+      )}
 
       <div className='flex items-center gap-0.5 overflow-x-auto flex-1 min-w-0 scrollbar-none'>
         {openTabs.map((path) => {
@@ -81,6 +115,11 @@ export function RibbonBar() {
           3D Viewport
         </button>
       )}
+
+      <SetMainFileDialog
+        open={mainFileDialogOpen}
+        onClose={() => setMainFileDialogOpen(false)}
+      />
     </div>
   )
 }

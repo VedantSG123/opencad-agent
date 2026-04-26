@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/resizable'
 import { useProjects } from '@/hooks/useProjects'
 import { cn } from '@/lib/utils'
+import type { Project } from '@/types/project'
 
 import { AgentPanel } from './components/AgentPanel'
 import { CodeEditorPanel } from './components/CodeEditorPanel'
@@ -15,7 +16,13 @@ import { TopBar } from './components/TopBar'
 import { ViewportPanel } from './components/ViewportPanel'
 import { PanelProvider, usePanelContext } from './context/PanelContext'
 
-function ProjectLayout({ id }: { id: string }) {
+function ProjectLayout({
+  id,
+  project,
+}: {
+  id: string
+  project: Project | undefined
+}) {
   const { codeEditorRef, agentRef, isFocusMode, focusedPanel } =
     usePanelContext()
 
@@ -71,7 +78,7 @@ function ProjectLayout({ id }: { id: string }) {
             elementRef={editorElementRef}
           >
             <div className='h-full overflow-hidden'>
-              <CodeEditorPanel projectId={id} />
+              <CodeEditorPanel projectId={id} project={project} />
             </div>
           </ResizablePanel>
 
@@ -118,7 +125,7 @@ export function ProjectPage() {
       <div className='h-screen flex flex-col bg-background p-2 overflow-hidden'>
         <TopBar project={project} />
         <div className='flex-1 flex overflow-hidden rounded-lg border-2'>
-          <ProjectLayout id={id!} />
+          <ProjectLayout id={id!} project={project} />
         </div>
       </div>
     </PanelProvider>

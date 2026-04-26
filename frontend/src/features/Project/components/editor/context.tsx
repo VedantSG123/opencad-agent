@@ -11,6 +11,7 @@ import {
 import type { TreeDataItem } from '@/components/tree-view'
 import type { FileSyncStatus, FSEntry, WatchEvent } from '@/hooks/useFileSyncWS'
 import { useFileSyncWS } from '@/hooks/useFileSyncWS'
+import type { Project } from '@/types/project'
 
 import type { DialogState, EditorDialogs } from './useEditorDialogs'
 import { useEditorDialogs } from './useEditorDialogs'
@@ -57,6 +58,8 @@ export interface EditorAPI {
 }
 
 interface EditorContextValue extends EditorDialogs {
+  // Project
+  project: Project | undefined
   // Sidebar
   sidebarOpen: boolean
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>
@@ -94,10 +97,15 @@ export function useEditor(): EditorContextValue {
 
 interface EditorProviderProps {
   projectId: string
+  project: Project | undefined
   children: React.ReactNode
 }
 
-export function EditorProvider({ projectId, children }: EditorProviderProps) {
+export function EditorProvider({
+  projectId,
+  project,
+  children,
+}: EditorProviderProps) {
   const fsync = useFileSyncWS(projectId)
   const { status, readFile, writeFile, readdirWithTypes, onWatch } = fsync
 
@@ -241,6 +249,7 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
   return (
     <EditorContext.Provider
       value={{
+        project,
         sidebarOpen,
         setSidebarOpen,
         treeData,

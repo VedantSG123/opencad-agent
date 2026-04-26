@@ -3,6 +3,7 @@ import { MonacoEditor } from './MonacoEditor'
 
 export function FileContentView() {
   const {
+    project,
     activeTab,
     isLoadingContent,
     fileContent,
@@ -34,6 +35,7 @@ export function FileContentView() {
         content={fileContent}
         isLoading={isLoadingContent}
         openTabs={openTabs}
+        kernel={project?.cad_kernel}
         onSave={saveFile}
         onDirtyChange={setTabDirty}
         onExternalConflict={onExternalConflict}

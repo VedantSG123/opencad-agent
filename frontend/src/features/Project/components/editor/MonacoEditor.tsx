@@ -3,8 +3,10 @@ import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 import { useEffect, useRef } from 'react'
+import replicadTypes from 'virtual:replicad-types'
 
 import { useTheme } from '@/contexts/theme-context'
+import type { CadKernel } from '@/types/project'
 
 import type { EditorAPI } from './context'
 
@@ -47,6 +49,7 @@ interface MonacoEditorProps {
   content: string | null
   isLoading: boolean
   openTabs: string[]
+  kernel?: CadKernel
   onSave: (path: string, content: string) => Promise<void>
   onDirtyChange: (path: string, dirty: boolean) => void
   onExternalConflict: (path: string, externalContent: string) => void
@@ -58,6 +61,7 @@ export function MonacoEditor({
   content,
   isLoading,
   openTabs,
+  kernel,
   onSave,
   onDirtyChange,
   onExternalConflict,
@@ -89,6 +93,53 @@ export function MonacoEditor({
   useEffect(() => {
     onRegisterAPIRef.current = onRegisterAPI
   }, [onRegisterAPI])
+
+  // ── Replicad autocomplete — configure Monaco JS/TS defaults with library types ──
+
+  useEffect(() => {
+    if (kernel !== 'replicad') return
+
+    // Monaco's TypeScript language service API is not typed in the ESM d.ts
+    // (it's contributed dynamically). We define a minimal interface and cast once.
+    interface TSDefaults {
+      setEagerModelSync(val: boolean): void
+      setExtraLibs(libs: { content: string }[]): void
+      setDiagnosticsOptions(opts: { diagnosticCodesToIgnore?: number[] }): void
+    }
+    const tsLang = (
+      monaco.languages as unknown as {
+        typescript: {
+          javascriptDefaults: TSDefaults
+          typescriptDefaults: TSDefaults
+        }
+      }
+    ).typescript
+
+    const extraLibs = [
+      // Makes `import { ... } from 'replicad'` resolve in the language service
+      { content: `declare module 'replicad' { ${replicadTypes} }` },
+      // Also exposes `replicad` as a global for scripts that use the injected global
+      {
+        content: `import * as replicadAll from 'replicad';\ndeclare global {\n  declare var replicad: typeof replicadAll;\n}`,
+      },
+    ]
+    const diagnosticsOptions = {
+      // Suppress "Cannot find module" — replicad is injected at runtime, not bundled
+      diagnosticCodesToIgnore: [2792],
+    }
+
+    tsLang.javascriptDefaults.setEagerModelSync(true)
+    tsLang.javascriptDefaults.setExtraLibs(extraLibs)
+    tsLang.javascriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
+    tsLang.typescriptDefaults.setEagerModelSync(true)
+    tsLang.typescriptDefaults.setExtraLibs(extraLibs)
+    tsLang.typescriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
+
+    return () => {
+      tsLang.javascriptDefaults.setExtraLibs([])
+      tsLang.typescriptDefaults.setExtraLibs([])
+    }
+  }, [kernel])
 
   // ── Register imperative API so the context can read/write models ───────────────
 

@@ -1,10 +1,57 @@
+import { Crown } from 'lucide-react'
+import { useCallback } from 'react'
+
+import type { TreeRenderItemParams } from '@/components/tree-view'
 import { TreeView } from '@/components/tree-view'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 import { useEditor } from './context'
 
+function useMainFileRenderItem(mainFileVirtualPath: string | null) {
+  return useCallback(
+    ({ item, isLeaf, isOpen }: TreeRenderItemParams) => {
+      const Icon = isLeaf
+        ? (item.icon ?? null)
+        : ((isOpen ? item.openIcon : null) ?? item.icon ?? null)
+
+      const isMain = isLeaf && item.id === mainFileVirtualPath
+
+      return (
+        <>
+          {Icon && <Icon className='h-4 w-4 shrink-0 mr-2' />}
+          {isMain && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Crown className='h-3 w-3 shrink-0 mr-1.5 text-amber-400' />
+              </TooltipTrigger>
+              <TooltipContent>Main entry file</TooltipContent>
+            </Tooltip>
+          )}
+          <span className={cn('text-sm truncate', isLeaf && 'grow')}>
+            {item.name}
+          </span>
+        </>
+      )
+    },
+    [mainFileVirtualPath],
+  )
+}
+
 export function FileTree() {
-  const { sidebarOpen, treeData, fsStatus, fsError, openFile } = useEditor()
+  const { project, sidebarOpen, treeData, fsStatus, fsError, openFile } =
+    useEditor()
+
+  const mainFileVirtualPath =
+    project?.file && project.directory
+      ? project.file.slice(project.directory.length)
+      : null
+
+  const renderItem = useMainFileRenderItem(mainFileVirtualPath)
 
   return (
     <div
@@ -22,6 +69,7 @@ export function FileTree() {
             <TreeView
               data={treeData}
               onSelectChange={(item) => item && openFile(item)}
+              renderItem={renderItem}
             />
           ) : fsStatus === 'connecting' ? (
             <p className='px-3 py-2 text-xs text-muted-foreground'>

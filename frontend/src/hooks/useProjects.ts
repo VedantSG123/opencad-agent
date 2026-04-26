@@ -81,6 +81,22 @@ export function useRenameProject() {
   })
 }
 
+export function useSetProjectFile() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: string }) =>
+      axiosInstance
+        .patch<Project>(`/projects/${id}`, { file })
+        .then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PROJECTS_KEY })
+    },
+    onError: (error) => {
+      toast.error(extractErrorMessage(error, 'Failed to set main file'))
+    },
+  })
+}
+
 export function useDeleteProject() {
   const queryClient = useQueryClient()
   return useMutation({
