@@ -12,7 +12,12 @@ import type { TreeDataItem } from '@/components/tree-view'
 import type { FileSyncStatus, FSEntry, WatchEvent } from '@/hooks/useFileSyncWS'
 import { useFileSyncWS } from '@/hooks/useFileSyncWS'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+import type { DialogState, EditorDialogs } from './useEditorDialogs'
+import { useEditorDialogs } from './useEditorDialogs'
+
+export type { DialogState }
+
+// ─── Types
 
 async function buildTree(
   readdirWithTypes: (path: string) => Promise<FSEntry[]>,
@@ -51,22 +56,7 @@ export interface EditorAPI {
   applyContent: (path: string, content: string) => void
 }
 
-export type DialogState =
-  | {
-      type: 'close-confirm'
-      path: string
-      onSave: () => Promise<void>
-      onDiscard: () => void
-      onCancel: () => void
-    }
-  | {
-      type: 'external-conflict'
-      path: string
-      onKeepExternal: () => void
-      onKeepMine: () => void
-    }
-
-interface EditorContextValue {
+interface EditorContextValue extends EditorDialogs {
   // Sidebar
   sidebarOpen: boolean
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>
@@ -79,7 +69,6 @@ interface EditorContextValue {
   activeTab: string | null
   setActiveTab: React.Dispatch<React.SetStateAction<string | null>>
   openFile: (item: TreeDataItem) => void
-  requestCloseTab: (path: string, e: React.MouseEvent) => void
   // File content
   fileContent: string | null
   isLoadingContent: boolean
@@ -87,11 +76,8 @@ interface EditorContextValue {
   // Dirty tracking
   dirtyTabs: Set<string>
   setTabDirty: (path: string, dirty: boolean) => void
-  // Dialog
-  dialogState: DialogState | null
   // MonacoEditor registration
   registerEditorAPI: (api: EditorAPI) => void
-  onExternalConflict: (path: string, externalContent: string) => void
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -127,7 +113,6 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
     version: number
   }>({ tab: null, version: 0 })
   const [dirtyTabs, setDirtyTabs] = useState<Set<string>>(new Set())
-  const [dialogState, setDialogState] = useState<DialogState | null>(null)
 
   const isLoadingContent =
     activeTab !== null &&
@@ -239,54 +224,19 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
     setActiveTab(path)
   }, [])
 
-  const requestCloseTab = useCallback(
-    (path: string, e: React.MouseEvent) => {
-      e.stopPropagation()
-      if (!dirtyTabsRef.current.has(path)) {
-        performCloseTab(path)
-        return
-      }
-      setDialogState({
-        type: 'close-confirm',
-        path,
-        onSave: async () => {
-          const content = editorAPIRef.current?.getContent(path) ?? ''
-          await writeFile(path, content)
-          editorAPIRef.current?.applyContent(path, content)
-          performCloseTab(path)
-          setDialogState(null)
-        },
-        onDiscard: () => {
-          setTabDirty(path, false)
-          performCloseTab(path)
-          setDialogState(null)
-        },
-        onCancel: () => setDialogState(null),
-      })
-    },
-    [performCloseTab, writeFile, setTabDirty],
-  )
-
   const registerEditorAPI = useCallback((api: EditorAPI) => {
     editorAPIRef.current = api
   }, [])
 
-  const onExternalConflict = useCallback(
-    (path: string, externalContent: string) => {
-      setDialogState({
-        type: 'external-conflict',
-        path,
-        onKeepExternal: () => {
-          editorAPIRef.current?.applyContent(path, externalContent)
-          setDialogState(null)
-        },
-        onKeepMine: () => {
-          setDialogState(null)
-        },
-      })
-    },
-    [],
-  )
+  // ── Dialog management ─────────────────────────────────────────────────────────
+
+  const dialogs = useEditorDialogs({
+    dirtyTabsRef,
+    editorAPIRef,
+    performCloseTab,
+    saveFile: writeFile,
+    setTabDirty,
+  })
 
   return (
     <EditorContext.Provider
@@ -300,15 +250,13 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
         activeTab,
         setActiveTab,
         openFile,
-        requestCloseTab,
         fileContent,
         isLoadingContent,
         saveFile: writeFile,
         dirtyTabs,
         setTabDirty,
-        dialogState,
         registerEditorAPI,
-        onExternalConflict,
+        ...dialogs,
       }}
     >
       {children}

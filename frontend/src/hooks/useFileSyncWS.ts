@@ -86,11 +86,13 @@ export function useFileSyncWS(projectId: string): FileSyncWS {
     [],
   )
 
-  const writeFile = useCallback(
-    (path: string, content: string) =>
-      fs.promises.writeFile(path, content, 'utf8'),
-    [],
-  )
+  const writeFile = useCallback((path: string, content: string) => {
+    // TextEncoder produces a native Uint8Array, which zenfs's RPC encodeMessage
+    // correctly serializes via base64. Passing a string or Buffer polyfill instance
+    // can arrive as a plain Object on the backend due to realm/instanceof mismatch.
+    const data = new TextEncoder().encode(content)
+    return fs.promises.writeFile(path, data)
+  }, [])
 
   const readdir = useCallback((path: string) => fs.promises.readdir(path), [])
 
