@@ -7,7 +7,7 @@ const Controls: React.FC<ControlsProps> = ({
 }) => {
   return (
     <>
-      <OrbitControls enableDamping={enableDamping} />
+      <OrbitControls enableDamping={enableDamping} makeDefault />
       {!hideGizmo && (
         <GizmoHelper alignment='bottom-right' margin={[80, 80]}>
           <GizmoViewport />

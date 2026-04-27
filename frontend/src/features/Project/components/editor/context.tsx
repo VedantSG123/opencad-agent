@@ -81,6 +81,9 @@ interface EditorContextValue extends EditorDialogs {
   setTabDirty: (path: string, dirty: boolean) => void
   // MonacoEditor registration
   registerEditorAPI: (api: EditorAPI) => void
+  // FS primitives (for kernel sync and other consumers outside the editor)
+  readFile: (path: string) => Promise<string>
+  onWatch: (handler: (event: WatchEvent) => void) => () => void
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -265,6 +268,8 @@ export function EditorProvider({
         dirtyTabs,
         setTabDirty,
         registerEditorAPI,
+        readFile,
+        onWatch,
         ...dialogs,
       }}
     >

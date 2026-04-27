@@ -1,27 +1,21 @@
-import type { Project } from '@/types/project'
-
-import { EditorProvider } from './editor/context'
 import { EditorDialog } from './editor/EditorDialog'
 import { FileContentView } from './editor/FileContentView'
 import { FileTree } from './editor/FileTree'
 import { RibbonBar } from './editor/RibbonBar'
 
-interface CodeEditorPanelProps {
-  projectId: string
-  project: Project | undefined
-}
-
-export function CodeEditorPanel({ projectId, project }: CodeEditorPanelProps) {
+export function CodeEditorPanel() {
   return (
-    <EditorProvider projectId={projectId} project={project}>
-      <div className='h-full flex flex-col bg-card overflow-hidden'>
+    <div className='h-full flex flex-col overflow-hidden'>
+      <div className='bg-card'>
         <RibbonBar />
-        <div className='flex flex-1 overflow-hidden'>
+      </div>
+      <div className='flex flex-1 overflow-hidden'>
+        <div className='bg-card'>
           <FileTree />
-          <FileContentView />
         </div>
+        <FileContentView />
       </div>
       <EditorDialog />
-    </EditorProvider>
+    </div>
   )
 }

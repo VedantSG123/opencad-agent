@@ -8,6 +8,7 @@ import replicadTypes from 'virtual:replicad-types'
 import { useTheme } from '@/contexts/theme-context'
 import type { CadKernel } from '@/types/project'
 
+import { usePanelContext } from '../../context/PanelContext'
 import type { EditorAPI } from './context'
 
 // Configure Monaco workers once at module level
@@ -18,6 +19,20 @@ window.MonacoEnvironment = {
     return new editorWorker()
   },
 }
+
+// Transparent theme variants — #RRGGBBAA, 66 alpha = ~66% opaque
+monaco.editor.defineTheme('vs-dark-transparent', {
+  base: 'vs-dark',
+  inherit: true,
+  rules: [],
+  colors: { 'editor.background': '#1e1e1e66' },
+})
+monaco.editor.defineTheme('vs-transparent', {
+  base: 'vs',
+  inherit: true,
+  rules: [],
+  colors: { 'editor.background': '#fffffe66' },
+})
 
 const EXT_TO_LANGUAGE: Record<string, string> = {
   js: 'javascript',
@@ -54,6 +69,8 @@ interface MonacoEditorProps {
   onDirtyChange: (path: string, dirty: boolean) => void
   onExternalConflict: (path: string, externalContent: string) => void
   onRegisterAPI: (api: EditorAPI) => void
+  onContentChange?: (path: string, content: string) => void
+  onClearContent?: (path: string) => void
 }
 
 export function MonacoEditor({
@@ -66,8 +83,12 @@ export function MonacoEditor({
   onDirtyChange,
   onExternalConflict,
   onRegisterAPI,
+  onContentChange,
+  onClearContent,
 }: MonacoEditorProps) {
   const { theme } = useTheme()
+  const { isFocusMode, focusedPanel } = usePanelContext()
+  const isTransparent = isFocusMode && focusedPanel === 'editor'
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const modelsRef = useRef<Map<string, monaco.editor.ITextModel>>(new Map())
@@ -80,6 +101,8 @@ export function MonacoEditor({
   const onDirtyChangeRef = useRef(onDirtyChange)
   const onExternalConflictRef = useRef(onExternalConflict)
   const onRegisterAPIRef = useRef(onRegisterAPI)
+  const onContentChangeRef = useRef(onContentChange)
+  const onClearContentRef = useRef(onClearContent)
 
   useEffect(() => {
     onSaveRef.current = onSave
@@ -93,6 +116,12 @@ export function MonacoEditor({
   useEffect(() => {
     onRegisterAPIRef.current = onRegisterAPI
   }, [onRegisterAPI])
+  useEffect(() => {
+    onContentChangeRef.current = onContentChange
+  }, [onContentChange])
+  useEffect(() => {
+    onClearContentRef.current = onClearContent
+  }, [onClearContent])
 
   // ── Replicad autocomplete — configure Monaco JS/TS defaults with library types ──
 
@@ -215,8 +244,14 @@ export function MonacoEditor({
   // ── Sync app theme → Monaco theme ─────────────────────────────────────────────
 
   useEffect(() => {
-    monaco.editor.setTheme(theme === 'dark' ? 'vs-dark' : 'vs')
-  }, [theme])
+    if (isTransparent) {
+      monaco.editor.setTheme(
+        theme === 'dark' ? 'vs-dark-transparent' : 'vs-transparent',
+      )
+    } else {
+      monaco.editor.setTheme(theme === 'dark' ? 'vs-dark' : 'vs')
+    }
+  }, [theme, isTransparent])
 
   // ── Switch model and attach change listener when active path changes ───────────
 
@@ -236,8 +271,10 @@ export function MonacoEditor({
     // Replace the change listener for the newly active model
     changeListenerRef.current?.dispose()
     changeListenerRef.current = model.onDidChangeContent(() => {
+      const value = model.getValue()
       const clean = cleanContentRef.current.get(path) ?? ''
-      onDirtyChangeRef.current(path, model.getValue() !== clean)
+      onDirtyChangeRef.current(path, value !== clean)
+      onContentChangeRef.current?.(path, value)
     })
 
     return () => {
@@ -285,6 +322,7 @@ export function MonacoEditor({
         models.delete(tabPath)
         cleanContent.delete(tabPath)
         onDirtyChangeRef.current(tabPath, false)
+        onClearContentRef.current?.(tabPath)
       }
     })
   }, [openTabs])

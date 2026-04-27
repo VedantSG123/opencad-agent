@@ -12,6 +12,8 @@ import type { Project } from '@/types/project'
 
 import { AgentPanel } from './components/AgentPanel'
 import { CodeEditorPanel } from './components/CodeEditorPanel'
+import { EditorProvider } from './components/editor/context'
+import { KernelFileSync } from './components/KernelFileSync'
 import { TopBar } from './components/TopBar'
 import { ViewportPanel } from './components/ViewportPanel'
 import { PanelProvider, usePanelContext } from './context/PanelContext'
@@ -63,55 +65,58 @@ function ProjectLayout({
   }, [isFocusMode, focusedPanel])
 
   return (
-    <ResizablePanelGroup orientation='horizontal' className='flex-1'>
-      <ResizablePanel defaultSize={75} minSize={20}>
-        <ResizablePanelGroup
-          orientation='horizontal'
-          elementRef={innerGroupRef}
+    <EditorProvider projectId={id} project={project}>
+      <KernelFileSync />
+      <ResizablePanelGroup orientation='horizontal' className='flex-1'>
+        <ResizablePanel defaultSize={75} minSize={20}>
+          <ResizablePanelGroup
+            orientation='horizontal'
+            elementRef={innerGroupRef}
+          >
+            <ResizablePanel
+              defaultSize={46}
+              minSize={15}
+              collapsible
+              collapsedSize={0}
+              panelRef={codeEditorRef}
+              elementRef={editorElementRef}
+            >
+              <div className='h-full overflow-hidden'>
+                <CodeEditorPanel />
+              </div>
+            </ResizablePanel>
+
+            <ResizableHandle
+              className={cn('bg-border w-px', isFocusMode && 'hidden')}
+            />
+
+            <ResizablePanel
+              defaultSize={54}
+              minSize={20}
+              elementRef={viewportElementRef}
+            >
+              <div className='h-full overflow-hidden'>
+                <ViewportPanel />
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </ResizablePanel>
+
+        <ResizableHandle className='bg-border w-px' />
+
+        <ResizablePanel
+          defaultSize={25}
+          minSize={15}
+          collapsible
+          collapsedSize={0}
+          panelRef={agentRef}
         >
-          <ResizablePanel
-            defaultSize={46}
-            minSize={15}
-            collapsible
-            collapsedSize={0}
-            panelRef={codeEditorRef}
-            elementRef={editorElementRef}
-          >
-            <div className='h-full overflow-hidden'>
-              <CodeEditorPanel projectId={id} project={project} />
-            </div>
-          </ResizablePanel>
-
-          <ResizableHandle
-            className={cn('bg-border w-px', isFocusMode && 'hidden')}
-          />
-
-          <ResizablePanel
-            defaultSize={54}
-            minSize={20}
-            elementRef={viewportElementRef}
-          >
-            <div className='h-full overflow-hidden'>
-              <ViewportPanel />
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </ResizablePanel>
-
-      <ResizableHandle className='bg-border w-px' />
-
-      <ResizablePanel
-        defaultSize={25}
-        minSize={15}
-        collapsible
-        collapsedSize={0}
-        panelRef={agentRef}
-      >
-        <div className='h-full overflow-hidden'>
-          <AgentPanel />
-        </div>
-      </ResizablePanel>
-    </ResizablePanelGroup>
+          <div className='h-full overflow-hidden'>
+            <AgentPanel />
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </EditorProvider>
   )
 }
 

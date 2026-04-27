@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  ArrowLeftRight,
   Box,
   Crown,
   PanelLeftClose,
@@ -124,10 +125,13 @@ export function RibbonBar() {
       {isFocusMode && (
         <button
           onClick={() => setFocusedPanel('viewport')}
-          className='flex items-center gap-1.5 px-2 h-7 text-xs rounded-md shrink-0 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors'
+          className='flex items-center gap-2 px-2 h-7 text-xs rounded-md shrink-0 text-muted-foreground group hover:text-foreground hover:bg-accent/50 transition-colors'
         >
-          <Box className='h-3.5 w-3.5' />
-          3D Viewport
+          <ArrowLeftRight className='h-4 w-4 group-hover:text-blue-500' />
+          <div className='flex items-center gap-1'>
+            <Box className='h-3.5 w-3.5' />
+            <span>3D Viewport</span>
+          </div>
         </button>
       )}
 

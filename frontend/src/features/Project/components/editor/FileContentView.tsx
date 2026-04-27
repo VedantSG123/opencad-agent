@@ -1,7 +1,13 @@
+import { useCallback } from 'react'
+
+import { useKernelFiles } from '@/hooks/useKernelFiles'
+
+import { usePanelContext } from '../../context/PanelContext'
 import { useEditor } from './context'
 import { MonacoEditor } from './MonacoEditor'
 
 export function FileContentView() {
+  const { isFocusMode, focusedPanel } = usePanelContext()
   const {
     project,
     activeTab,
@@ -14,6 +20,13 @@ export function FileContentView() {
     registerEditorAPI,
     onExternalConflict,
   } = useEditor()
+
+  const setFileContent = useKernelFiles((state) => state.setFileContent)
+
+  const handleContentChange = useCallback(
+    (path: string, content: string) => setFileContent(path, content),
+    [setFileContent],
+  )
 
   if (!activeTab) {
     return (
@@ -28,8 +41,12 @@ export function FileContentView() {
     )
   }
 
+  const isTransparent = isFocusMode && focusedPanel === 'editor'
+
   return (
-    <div className='flex-1 relative overflow-hidden bg-background'>
+    <div
+      className={`flex-1 relative overflow-hidden ${isTransparent ? 'bg-transparent' : 'bg-background'}`}
+    >
       <MonacoEditor
         path={activeTab}
         content={fileContent}
@@ -40,6 +57,7 @@ export function FileContentView() {
         onDirtyChange={setTabDirty}
         onExternalConflict={onExternalConflict}
         onRegisterAPI={registerEditorAPI}
+        onContentChange={handleContentChange}
       />
       {isLoadingContent && (
         <div className='absolute inset-0 flex items-center justify-center bg-background/60'>
