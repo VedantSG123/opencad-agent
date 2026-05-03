@@ -89,7 +89,7 @@ export function RibbonBar() {
               key={path}
               onClick={() => setActiveTab(path)}
               className={cn(
-                'flex items-center gap-1.5 px-3 h-7 text-xs rounded-md shrink-0 max-w-[160px] group transition-colors',
+                'flex items-center gap-1.5 px-3 h-7 text-xs rounded-md shrink-0 max-w-40 group transition-colors',
                 activeTab === path
                   ? 'bg-accent text-accent-foreground'
                   : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
