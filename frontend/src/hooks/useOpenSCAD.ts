@@ -1,118 +1,87 @@
 import { create } from 'zustand'
 
+import { kernelFilesStore } from '@/hooks/useKernelFiles'
 import { getOpenSCADApi } from '@/kernels/openscad/openscadApi'
 import type { CompileResult } from '@/kernels/openscad/OpenSCADWrapper'
+import { inSeries } from '@/kernels/replicad/inSeries'
 
 type OpenSCADState = {
-  code: string
   result: CompileResult | null
   error: Error | null
-  workerReady: boolean
+  isCompiling: boolean
+  isExporting: boolean
 }
 
 type OpenSCADActions = {
-  setCode: (code: string) => void
-  compile: () => Promise<void>
-  exportSTL: () => Promise<CompileResult | null>
-  initWorker: () => Promise<void>
-  writeFile: (path: string, content: Uint8Array | string) => Promise<void>
-  readFile: (path: string) => Promise<Uint8Array | string | null>
-  deleteFile: (path: string) => Promise<void>
-  listFiles: () => Promise<string[]>
+  compile: (
+    main: { path: string; code: string },
+    remoteFsUrl?: string,
+  ) => Promise<void>
+  exportSTL: (
+    main: { path: string; code: string },
+    remoteFsUrl?: string,
+  ) => Promise<CompileResult | null>
 }
 
-const DEFAULT_SCRIPT = `
-// Example OpenSCAD script
-difference() {
-  cube([20, 20, 20], center = true);
-  sphere(r = 12);
-}
-`
+export const useOpenSCAD = create<OpenSCADState & OpenSCADActions>((set) => {
+  const compileInternal = async (
+    main: { path: string; code: string },
+    remoteFsUrl?: string,
+  ) => {
+    set({ isCompiling: true })
+    const overrides = kernelFilesStore.getState().files
 
-export const useOpenSCAD = create<OpenSCADState & OpenSCADActions>(
-  (set, get) => {
-    const openscadApi = getOpenSCADApi()
-
-    const initWorker = async () => {
-      try {
-        const workerReady = await openscadApi.init()
-        set({ workerReady })
-      } catch (e) {
-        console.error('Error initializing OpenSCAD worker:', e)
-      }
-    }
-
-    const compile = async () => {
-      const { code } = get()
-      if (!code) {
-        set({ result: null, error: null })
-        return
-      }
-
-      try {
-        const result = await openscadApi.compile(code)
-        if (result.error) {
-          set({
-            result,
-            error: new Error(result.stderr.join('\n') || 'Compile error'),
-          })
-        } else {
-          set({ result, error: null })
-        }
-      } catch (e) {
+    try {
+      const result = await getOpenSCADApi().compile(
+        main,
+        overrides,
+        remoteFsUrl,
+      )
+      if (result.error) {
         set({
-          result: null,
-          error: e instanceof Error ? e : new Error(String(e)),
+          result,
+          error: new Error(result.stderr.join('\n') || 'Compile error'),
         })
+      } else {
+        set({ result, error: null })
       }
+    } catch (e) {
+      set({
+        result: null,
+        error: e instanceof Error ? e : new Error(String(e)),
+      })
+    } finally {
+      set({ isCompiling: false })
     }
+  }
 
-    const exportSTL = async (): Promise<CompileResult | null> => {
-      const { code } = get()
-      if (!code) return null
+  const runCompile = inSeries(compileInternal)
 
+  return {
+    result: null,
+    error: null,
+    isCompiling: false,
+    isExporting: false,
+    compile: runCompile,
+    exportSTL: async (
+      main: { path: string; code: string },
+      remoteFsUrl?: string,
+    ) => {
+      set({ isExporting: true })
+      const overrides = kernelFilesStore.getState().files
       try {
-        return await openscadApi.exportSTL(code)
-      } catch (e) {
-        set({ error: e instanceof Error ? e : new Error(String(e)) })
-        return null
+        const result = await getOpenSCADApi().exportSTL(
+          main,
+          overrides,
+          remoteFsUrl,
+        )
+        if (result.error) {
+          throw new Error(result.stderr.join('\n') || 'Export error')
+        }
+        return result
+      } finally {
+        set({ isExporting: false })
       }
-    }
-
-    const writeFile = async (
-      path: string,
-      content: Uint8Array | string,
-    ): Promise<void> => {
-      await openscadApi.writeFile(path, content)
-    }
-
-    const readFile = async (
-      path: string,
-    ): Promise<Uint8Array | string | null> => {
-      return openscadApi.readFile(path)
-    }
-
-    const deleteFile = async (path: string): Promise<void> => {
-      await openscadApi.deleteFile(path)
-    }
-
-    const listFiles = async (): Promise<string[]> => {
-      return openscadApi.listFiles()
-    }
-
-    return {
-      code: DEFAULT_SCRIPT.trim(),
-      workerReady: false,
-      result: null,
-      error: null,
-      setCode: (code: string) => set({ code }),
-      compile,
-      exportSTL,
-      initWorker,
-      writeFile,
-      readFile,
-      deleteFile,
-      listFiles,
-    }
-  },
-)
+    },
+  }
+})

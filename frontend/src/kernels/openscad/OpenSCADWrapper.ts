@@ -1,6 +1,8 @@
 /**
  * Reference from: https://github.com/seasick/openscad-web-gui/blob/main/src/worker/openSCAD.ts
  */
+import { configure, fs, InMemory, Port } from '@zenfs/core'
+
 import type { InitOptions, OpenSCAD } from './library/openscad'
 import openscad from './library/openscad.js'
 import wasmUrl from './library/openscad.wasm?url'
@@ -14,12 +16,11 @@ export interface CompileResult {
 }
 
 export class OpenSCADWrapper {
-  /** Files managed by this wrapper, written to the Emscripten FS on each compile */
-  private files: Map<string, Uint8Array | string> = new Map()
-
   private async createInstance(
     stdout: string[],
     stderr: string[],
+    remoteFsUrl?: string,
+    overrides?: Record<string, { content: string }>,
   ): Promise<OpenSCAD> {
     const options: InitOptions = {
       noInitialRun: true,
@@ -33,12 +34,113 @@ export class OpenSCADWrapper {
 
     const instance = await openscad(options)
 
-    for (const [filePath, content] of this.files) {
-      this.mkdirForFile(instance, filePath)
-      instance.FS.writeFile(filePath, content)
+    if (remoteFsUrl) {
+      await this.setupFS(instance, remoteFsUrl, overrides)
+    } else if (overrides) {
+      await this.setupFS(instance, undefined, overrides)
     }
 
     return instance
+  }
+
+  private async setupFS(
+    instance: OpenSCAD,
+    remoteFsUrl?: string,
+    overrides?: Record<string, { content: string }>,
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mountPoints: Record<string, any> = {}
+    let ws: WebSocket | undefined
+
+    // 1. Setup ZenFS with Port (backend) if remoteFsUrl is provided
+    if (remoteFsUrl) {
+      ws = new WebSocket(remoteFsUrl)
+
+      // Wait for WS to open
+      await new Promise((resolve, reject) => {
+        ws!.onopen = resolve
+        ws!.onerror = reject
+      })
+
+      mountPoints['/project'] = { backend: Port, port: ws }
+    }
+
+    if (overrides) {
+      mountPoints['/overrides'] = { backend: InMemory }
+    }
+
+    if (Object.keys(mountPoints).length > 0) {
+      await configure({
+        mounts: mountPoints,
+      })
+    }
+
+    // 2. Populate ZenFS overrides
+    if (overrides) {
+      for (const [path, { content }] of Object.entries(overrides)) {
+        const zenPath = `/overrides${path.startsWith('/') ? '' : '/'}${path}`
+        await this.mkdirForZenFile(zenPath)
+        await fs.promises.writeFile(zenPath, content)
+      }
+    }
+
+    // 3. Recursively copy files from /project to Emscripten FS
+    if (remoteFsUrl) {
+      await this.copyRecursive('/', '/project', instance)
+    }
+
+    // 4. Apply overrides to Emscripten FS
+    if (overrides) {
+      for (const path of Object.keys(overrides)) {
+        const zenPath = `/overrides${path.startsWith('/') ? '' : '/'}${path}`
+        const content = await fs.promises.readFile(zenPath)
+        this.mkdirForFile(instance, path)
+        instance.FS.writeFile(path, content)
+      }
+    }
+
+    if (ws) {
+      ws.close()
+    }
+  }
+
+  private async copyRecursive(
+    destDir: string,
+    srcDir: string,
+    instance: OpenSCAD,
+  ) {
+    const entries = await fs.promises.readdir(srcDir, { withFileTypes: true })
+    for (const entry of entries) {
+      const srcPath = `${srcDir}/${entry.name}`
+      const destPath = `${destDir}/${entry.name}`
+
+      if (entry.isDirectory()) {
+        try {
+          instance.FS.mkdir(destPath)
+        } catch {
+          // already exists
+        }
+        await this.copyRecursive(destPath, srcPath, instance)
+      } else {
+        const content = await fs.promises.readFile(srcPath)
+        instance.FS.writeFile(destPath, content)
+      }
+    }
+  }
+
+  /** Recursively creates parent directories for a file path in ZenFS */
+  private async mkdirForZenFile(filePath: string): Promise<void> {
+    const parts = filePath.split('/').filter(Boolean)
+    parts.pop()
+    let current = ''
+    for (const part of parts) {
+      current += '/' + part
+      try {
+        await fs.promises.mkdir(current)
+      } catch {
+        // directory already exists
+      }
+    }
   }
 
   /** Recursively creates parent directories for a file path on the given instance */
@@ -60,12 +162,24 @@ export class OpenSCADWrapper {
    * Compiles OpenSCAD code and returns an STL blob.
    * Falls back to SVG export if the top-level object is 2D.
    */
-  async compile(code: string): Promise<CompileResult> {
+  async compile(
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    remoteFsUrl?: string,
+  ): Promise<CompileResult> {
     const stdout: string[] = []
     const stderr: string[] = []
-    const instance = await this.createInstance(stdout, stderr)
+    const instance = await this.createInstance(
+      stdout,
+      stderr,
+      remoteFsUrl,
+      overrides,
+    )
 
-    instance.FS.writeFile('/input.scad', code)
+    // Ensure leading slash for Emscripten FS
+    const targetPath = main.path.startsWith('/') ? main.path : `/${main.path}`
+    this.mkdirForFile(instance, targetPath)
+    instance.FS.writeFile(targetPath, main.code)
 
     instance.callMain([
       '-o',
@@ -74,7 +188,7 @@ export class OpenSCADWrapper {
       '--enable=manifold',
       '--enable=fast-csg',
       '--enable=lazy-union',
-      '/input.scad',
+      targetPath,
     ])
 
     try {
@@ -94,7 +208,7 @@ export class OpenSCADWrapper {
           line.includes('Current top level object is not a 3D object'),
         )
       ) {
-        return this.compileSVG(code)
+        return this.compileSVG(targetPath, instance, stdout, stderr)
       }
 
       return { blob: null, format: null, stdout, stderr, error: true }
@@ -102,14 +216,14 @@ export class OpenSCADWrapper {
   }
 
   /** Compiles OpenSCAD code to SVG (for 2D sketches) */
-  private async compileSVG(code: string): Promise<CompileResult> {
-    const stdout: string[] = []
-    const stderr: string[] = []
-    const instance = await this.createInstance(stdout, stderr)
-
-    instance.FS.writeFile('/input.scad', code)
-
-    instance.callMain(['-o', '/out.svg', '--export-format=svg', '/input.scad'])
+  private compileSVG(
+    targetPath: string,
+    instance: OpenSCAD,
+    stdout: string[],
+    stderr: string[],
+  ): CompileResult {
+    // Note: code is already written to targetPath in compile()
+    instance.callMain(['-o', '/out.svg', '--export-format=svg', targetPath])
 
     try {
       instance.FS.stat('/out.svg')
@@ -130,12 +244,23 @@ export class OpenSCADWrapper {
    * Exports OpenSCAD code as a binary STL blob.
    * Unlike compile(), this does not fall back to SVG.
    */
-  async exportSTL(code: string): Promise<CompileResult> {
+  async exportSTL(
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    remoteFsUrl?: string,
+  ): Promise<CompileResult> {
     const stdout: string[] = []
     const stderr: string[] = []
-    const instance = await this.createInstance(stdout, stderr)
+    const instance = await this.createInstance(
+      stdout,
+      stderr,
+      remoteFsUrl,
+      overrides,
+    )
 
-    instance.FS.writeFile('/input.scad', code)
+    const targetPath = main.path.startsWith('/') ? main.path : `/${main.path}`
+    this.mkdirForFile(instance, targetPath)
+    instance.FS.writeFile(targetPath, main.code)
 
     instance.callMain([
       '-o',
@@ -144,7 +269,7 @@ export class OpenSCADWrapper {
       '--enable=manifold',
       '--enable=fast-csg',
       '--enable=lazy-union',
-      '/input.scad',
+      targetPath,
     ])
 
     try {
@@ -160,26 +285,5 @@ export class OpenSCADWrapper {
     } catch {
       return { blob: null, format: null, stdout, stderr, error: true }
     }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Emscripten FS file management
-  // Files are stored in-memory here and written to each fresh WASM instance.
-  // ---------------------------------------------------------------------------
-
-  writeFile(path: string, content: Uint8Array | string): void {
-    this.files.set(path, content)
-  }
-
-  readFile(path: string): Uint8Array | string | null {
-    return this.files.get(path) ?? null
-  }
-
-  deleteFile(path: string): void {
-    this.files.delete(path)
-  }
-
-  listFiles(): string[] {
-    return Array.from(this.files.keys())
   }
 }

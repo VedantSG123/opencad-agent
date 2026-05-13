@@ -59,7 +59,7 @@ export interface EditorAPI {
 
 interface EditorContextValue extends EditorDialogs {
   // Project
-  project: Project | undefined
+  project: Project
   // Sidebar
   sidebarOpen: boolean
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>
@@ -99,17 +99,12 @@ export function useEditor(): EditorContextValue {
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 interface EditorProviderProps {
-  projectId: string
-  project: Project | undefined
+  project: Project
   children: React.ReactNode
 }
 
-export function EditorProvider({
-  projectId,
-  project,
-  children,
-}: EditorProviderProps) {
-  const fsync = useFileSyncWS(projectId)
+export function EditorProvider({ project, children }: EditorProviderProps) {
+  const fsync = useFileSyncWS(project.id)
   const { status, readFile, writeFile, readdirWithTypes, onWatch } = fsync
 
   const [sidebarOpen, setSidebarOpen] = useState(false)

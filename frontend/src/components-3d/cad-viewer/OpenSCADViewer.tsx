@@ -87,19 +87,21 @@ export function OpenSCADViewer({
       onCreated={(state) => (state.gl.localClippingEnabled = true)}
     >
       <Scene>
-        {hasError || !geometry ? (
+        {hasError ? (
           <ErrorMesh />
         ) : (
           <>
             <SceneLighting />
-            <mesh geometry={geometry}>
-              <meshStandardMaterial
-                color='#6ea8be'
-                side={THREE.DoubleSide}
-                roughness={0.6}
-                metalness={0.1}
-              />
-            </mesh>
+            {geometry ? (
+              <mesh geometry={geometry}>
+                <meshStandardMaterial
+                  color='#6ea8be'
+                  side={THREE.DoubleSide}
+                  roughness={0.6}
+                  metalness={0.1}
+                />
+              </mesh>
+            ) : null}
           </>
         )}
       </Scene>

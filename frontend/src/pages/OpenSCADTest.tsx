@@ -6,30 +6,25 @@ import { useOpenSCAD } from '../hooks/useOpenSCAD'
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1)
 
+const DEFAULT_SCRIPT = `
+// Example OpenSCAD script
+difference() {
+  cube([20, 20, 20], center = true);
+  sphere(r = 12);
+}
+`
+
 export default function OpenSCADTest() {
   const result = useOpenSCAD((state) => state.result)
   const error = useOpenSCAD((state) => state.error)
   const compile = useOpenSCAD((state) => state.compile)
-  const initWorker = useOpenSCAD((state) => state.initWorker)
-  const workerReady = useOpenSCAD((state) => state.workerReady)
 
   React.useEffect(() => {
-    initWorker()
-  }, [initWorker])
-
-  React.useEffect(() => {
-    if (workerReady) {
-      compile()
-    }
-  }, [compile, workerReady])
-
-  if (!workerReady) {
-    return (
-      <div className='w-full h-full fixed top-0 left-0 -z-10 bg-background flex items-center justify-center text-foreground'>
-        Loading OpenSCAD...
-      </div>
-    )
-  }
+    compile({
+      path: '/input.scad',
+      code: DEFAULT_SCRIPT.trim(),
+    })
+  }, [compile])
 
   return (
     <div className='w-full h-screen fixed top-0 left-0 -z-10 bg-background'>

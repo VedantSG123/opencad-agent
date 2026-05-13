@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useParams } from 'react-router'
+import { toast } from 'sonner'
 
 import {
   ResizableHandle,
@@ -18,13 +19,7 @@ import { TopBar } from './components/TopBar'
 import { ViewportPanel } from './components/ViewportPanel'
 import { PanelProvider, usePanelContext } from './context/PanelContext'
 
-function ProjectLayout({
-  id,
-  project,
-}: {
-  id: string
-  project: Project | undefined
-}) {
+function ProjectLayout({ project }: { project: Project }) {
   const { codeEditorRef, agentRef, isFocusMode, focusedPanel } =
     usePanelContext()
 
@@ -65,7 +60,7 @@ function ProjectLayout({
   }, [isFocusMode, focusedPanel])
 
   return (
-    <EditorProvider projectId={id} project={project}>
+    <EditorProvider project={project}>
       <KernelFileSync />
       <ResizablePanelGroup orientation='horizontal' className='flex-1'>
         <ResizablePanel defaultSize={75} minSize={20}>
@@ -122,15 +117,44 @@ function ProjectLayout({
 
 export function ProjectPage() {
   const { id } = useParams<{ id: string }>()
-  const { data: projects } = useProjects()
-  const project = projects?.find((p) => p.id === id)
+  const { data: projects, isLoading, isError } = useProjects()
+
+  const project = useMemo(() => {
+    if (!projects || !id) {
+      return null
+    }
+
+    return projects.find((p) => p.id === id) || null
+  }, [projects, id])
+
+  useEffect(() => {
+    if (isError) {
+      toast.error('Failed to load projects')
+    }
+  }, [isError])
+
+  if (isLoading) {
+    return (
+      <div className='h-screen flex flex-col text-center justify-center'>
+        <p>Loading Project details...</p>
+      </div>
+    )
+  }
+
+  if (!project) {
+    return (
+      <div className='h-screen flex flex-col text-center justify-center'>
+        <p className='text-destructive'>Project not found.</p>
+      </div>
+    )
+  }
 
   return (
     <PanelProvider>
       <div className='h-screen flex flex-col bg-background p-2 overflow-hidden'>
         <TopBar project={project} />
         <div className='flex-1 flex overflow-hidden rounded-lg border-2'>
-          <ProjectLayout id={id!} project={project} />
+          <ProjectLayout project={project} />
         </div>
       </div>
     </PanelProvider>

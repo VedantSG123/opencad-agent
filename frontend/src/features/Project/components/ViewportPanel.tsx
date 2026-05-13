@@ -3,6 +3,7 @@ import * as THREE from 'three'
 
 import { usePanelContext } from '../context/PanelContext'
 import { useEditor } from './editor/context'
+import { OpenSCADViewport } from './OpenSCADViewport'
 import { ReplicadViewport } from './ReplicadViewport'
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1)
@@ -11,7 +12,8 @@ export function ViewportPanel() {
   const { isFocusMode, setFocusedPanel } = usePanelContext()
   const { project } = useEditor()
 
-  const isReplicad = project?.cad_kernel === 'replicad'
+  const isReplicad = project.cad_kernel === 'replicad'
+  const isOpenSCAD = project.cad_kernel === 'openscad'
 
   return (
     <div className='h-full flex flex-col bg-card overflow-hidden'>
@@ -32,9 +34,9 @@ export function ViewportPanel() {
         )}
       </div>
       <div className='flex-1 relative'>
-        {isReplicad ? (
-          <ReplicadViewport />
-        ) : (
+        {isReplicad && <ReplicadViewport />}
+        {isOpenSCAD && <OpenSCADViewport />}
+        {!isReplicad && !isOpenSCAD && (
           <div className='h-full flex items-center justify-center'>
             <span className='text-sm text-muted-foreground'>3D Viewport</span>
           </div>

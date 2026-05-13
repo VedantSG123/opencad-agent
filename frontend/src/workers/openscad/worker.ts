@@ -12,43 +12,25 @@ function getWrapper(): OpenSCADWrapper {
   return wrapper
 }
 
-function init(): boolean {
-  getWrapper()
-  return true
+async function compile(
+  main: { path: string; code: string },
+  overrides?: Record<string, { content: string }>,
+  remoteFsUrl?: string,
+): Promise<CompileResult> {
+  return getWrapper().compile(main, overrides, remoteFsUrl)
 }
 
-async function compile(code: string): Promise<CompileResult> {
-  return getWrapper().compile(code)
-}
-
-async function exportSTL(code: string): Promise<CompileResult> {
-  return getWrapper().exportSTL(code)
-}
-
-function writeFile(path: string, content: Uint8Array | string): void {
-  getWrapper().writeFile(path, content)
-}
-
-function readFile(path: string): Uint8Array | string | null {
-  return getWrapper().readFile(path)
-}
-
-function deleteFile(path: string): void {
-  getWrapper().deleteFile(path)
-}
-
-function listFiles(): string[] {
-  return getWrapper().listFiles()
+async function exportSTL(
+  main: { path: string; code: string },
+  overrides?: Record<string, { content: string }>,
+  remoteFsUrl?: string,
+): Promise<CompileResult> {
+  return getWrapper().exportSTL(main, overrides, remoteFsUrl)
 }
 
 const service = {
-  init,
   compile,
   exportSTL,
-  writeFile,
-  readFile,
-  deleteFile,
-  listFiles,
 }
 
 expose(service)

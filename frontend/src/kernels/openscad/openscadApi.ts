@@ -5,60 +5,50 @@ import OpenSCADWorker from '@/workers/openscad/worker?worker'
 import type { CompileResult } from './OpenSCADWrapper'
 
 interface OpenSCADWorkerService {
-  init(): Promise<boolean>
-  compile(code: string): Promise<CompileResult>
-  exportSTL(code: string): Promise<CompileResult>
-  writeFile(path: string, content: Uint8Array | string): Promise<void>
-  readFile(path: string): Promise<Uint8Array | string | null>
-  deleteFile(path: string): Promise<void>
-  listFiles(): Promise<string[]>
+  compile(
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    remoteFsUrl?: string,
+  ): Promise<CompileResult>
+  exportSTL(
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    remoteFsUrl?: string,
+  ): Promise<CompileResult>
 }
 
 class OpenSCADApi {
-  private worker: Worker
-  private workerApi: OpenSCADWorkerService
+  private async runInWorker<T>(
+    fn: (api: OpenSCADWorkerService) => Promise<T>,
+  ): Promise<T> {
+    const worker = new OpenSCADWorker()
+    const workerApi = wrap<OpenSCADWorkerService>(worker)
 
-  constructor() {
-    this.worker = new OpenSCADWorker()
-    this.workerApi = wrap<OpenSCADWorkerService>(this.worker)
-  }
-
-  async init(): Promise<boolean> {
-    return this.workerApi.init()
+    try {
+      return await fn(workerApi)
+    } finally {
+      worker.terminate()
+    }
   }
 
   /** Compile code and return an STL (or SVG for 2D) blob */
-  async compile(code: string): Promise<CompileResult> {
-    return this.workerApi.compile(code)
+  async compile(
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    remoteFsUrl?: string,
+  ): Promise<CompileResult> {
+    return this.runInWorker((api) => api.compile(main, overrides, remoteFsUrl))
   }
 
   /** Export code as a binary STL blob */
-  async exportSTL(code: string): Promise<CompileResult> {
-    return this.workerApi.exportSTL(code)
-  }
-
-  // ---------------------------------------------------------------------------
-  // Emscripten FS file management
-  // ---------------------------------------------------------------------------
-
-  async writeFile(path: string, content: Uint8Array | string): Promise<void> {
-    return this.workerApi.writeFile(path, content)
-  }
-
-  async readFile(path: string): Promise<Uint8Array | string | null> {
-    return this.workerApi.readFile(path)
-  }
-
-  async deleteFile(path: string): Promise<void> {
-    return this.workerApi.deleteFile(path)
-  }
-
-  async listFiles(): Promise<string[]> {
-    return this.workerApi.listFiles()
-  }
-
-  terminate(): void {
-    this.worker.terminate()
+  async exportSTL(
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    remoteFsUrl?: string,
+  ): Promise<CompileResult> {
+    return this.runInWorker((api) =>
+      api.exportSTL(main, overrides, remoteFsUrl),
+    )
   }
 }
 
@@ -69,13 +59,6 @@ export function getOpenSCADApi(): OpenSCADApi {
     openscadApiInstance = new OpenSCADApi()
   }
   return openscadApiInstance
-}
-
-export function terminateOpenSCADApi(): void {
-  if (openscadApiInstance) {
-    openscadApiInstance.terminate()
-    openscadApiInstance = null
-  }
 }
 
 export default OpenSCADApi

@@ -1,26 +1,9 @@
 import { useEffect, useRef } from 'react'
 
 import { useKernelFiles } from '@/hooks/useKernelFiles'
+import { toFsPath } from '@/lib/utils'
 
 import { useEditor } from './editor/context'
-
-/**
- * Headless component that keeps useKernelFiles in sync with the project's main
- * file.  Rendered inside EditorProvider so it can read FS primitives from the
- * editor context without polluting editor state.
- *
- * Priority (highest wins):
- *   1. Live Monaco edits  — pushed by MonacoEditor via onContentChange
- *   2. External disk change while file is not open  — caught by onWatch here
- *   3. Initial load from disk on FS ready           — handled here
- */
-// Converts the absolute host path stored in the DB to the FS-relative path used
-// by the mounted virtual filesystem (e.g. "/home/user/Test/main.js" → "/main.js")
-function toFsPath(projectDir: string, absolutePath: string): string | null {
-  if (!absolutePath.startsWith(projectDir)) return null
-  const rel = absolutePath.slice(projectDir.length)
-  return rel.startsWith('/') ? rel : `/${rel}`
-}
 
 export function KernelFileSync() {
   const { project, fsStatus, readFile, onWatch, openTabs, dirtyTabs } =
