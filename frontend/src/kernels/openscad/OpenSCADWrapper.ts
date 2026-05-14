@@ -1,8 +1,9 @@
 /**
  * Reference from: https://github.com/seasick/openscad-web-gui/blob/main/src/worker/openSCAD.ts
  */
-import { configure, fs, InMemory, Port } from '@zenfs/core'
+import { configure, fs, Port } from '@zenfs/core'
 
+import { resolveProjectDependencies } from './dependencyScanner'
 import type { InitOptions, OpenSCAD } from './library/openscad'
 import openscad from './library/openscad.js'
 import wasmUrl from './library/openscad.wasm?url'
@@ -19,6 +20,7 @@ export class OpenSCADWrapper {
   private async createInstance(
     stdout: string[],
     stderr: string[],
+    main: { path: string; code: string },
     remoteFsUrl?: string,
     overrides?: Record<string, { content: string }>,
   ): Promise<OpenSCAD> {
@@ -34,25 +36,19 @@ export class OpenSCADWrapper {
 
     const instance = await openscad(options)
 
-    if (remoteFsUrl) {
-      await this.setupFS(instance, remoteFsUrl, overrides)
-    } else if (overrides) {
-      await this.setupFS(instance, undefined, overrides)
-    }
+    await this.setupFS(instance, main, remoteFsUrl, overrides)
 
     return instance
   }
 
   private async setupFS(
     instance: OpenSCAD,
+    main: { path: string; code: string },
     remoteFsUrl?: string,
     overrides?: Record<string, { content: string }>,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mountPoints: Record<string, any> = {}
     let ws: WebSocket | undefined
 
-    // 1. Setup ZenFS with Port (backend) if remoteFsUrl is provided
     if (remoteFsUrl) {
       ws = new WebSocket(remoteFsUrl)
 
@@ -62,84 +58,68 @@ export class OpenSCADWrapper {
         ws!.onerror = reject
       })
 
-      mountPoints['/project'] = { backend: Port, port: ws }
-    }
-
-    if (overrides) {
-      mountPoints['/overrides'] = { backend: InMemory }
-    }
-
-    if (Object.keys(mountPoints).length > 0) {
       await configure({
-        mounts: mountPoints,
+        mounts: {
+          '/project': { backend: Port, port: ws, disableAsyncCache: true },
+        },
       })
     }
 
-    // 2. Populate ZenFS overrides
-    if (overrides) {
-      for (const [path, { content }] of Object.entries(overrides)) {
-        const zenPath = `/overrides${path.startsWith('/') ? '' : '/'}${path}`
-        await this.mkdirForZenFile(zenPath)
-        await fs.promises.writeFile(zenPath, content)
+    // Resolve dependencies recursively starting from the main file
+    const dependencyPaths = await resolveProjectDependencies(
+      main.code,
+      main.path,
+      async (p) => {
+        // 1. Check overrides
+        if (overrides && overrides[p]) return overrides[p].content
+
+        // 2. Check remote project
+        if (remoteFsUrl) {
+          try {
+            const zenPath = `/project${p.startsWith('/') ? '' : '/'}${p}`
+            return await fs.promises.readFile(zenPath, 'utf8')
+          } catch {
+            return null
+          }
+        }
+        return null
+      },
+    )
+
+    // Copy resolved dependencies to Emscripten FS
+    for (const depPath of dependencyPaths) {
+      const normalizedDepPath = depPath.startsWith('/')
+        ? depPath
+        : `/${depPath}`
+      const normalizedMainPath = main.path.startsWith('/')
+        ? main.path
+        : `/${main.path}`
+
+      // Skip the main file, it's handled by the caller
+      if (normalizedDepPath === normalizedMainPath) continue
+
+      let content: string | Uint8Array | null = null
+
+      // Priority: Overrides > Remote
+      if (overrides && overrides[depPath]) {
+        content = overrides[depPath].content
+      } else if (remoteFsUrl) {
+        try {
+          const zenPath = `/project${depPath.startsWith('/') ? '' : '/'}${depPath}`
+          content = await fs.promises.readFile(zenPath)
+        } catch {
+          /* ignore */
+        }
       }
-    }
 
-    // 3. Recursively copy files from /project to Emscripten FS
-    if (remoteFsUrl) {
-      await this.copyRecursive('/', '/project', instance)
-    }
-
-    // 4. Apply overrides to Emscripten FS
-    if (overrides) {
-      for (const path of Object.keys(overrides)) {
-        const zenPath = `/overrides${path.startsWith('/') ? '' : '/'}${path}`
-        const content = await fs.promises.readFile(zenPath)
-        this.mkdirForFile(instance, path)
-        instance.FS.writeFile(path, content)
+      if (content) {
+        this.mkdirForFile(instance, normalizedDepPath)
+        instance.FS.writeFile(normalizedDepPath, content)
       }
     }
 
     if (ws) {
       ws.close()
-    }
-  }
-
-  private async copyRecursive(
-    destDir: string,
-    srcDir: string,
-    instance: OpenSCAD,
-  ) {
-    const entries = await fs.promises.readdir(srcDir, { withFileTypes: true })
-    for (const entry of entries) {
-      const srcPath = `${srcDir}/${entry.name}`
-      const destPath = `${destDir}/${entry.name}`
-
-      if (entry.isDirectory()) {
-        try {
-          instance.FS.mkdir(destPath)
-        } catch {
-          // already exists
-        }
-        await this.copyRecursive(destPath, srcPath, instance)
-      } else {
-        const content = await fs.promises.readFile(srcPath)
-        instance.FS.writeFile(destPath, content)
-      }
-    }
-  }
-
-  /** Recursively creates parent directories for a file path in ZenFS */
-  private async mkdirForZenFile(filePath: string): Promise<void> {
-    const parts = filePath.split('/').filter(Boolean)
-    parts.pop()
-    let current = ''
-    for (const part of parts) {
-      current += '/' + part
-      try {
-        await fs.promises.mkdir(current)
-      } catch {
-        // directory already exists
-      }
     }
   }
 
@@ -172,6 +152,7 @@ export class OpenSCADWrapper {
     const instance = await this.createInstance(
       stdout,
       stderr,
+      main,
       remoteFsUrl,
       overrides,
     )
@@ -254,6 +235,7 @@ export class OpenSCADWrapper {
     const instance = await this.createInstance(
       stdout,
       stderr,
+      main,
       remoteFsUrl,
       overrides,
     )

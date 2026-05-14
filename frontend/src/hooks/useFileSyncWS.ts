@@ -39,7 +39,7 @@ export function useFileSyncWS(projectId: string): FileSyncWS {
     const ws = new WebSocket(`${getBaseWsUrl()}/ws/sync?projectId=${projectId}`)
 
     ws.addEventListener('open', () => {
-      configureSingle({ backend: Port, port: ws })
+      configureSingle({ backend: Port, port: ws, disableAsyncCache: true })
         .then(() => {
           if (cancelled) return
           setStatus('ready')
@@ -81,10 +81,9 @@ export function useFileSyncWS(projectId: string): FileSyncWS {
     }
   }, [projectId])
 
-  const readFile = useCallback(
-    (path: string) => fs.promises.readFile(path, 'utf8'),
-    [],
-  )
+  const readFile = useCallback((path: string) => {
+    return fs.promises.readFile(path, 'utf8')
+  }, [])
 
   const writeFile = useCallback((path: string, content: string) => {
     // TextEncoder produces a native Uint8Array, which zenfs's RPC encodeMessage
