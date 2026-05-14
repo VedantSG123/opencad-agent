@@ -22,7 +22,12 @@ interface ProjectCardProps {
   onClick: () => void
 }
 
-export function ProjectCard({ project, onRename, onDelete, onClick }: ProjectCardProps) {
+export function ProjectCard({
+  project,
+  onRename,
+  onDelete,
+  onClick,
+}: ProjectCardProps) {
   const kernel = KERNEL_INFO[project.cad_kernel] ?? KERNEL_INFO.replicad
 
   return (
@@ -50,13 +55,21 @@ export function ProjectCard({ project, onRename, onDelete, onClick }: ProjectCar
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align='end'>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRename() }}>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onRename()
+                  }}
+                >
                   <Pencil className='mr-2 h-4 w-4' />
                   Rename
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={(e) => { e.stopPropagation(); onDelete() }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDelete()
+                  }}
                   className='text-destructive focus:text-destructive'
                 >
                   <Trash2 className='mr-2 h-4 w-4' />
