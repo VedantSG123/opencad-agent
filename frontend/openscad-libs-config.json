@@ -58,7 +58,8 @@
       "name": "OpenSCAD-Snippet",
       "repo": "https://github.com/AngeloNicoli/OpenSCAD-Snippet.git",
       "branch": "main",
-      "zipIncludes": ["**/*.scad", "LICENSE"]
+      "zipIncludes": ["**/*.scad", "LICENSE"],
+      "symlinks": { "Asset_SCAD": "Asset_SCAD" }
     },
     {
       "name": "Stemfie_OpenSCAD",
@@ -88,19 +89,22 @@
       "name": "smooth-prim",
       "repo": "https://github.com/rcolyer/smooth-prim.git",
       "branch": "master",
-      "zipIncludes": ["*.scad", "LICENSE.txt"]
+      "zipIncludes": ["*.scad", "LICENSE.txt"],
+      "symlinks": { "smooth_prim.scad": "smooth_prim.scad" }
     },
     {
       "name": "plot-function",
       "repo": "https://github.com/rcolyer/plot-function.git",
       "branch": "master",
-      "zipIncludes": ["*.scad", "LICENSE.txt"]
+      "zipIncludes": ["*.scad", "LICENSE.txt"],
+      "symlinks": { "plot_function.scad": "plot_function.scad" }
     },
     {
       "name": "closepoints",
       "repo": "https://github.com/rcolyer/closepoints.git",
       "branch": "master",
-      "zipIncludes": ["*.scad", "LICENSE.txt"]
+      "zipIncludes": ["*.scad", "LICENSE.txt"],
+      "symlinks": { "closepoints.scad": "closepoints.scad" }
     },
     {
       "name": "UB.scad",
@@ -112,13 +116,15 @@
       "name": "openscad-tray",
       "repo": "https://github.com/sofian/openscad-tray.git",
       "branch": "main",
-      "zipIncludes": ["*.scad", "LICENSE"]
+      "zipIncludes": ["*.scad", "LICENSE"],
+      "symlinks": { "tray.scad": "tray.scad" }
     },
     {
       "name": "lasercut",
       "repo": "https://github.com/bmsleight/lasercut.git",
       "branch": "master",
-      "zipIncludes": ["*.scad", "LICENSE"]
+      "zipIncludes": ["*.scad", "LICENSE"],
+      "symlinks": { "lasercut.scad": "lasercut.scad" }
     }
   ],
   "fonts": {

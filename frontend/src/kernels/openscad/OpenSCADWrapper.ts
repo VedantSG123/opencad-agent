@@ -1,12 +1,13 @@
 /**
  * Reference from: https://github.com/seasick/openscad-web-gui/blob/main/src/worker/openSCAD.ts
  */
-import { configure, fs, Port } from '@zenfs/core'
+import { configure, fs, mounts, Port, vfs } from '@zenfs/core'
 
 import { resolveProjectDependencies } from './dependencyScanner'
 import type { InitOptions, OpenSCAD } from './library/openscad'
 import openscad from './library/openscad.js'
 import wasmUrl from './library/openscad.wasm?url'
+import { LibraryLoader } from './libraryLoader'
 
 export interface CompileResult {
   blob: Blob | null
@@ -17,6 +18,8 @@ export interface CompileResult {
 }
 
 export class OpenSCADWrapper {
+  private libraryLoader = new LibraryLoader()
+
   private async createInstance(
     stdout: string[],
     stderr: string[],
@@ -50,6 +53,11 @@ export class OpenSCADWrapper {
     let ws: WebSocket | undefined
 
     if (remoteFsUrl) {
+      // Unmount stale /project mount from a previous compilation
+      if (mounts.has('/project')) {
+        ;(vfs.umount as unknown as (path: string) => void)('/project')
+      }
+
       ws = new WebSocket(remoteFsUrl)
 
       // Wait for WS to open
@@ -73,16 +81,19 @@ export class OpenSCADWrapper {
         // 1. Check overrides
         if (overrides && overrides[p]) return overrides[p].content
 
-        // 2. Check remote project
+        // 2. Check remote project (preferred over bundled libraries so users
+        //    can drop an edited copy of a library file into their project)
         if (remoteFsUrl) {
           try {
             const zenPath = `/project${p.startsWith('/') ? '' : '/'}${p}`
             return await fs.promises.readFile(zenPath, 'utf8')
           } catch {
-            return null
+            // not found in project — fall through to libraries
           }
         }
-        return null
+
+        // 3. Check bundled libraries
+        return await this.libraryLoader.readFileAsText(p)
       },
     )
 
@@ -100,7 +111,7 @@ export class OpenSCADWrapper {
 
       let content: string | Uint8Array | null = null
 
-      // Priority: Overrides > Remote
+      // Priority: Overrides > Remote project > Bundled libraries
       if (overrides && overrides[depPath]) {
         content = overrides[depPath].content
       } else if (remoteFsUrl) {
@@ -108,8 +119,12 @@ export class OpenSCADWrapper {
           const zenPath = `/project${depPath.startsWith('/') ? '' : '/'}${depPath}`
           content = await fs.promises.readFile(zenPath)
         } catch {
-          /* ignore */
+          /* not in project — fall through to libraries */
         }
+      }
+
+      if (content === null) {
+        content = await this.libraryLoader.readFile(depPath)
       }
 
       if (content) {

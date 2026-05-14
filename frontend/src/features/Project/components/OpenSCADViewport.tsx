@@ -29,9 +29,11 @@ export function OpenSCADViewport() {
   }, [project])
 
   const result = useOpenSCAD((state) => state.result)
-  const hasError = !!useOpenSCAD((state) => state.error)
+  const error = useOpenSCAD((state) => state.error)
   const compile = useOpenSCAD((state) => state.compile)
   const isCompiling = useOpenSCAD((state) => state.isCompiling)
+
+  const hasError = Boolean(error)
 
   React.useEffect(() => {
     if (!mainFileContent || !mainFilePath) return
@@ -48,6 +50,10 @@ export function OpenSCADViewport() {
 
     return () => clearTimeout(timer)
   }, [mainFileContent, compile, mainFilePath, remoteFsUrl])
+
+  React.useEffect(() => {
+    console.log('Error details:', error)
+  }, [error])
 
   return (
     <div className='relative h-full w-full'>
