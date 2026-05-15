@@ -17,48 +17,41 @@ interface OpenSCADWorkerService {
   ): Promise<CompileResult>
 }
 
-class OpenSCADApi {
-  private async runInWorker<T>(
-    fn: (api: OpenSCADWorkerService) => Promise<T>,
-  ): Promise<T> {
-    const worker = new OpenSCADWorker()
-    const workerApi = wrap<OpenSCADWorkerService>(worker)
+export class OpenSCADApi {
+  private worker: Worker | null = null
+  private workerApi: OpenSCADWorkerService | null = null
 
-    try {
-      return await fn(workerApi)
-    } finally {
-      worker.terminate()
+  private getWorkerApi(): OpenSCADWorkerService {
+    if (!this.worker || !this.workerApi) {
+      this.worker = new OpenSCADWorker()
+      this.workerApi = wrap<OpenSCADWorkerService>(this.worker)
     }
+    return this.workerApi
   }
 
-  /** Compile code and return an STL (or SVG for 2D) blob */
   async compile(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     remoteFsUrl?: string,
   ): Promise<CompileResult> {
-    return this.runInWorker((api) => api.compile(main, overrides, remoteFsUrl))
+    return this.getWorkerApi().compile(main, overrides, remoteFsUrl)
   }
 
-  /** Export code as a binary STL blob */
   async exportSTL(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     remoteFsUrl?: string,
   ): Promise<CompileResult> {
-    return this.runInWorker((api) =>
-      api.exportSTL(main, overrides, remoteFsUrl),
-    )
+    return this.getWorkerApi().exportSTL(main, overrides, remoteFsUrl)
+  }
+
+  terminate(): void {
+    this.worker?.terminate()
+    this.worker = null
+    this.workerApi = null
   }
 }
 
-let openscadApiInstance: OpenSCADApi | null = null
-
-export function getOpenSCADApi(): OpenSCADApi {
-  if (!openscadApiInstance) {
-    openscadApiInstance = new OpenSCADApi()
-  }
-  return openscadApiInstance
+export function createOpenSCADApi(): OpenSCADApi {
+  return new OpenSCADApi()
 }
-
-export default OpenSCADApi

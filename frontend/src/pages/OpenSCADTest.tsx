@@ -2,7 +2,7 @@ import * as React from 'react'
 import * as THREE from 'three'
 
 import { OpenSCADViewer } from '../components-3d/cad-viewer/OpenSCADViewer'
-import { useOpenSCAD } from '../hooks/useOpenSCAD'
+import { OpenSCADProvider, useOpenSCAD } from '../hooks/useOpenSCAD'
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1)
 
@@ -14,7 +14,7 @@ difference() {
 }
 `
 
-export default function OpenSCADTest() {
+function OpenSCADTestInner() {
   const result = useOpenSCAD((state) => state.result)
   const error = useOpenSCAD((state) => state.error)
   const compile = useOpenSCAD((state) => state.compile)
@@ -30,5 +30,13 @@ export default function OpenSCADTest() {
     <div className='w-full h-screen fixed top-0 left-0 -z-10 bg-background'>
       <OpenSCADViewer result={result} hasError={!!error} />
     </div>
+  )
+}
+
+export default function OpenSCADTest() {
+  return (
+    <OpenSCADProvider>
+      <OpenSCADTestInner />
+    </OpenSCADProvider>
   )
 }

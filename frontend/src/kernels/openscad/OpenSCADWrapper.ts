@@ -19,6 +19,44 @@ export interface CompileResult {
 
 export class OpenSCADWrapper {
   private libraryLoader = new LibraryLoader()
+  private ws: WebSocket | undefined
+  private currentRemoteFsUrl: string | undefined
+
+  private async ensureRemoteFs(remoteFsUrl?: string): Promise<void> {
+    if (!remoteFsUrl) return
+
+    // Reuse existing connection if URL matches
+    if (
+      this.currentRemoteFsUrl === remoteFsUrl &&
+      this.ws?.readyState === WebSocket.OPEN
+    )
+      return
+
+    // Close stale connection
+    this.ws?.close()
+    this.ws = undefined
+    this.currentRemoteFsUrl = undefined
+
+    // Unmount stale /project mount
+    if (mounts.has('/project')) {
+      ;(vfs.umount as unknown as (path: string) => void)('/project')
+    }
+
+    // Create new connection
+    this.ws = new WebSocket(remoteFsUrl)
+    await new Promise<void>((resolve, reject) => {
+      this.ws!.onopen = () => resolve()
+      this.ws!.onerror = reject
+    })
+
+    await configure({
+      mounts: {
+        '/project': { backend: Port, port: this.ws, disableAsyncCache: true },
+      },
+    })
+
+    this.currentRemoteFsUrl = remoteFsUrl
+  }
 
   private async createInstance(
     stdout: string[],
@@ -50,28 +88,7 @@ export class OpenSCADWrapper {
     remoteFsUrl?: string,
     overrides?: Record<string, { content: string }>,
   ) {
-    let ws: WebSocket | undefined
-
-    if (remoteFsUrl) {
-      // Unmount stale /project mount from a previous compilation
-      if (mounts.has('/project')) {
-        ;(vfs.umount as unknown as (path: string) => void)('/project')
-      }
-
-      ws = new WebSocket(remoteFsUrl)
-
-      // Wait for WS to open
-      await new Promise((resolve, reject) => {
-        ws!.onopen = resolve
-        ws!.onerror = reject
-      })
-
-      await configure({
-        mounts: {
-          '/project': { backend: Port, port: ws, disableAsyncCache: true },
-        },
-      })
-    }
+    await this.ensureRemoteFs(remoteFsUrl)
 
     // Resolve dependencies recursively starting from the main file
     const dependencyPaths = await resolveProjectDependencies(
@@ -131,10 +148,6 @@ export class OpenSCADWrapper {
         this.mkdirForFile(instance, normalizedDepPath)
         instance.FS.writeFile(normalizedDepPath, content)
       }
-    }
-
-    if (ws) {
-      ws.close()
     }
   }
 

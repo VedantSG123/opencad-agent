@@ -2,16 +2,15 @@ import * as React from 'react'
 
 import { OpenSCADViewer } from '@/components-3d/cad-viewer/OpenSCADViewer'
 import { type KernelFilesState, useKernelFiles } from '@/hooks/useKernelFiles'
-import { useOpenSCAD } from '@/hooks/useOpenSCAD'
+import { OpenSCADProvider, useOpenSCAD } from '@/hooks/useOpenSCAD'
 import { toFsPath } from '@/lib/utils'
 import { getBaseWsUrl } from '@/utils/getWsBaseUrl'
 
 import { useEditor } from './editor/context'
 
-export function OpenSCADViewport() {
+function OpenSCADViewportInner() {
   const { project } = useEditor()
 
-  // Convert absolute DB path to the FS-relative path used by the virtual FS
   const mainFilePath = React.useMemo(() => {
     if (!project?.file || !project.directory) return null
     return toFsPath(project.directory, project.file)
@@ -65,5 +64,13 @@ export function OpenSCADViewport() {
         </div>
       )}
     </div>
+  )
+}
+
+export function OpenSCADViewport() {
+  return (
+    <OpenSCADProvider>
+      <OpenSCADViewportInner />
+    </OpenSCADProvider>
   )
 }
