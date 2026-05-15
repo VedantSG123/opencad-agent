@@ -7,9 +7,15 @@ import {
   useRef,
   useState,
 } from 'react'
+import { toast } from 'sonner'
 
 import type { TreeDataItem } from '@/components/tree-view'
-import type { FileSyncStatus, FSEntry, WatchEvent } from '@/hooks/useFileSyncWS'
+import {
+  type FileSyncStatus,
+  type FSEntry,
+  FSNotReadyError,
+  type WatchEvent,
+} from '@/hooks/useFileSyncWS'
 import { useFileSyncWS } from '@/hooks/useFileSyncWS'
 import type { Project } from '@/types/project'
 
@@ -190,7 +196,8 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
       })
       .catch((err: unknown) => {
         if (cancelled) return
-        console.error('Failed to read file', err)
+        if (err instanceof FSNotReadyError) return
+        toast.error('Failed to read file from remote FS')
         setFileContent(null)
         setLoadedInfo({ tab: activeTab, version: currentVersion })
       })
