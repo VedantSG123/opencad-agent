@@ -84,6 +84,12 @@ export function createOpenSCADStore() {
         }
       },
       terminate: () => {
+        set({
+          result: null,
+          error: null,
+          isCompiling: false,
+          isExporting: false,
+        })
         api.terminate()
       },
     }
