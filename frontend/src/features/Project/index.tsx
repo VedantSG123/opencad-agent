@@ -14,7 +14,7 @@ import type { Project } from '@/types/project'
 import { AgentPanel } from './components/AgentPanel'
 import { CodeEditorPanel } from './components/CodeEditorPanel'
 import { EditorProvider } from './components/editor/context'
-import { KernelFileSync } from './components/KernelFileSync'
+import { FileSync } from './components/FileSync'
 import { TopBar } from './components/TopBar'
 import { ViewportPanel } from './components/ViewportPanel'
 import { PanelProvider, usePanelContext } from './context/PanelContext'
@@ -61,7 +61,7 @@ function ProjectLayout({ project }: { project: Project }) {
 
   return (
     <EditorProvider project={project}>
-      <KernelFileSync />
+      <FileSync />
       <ResizablePanelGroup orientation='horizontal' className='flex-1'>
         <ResizablePanel defaultSize={75} minSize={20}>
           <ResizablePanelGroup

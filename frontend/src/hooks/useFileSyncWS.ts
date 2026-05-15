@@ -17,6 +17,13 @@ export interface FSEntry {
   isFile(): boolean
 }
 
+export class FSNotReadyError extends Error {
+  constructor() {
+    super('File system is not ready')
+    this.name = 'FSNotReadyError'
+  }
+}
+
 export type FileSyncStatus = 'connecting' | 'ready' | 'error' | 'closed'
 
 export interface FileSyncWS {
@@ -81,24 +88,39 @@ export function useFileSyncWS(projectId: string): FileSyncWS {
     }
   }, [projectId])
 
-  const readFile = useCallback((path: string) => {
-    return fs.promises.readFile(path, 'utf8')
-  }, [])
+  const readFile = useCallback(
+    (path: string) => {
+      if (status !== 'ready') return Promise.reject(new FSNotReadyError())
+      return fs.promises.readFile(path, 'utf8')
+    },
+    [status],
+  )
 
-  const writeFile = useCallback((path: string, content: string) => {
-    // TextEncoder produces a native Uint8Array, which zenfs's RPC encodeMessage
-    // correctly serializes via base64. Passing a string or Buffer polyfill instance
-    // can arrive as a plain Object on the backend due to realm/instanceof mismatch.
-    const data = new TextEncoder().encode(content)
-    return fs.promises.writeFile(path, data)
-  }, [])
+  const writeFile = useCallback(
+    (path: string, content: string) => {
+      if (status !== 'ready') return Promise.reject(new FSNotReadyError())
+      const data = new TextEncoder().encode(content)
+      return fs.promises.writeFile(path, data)
+    },
+    [status],
+  )
 
-  const readdir = useCallback((path: string) => fs.promises.readdir(path), [])
+  const readdir = useCallback(
+    (path: string) => {
+      if (status !== 'ready') return Promise.reject(new FSNotReadyError())
+      return fs.promises.readdir(path)
+    },
+    [status],
+  )
 
   const readdirWithTypes = useCallback(
-    (path: string) =>
-      fs.promises.readdir(path, { withFileTypes: true }) as Promise<FSEntry[]>,
-    [],
+    (path: string) => {
+      if (status !== 'ready') return Promise.reject(new FSNotReadyError())
+      return fs.promises.readdir(path, { withFileTypes: true }) as Promise<
+        FSEntry[]
+      >
+    },
+    [status],
   )
 
   const onWatch = useCallback((handler: (event: WatchEvent) => void) => {
