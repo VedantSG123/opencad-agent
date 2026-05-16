@@ -211,32 +211,42 @@ export class OpenSCADWrapper {
         error: false,
       }
     } catch {
-      // No output file produced — check if it was a 2D geometry
       if (
         stderr.some((line) =>
-          line.includes('Current top level object is not a 3D object'),
+          line.includes('Current top level object is not a 3D object.'),
         )
       ) {
-        return this.compileSVG(targetPath, instance, stdout, stderr)
+        return this.compileSVG(main, overrides, remoteFsUrl, stdout, stderr)
       }
 
       return { blob: null, format: null, stdout, stderr, error: true }
     }
   }
 
-  /** Compiles OpenSCAD code to SVG (for 2D sketches) */
-  private compileSVG(
-    targetPath: string,
-    instance: OpenSCAD,
+  private async compileSVG(
+    main: { path: string; code: string },
+    overrides: Record<string, { content: string }> | undefined,
+    remoteFsUrl: string | undefined,
     stdout: string[],
     stderr: string[],
-  ): CompileResult {
-    // Note: code is already written to targetPath in compile()
-    instance.callMain(['-o', '/out.svg', '--export-format=svg', targetPath])
+  ): Promise<CompileResult> {
+    const svgInstance = await this.createInstance(
+      stdout,
+      stderr,
+      main,
+      remoteFsUrl,
+      overrides,
+    )
+
+    const targetPath = main.path.startsWith('/') ? main.path : `/${main.path}`
+    this.mkdirForFile(svgInstance, targetPath)
+    svgInstance.FS.writeFile(targetPath, main.code)
+
+    svgInstance.callMain(['-o', '/out.svg', '--export-format=svg', targetPath])
 
     try {
-      instance.FS.stat('/out.svg')
-      const output = instance.FS.readFile('/out.svg', { encoding: 'binary' })
+      svgInstance.FS.stat('/out.svg')
+      const output = svgInstance.FS.readFile('/out.svg', { encoding: 'binary' })
       return {
         blob: new Blob([output.slice()], { type: 'image/svg+xml' }),
         format: 'svg',

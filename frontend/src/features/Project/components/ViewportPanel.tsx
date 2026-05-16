@@ -16,7 +16,10 @@ export function ViewportPanel() {
   const isOpenSCAD = project.cad_kernel === 'openscad'
 
   return (
-    <div className='h-full flex flex-col bg-card overflow-hidden'>
+    <div
+      id='viewport-panel-container'
+      className='h-full flex flex-col bg-card overflow-hidden'
+    >
       <div className='w-full flex justify-end'>
         {isFocusMode && (
           <div className='flex items-center gap-1 border-b px-1 h-10 shrink-0'>
@@ -33,7 +36,7 @@ export function ViewportPanel() {
           </div>
         )}
       </div>
-      <div className='flex-1 relative'>
+      <div id='cad-viewer' className='flex-1 min-h-0'>
         {isReplicad && <ReplicadViewport />}
         {isOpenSCAD && <OpenSCADViewport />}
         {!isReplicad && !isOpenSCAD && (

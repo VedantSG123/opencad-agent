@@ -50,6 +50,7 @@ export function createOpenSCADStore() {
           set({ result, error: null })
         }
       } catch (e) {
+        console.log('Compilation failed with error', e)
         set({
           result: null,
           error: e instanceof Error ? e : new Error(String(e)),

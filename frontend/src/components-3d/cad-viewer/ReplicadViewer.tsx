@@ -1,6 +1,7 @@
 import type * as React from 'react'
 
 import { ReplicadSVGViewer } from '@/components/custom/SvgViewer'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import type { MeshRenderOutput, SvgRenderOutput } from '@/types'
 
 import { ReplicadCombinedMesh } from '../replicad-mesh/ReplicadCombinedMesh'
@@ -41,40 +42,49 @@ export const CadViewer: React.FC<CadViewerProps> = ({
   ])
 
   if (isSvgShapesArray(shapes)) {
-    ;<ReplicadSVGViewer shapes={shapes} />
+    return <ReplicadSVGViewer shapes={shapes} />
   }
 
   return (
-    <Canvas
-      orthographic
-      onCreated={(state) => (state.gl.localClippingEnabled = true)}
+    <ErrorBoundary
+      fallback={
+        <div className='absolute inset-0 flex items-center justify-center text-sm text-muted-foreground'>
+          3D viewer error — try rebuilding
+        </div>
+      }
     >
-      <Scene>
-        {hasError ? (
-          <ErrorMesh />
-        ) : (
-          shapes.map((shape) => {
-            const facesHighlight = highlight(selectedFace, shape.name)
-            const edgesHighlight = highlight(selectedEdge, shape.name)
+      <Canvas
+        key='3d'
+        orthographic
+        onCreated={(state) => (state.gl.localClippingEnabled = true)}
+      >
+        <Scene>
+          {hasError ? (
+            <ErrorMesh />
+          ) : (
+            shapes.map((shape) => {
+              const facesHighlight = highlight(selectedFace, shape.name)
+              const edgesHighlight = highlight(selectedEdge, shape.name)
 
-            return isMeshShape(shape) ? (
-              <ReplicadCombinedMesh
-                onEdgeClick={selectEdge(shape.name)}
-                onFaceClick={selectFace(shape.name)}
-                facesHighlight={
-                  facesHighlight !== null ? [facesHighlight] : undefined
-                }
-                edgesHighlight={
-                  edgesHighlight !== null ? [edgesHighlight] : undefined
-                }
-                shape={shape}
-                key={shape.name}
-              />
-            ) : null
-          })
-        )}
-      </Scene>
-    </Canvas>
+              return isMeshShape(shape) ? (
+                <ReplicadCombinedMesh
+                  onEdgeClick={selectEdge(shape.name)}
+                  onFaceClick={selectFace(shape.name)}
+                  facesHighlight={
+                    facesHighlight !== null ? [facesHighlight] : undefined
+                  }
+                  edgesHighlight={
+                    edgesHighlight !== null ? [edgesHighlight] : undefined
+                  }
+                  shape={shape}
+                  key={shape.name}
+                />
+              ) : null
+            })
+          )}
+        </Scene>
+      </Canvas>
+    </ErrorBoundary>
   )
 }
 

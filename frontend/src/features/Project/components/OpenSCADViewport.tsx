@@ -1,3 +1,5 @@
+import * as React from 'react'
+
 import { OpenSCADViewer } from '@/components-3d/cad-viewer/OpenSCADViewer'
 import { OpenSCADProvider, useOpenSCAD } from '@/hooks/useOpenSCAD'
 
@@ -9,6 +11,12 @@ function OpenSCADViewportInner() {
   const isCompiling = useOpenSCAD((state) => state.isCompiling)
 
   const hasError = Boolean(error)
+
+  React.useEffect(() => {
+    if (error) {
+      console.error('OpenSCAD compilation error:', error)
+    }
+  }, [error])
 
   return (
     <div className='relative h-full w-full'>

@@ -60,64 +60,73 @@ const SVGGrid = ({ viewbox }: { viewbox: SVGViewBox }) => {
 
   const { xRange, yRange } = React.useMemo(() => {
     const gridSpacing =
-      10 ** (Math.ceil(Math.log10(Math.max(width, height))) - 1)
+      10 ** (Math.ceil(Math.log10(Math.max(width, height))) - 2)
 
     const xRange = range(
       Math.floor(xStart / gridSpacing) * gridSpacing,
       Math.ceil((xStart + width) / gridSpacing) * gridSpacing,
       gridSpacing,
     )
+
     const yRange = range(
       Math.floor(yStart / gridSpacing) * gridSpacing,
       Math.ceil((yStart + height) / gridSpacing) * gridSpacing,
       gridSpacing,
     )
+
     return { xRange, yRange }
   }, [width, height, xStart, yStart])
 
-  const grid = [
-    ...xRange.map((x) => (
-      <line
-        key={`x${x}`}
-        x1={x}
-        y1={yStart}
-        x2={x}
-        y2={yStart + height}
-        vectorEffect='non-scaling-stroke'
-        strokeWidth='0.5'
-      />
-    )),
-    ...yRange.map((y) => (
-      <line
-        key={`y${y}`}
-        x1={xStart}
-        y1={y}
-        x2={xStart + width}
-        y2={y}
-        vectorEffect='non-scaling-stroke'
-        strokeWidth='0.5'
-      />
-    )),
-  ]
-
   return (
     <>
-      {grid}
+      {xRange.map((x) => (
+        <line
+          key={`x${x}`}
+          x1={x}
+          y1={yStart}
+          x2={x}
+          y2={yStart + height}
+          stroke='currentColor'
+          opacity={0.15}
+          strokeWidth='0.5'
+          vectorEffect='non-scaling-stroke'
+        />
+      ))}
+
+      {yRange.map((y) => (
+        <line
+          key={`y${y}`}
+          x1={xStart}
+          y1={y}
+          x2={xStart + width}
+          y2={y}
+          stroke='currentColor'
+          opacity={0.15}
+          strokeWidth='0.5'
+          vectorEffect='non-scaling-stroke'
+        />
+      ))}
+
       <line
         x1={xStart}
         y1={0}
         x2={xStart + width}
         y2={0}
+        stroke='currentColor'
+        opacity={0.4}
+        strokeWidth='1'
         vectorEffect='non-scaling-stroke'
-        strokeWidth='5'
       />
+
       <line
         x1={0}
         y1={yStart}
         x2={0}
         y2={yStart + height}
+        stroke='currentColor'
+        opacity={0.4}
+        strokeWidth='1'
         vectorEffect='non-scaling-stroke'
-        strokeWidth='5'
       />
     </>
   )
@@ -162,34 +171,45 @@ const SVGCanvas: React.FC<SVGCanvasProps> = ({
 const SVGWindow: React.FC<SVGWindowProps> = ({
   viewbox,
   children,
-  showGrid,
+  showGrid = true,
   contentGroupProps,
 }) => {
   const [adaptedViewbox, setAdaptedViewBox] = React.useState(viewbox)
 
   const [canvasRef] = useRect(
     (rect) => {
+      if (rect.width === 0 || rect.height === 0) return
+
       const viewBoxWithMargin = addMarginToViewbox(viewbox, 0.1)
-      const { width, height } = rect
-      const { width: viewBoxWidth, height: viewBoxHeight } = viewBoxWithMargin
 
-      const rectAspect = width / height
-      const viewBoxAspect = viewBoxWidth / viewBoxHeight
-      const resizeAlong = rectAspect > viewBoxAspect ? 'width' : 'height'
+      const canvasAspect = rect.width / rect.height
 
-      if (resizeAlong === 'width') {
-        const spacing = viewBoxAspect * height - width
+      const {
+        xStart,
+        yStart,
+        width: vbWidth,
+        height: vbHeight,
+      } = viewBoxWithMargin
+
+      const viewBoxAspect = vbWidth / vbHeight
+
+      if (canvasAspect > viewBoxAspect) {
+        const targetWidth = vbHeight * canvasAspect
+        const extraWidth = targetWidth - vbWidth
+
         setAdaptedViewBox({
           ...viewBoxWithMargin,
-          width: viewBoxWidth + spacing,
-          xStart: viewBoxWithMargin.xStart - spacing / 2,
+          width: targetWidth,
+          xStart: xStart - extraWidth / 2,
         })
       } else {
-        const spacing = width / viewBoxAspect - height
+        const targetHeight = vbWidth / canvasAspect
+        const extraHeight = targetHeight - vbHeight
+
         setAdaptedViewBox({
           ...viewBoxWithMargin,
-          height: viewBoxHeight + spacing,
-          yStart: viewBoxWithMargin.yStart - spacing / 2,
+          height: targetHeight,
+          yStart: yStart - extraHeight / 2,
         })
       }
     },
@@ -197,7 +217,10 @@ const SVGWindow: React.FC<SVGWindowProps> = ({
   )
 
   return (
-    <div className='bg-background flex flex-1' ref={canvasRef}>
+    <div
+      className='bg-background text-foreground h-full w-full'
+      ref={canvasRef}
+    >
       <SVGCanvas
         viewbox={adaptedViewbox}
         showGrid={showGrid}
@@ -251,7 +274,7 @@ export const ReplicadSVGViewer: React.FC<ReplicadSVGViewerProps> = ({
   const viewbox = mergeViewboxes(shapes.map((s) => s.viewbox))
 
   return (
-    <SVGWindow viewbox={viewbox}>
+    <SVGWindow viewbox={viewbox} showGrid>
       {shapes.map((s) =>
         s.format === 'svg' ? (
           <ShapePath
@@ -308,7 +331,7 @@ export const OpenSCADSVGViewer: React.FC<OpenSCADSVGViewerProps> = ({
 
   return (
     // No grid, no presentation overrides — OpenSCAD SVG manages its own style
-    <SVGWindow viewbox={data.viewbox} showGrid={false} contentGroupProps={{}}>
+    <SVGWindow viewbox={data.viewbox} showGrid={true} contentGroupProps={{}}>
       <g dangerouslySetInnerHTML={{ __html: data.inner }} />
     </SVGWindow>
   )

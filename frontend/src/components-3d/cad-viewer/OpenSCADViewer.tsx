@@ -3,15 +3,12 @@ import * as THREE from 'three'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 
 import { OpenSCADSVGViewer } from '@/components/custom/SvgViewer'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import type { CompileResult } from '@/kernels/openscad/OpenSCADWrapper'
 
 import { Canvas } from './Canvas'
 import { ErrorMesh } from './ErrorMesh'
 import { Scene } from './Scene'
-
-// ---------------------------------------------------------------------------
-// Scene lighting environment
-// ---------------------------------------------------------------------------
 
 function SceneLighting() {
   return (
@@ -22,10 +19,6 @@ function SceneLighting() {
     </>
   )
 }
-
-// ---------------------------------------------------------------------------
-// Public component
-// ---------------------------------------------------------------------------
 
 type OpenSCADViewerProps = {
   result: CompileResult | null
@@ -40,9 +33,6 @@ export function OpenSCADViewer({
     null,
   )
 
-  // Parse the STL blob asynchronously. Geometry state lives here so that when
-  // it resolves, the children passed to Stage change — triggering Stage's
-  // bounding-box layout effect and camera autofocus.
   React.useEffect(() => {
     const blob = result?.blob
     if (!blob || hasError || result?.format === 'svg') {
@@ -68,43 +58,49 @@ export function OpenSCADViewer({
     }
   }, [result?.blob, result?.format, hasError])
 
-  // Dispose geometry on unmount
   React.useEffect(() => {
     return () => {
       geometry?.dispose()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 2D output: delegate to the shared SVG viewer
   if (result?.format === 'svg' && result.blob) {
     return <OpenSCADSVGViewer blob={result.blob} />
   }
 
   return (
-    <Canvas
-      orthographic
-      onCreated={(state) => (state.gl.localClippingEnabled = true)}
+    <ErrorBoundary
+      fallback={
+        <div className='absolute inset-0 flex items-center justify-center text-sm text-muted-foreground'>
+          3D viewer error — try rebuilding
+        </div>
+      }
     >
-      <Scene>
-        {hasError ? (
-          <ErrorMesh />
-        ) : (
-          <>
-            <SceneLighting />
-            {geometry ? (
-              <mesh geometry={geometry}>
-                <meshStandardMaterial
-                  color='#6ea8be'
-                  side={THREE.DoubleSide}
-                  roughness={0.6}
-                  metalness={0.1}
-                />
-              </mesh>
-            ) : null}
-          </>
-        )}
-      </Scene>
-    </Canvas>
+      <Canvas
+        key='3d'
+        orthographic
+        onCreated={(state) => (state.gl.localClippingEnabled = true)}
+      >
+        <Scene>
+          {hasError ? (
+            <ErrorMesh />
+          ) : (
+            <>
+              <SceneLighting />
+              {geometry ? (
+                <mesh geometry={geometry}>
+                  <meshStandardMaterial
+                    color='#6ea8be'
+                    side={THREE.DoubleSide}
+                    roughness={0.6}
+                    metalness={0.1}
+                  />
+                </mesh>
+              ) : null}
+            </>
+          )}
+        </Scene>
+      </Canvas>
+    </ErrorBoundary>
   )
 }

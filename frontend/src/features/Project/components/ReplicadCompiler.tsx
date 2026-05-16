@@ -67,8 +67,6 @@ export function ReplicadCompiler() {
   React.useEffect(() => {
     if (!workerReady || mainFileContent === undefined) return
 
-    console.log('Building with Replicad code:', mainFileContent)
-
     const timer = setTimeout(() => {
       setCode(mainFileContent)
       build()

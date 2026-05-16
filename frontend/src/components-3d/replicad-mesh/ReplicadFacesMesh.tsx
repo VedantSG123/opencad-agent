@@ -18,7 +18,7 @@ export const ReplicadFacesMesh: React.FC<ReplicadFacesMeshProps> = ({
   const geometry = useReplicadFaceGeometry(faces, defaultHighlights || [])
   useApplyHighlights(geometry, highlights)
 
-  const matcapTexture = useTexture('matcap-main.png')
+  const matcapTexture = useTexture('/matcap-main.png')
 
   const transparent = opacity !== undefined && opacity < 1
 
@@ -51,7 +51,7 @@ export const ReplicadFacesMesh: React.FC<ReplicadFacesMeshProps> = ({
   )
 }
 
-useTexture.preload('matcap-main.png')
+useTexture.preload('/matcap-main.png')
 
 type ReplicadFacesMeshProps = ThreeElements['mesh'] & {
   faces: ReplicadMeshedFaces

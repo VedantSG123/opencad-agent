@@ -9,7 +9,7 @@ export function ReplicadViewport() {
   const workerReady = useReplicad((state) => state.workerReady)
 
   return (
-    <>
+    <div className='relative h-full w-full'>
       <ReplicadCompiler />
       {!workerReady && (
         <div className='absolute inset-0 flex items-center justify-center text-sm text-muted-foreground'>
@@ -17,6 +17,6 @@ export function ReplicadViewport() {
         </div>
       )}
       {workerReady && <CadViewer shapes={shapes || []} hasError={hasError} />}
-    </>
+    </div>
   )
 }
