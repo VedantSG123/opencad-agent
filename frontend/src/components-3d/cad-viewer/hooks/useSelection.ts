@@ -4,7 +4,10 @@ import * as React from 'react'
 export function useSelection(
   selecedMode: string,
   validSelectedMode: string[],
-): [SelectionType | null, (shapeId: string) => (index: number) => void] {
+): [
+  SelectionType | null,
+  (shapeId: string) => (_e: unknown, index: number) => void,
+] {
   const [selection, setSelection] = React.useState<SelectionType | null>(null)
 
   if (!validSelectedMode.includes(selecedMode)) {
@@ -12,7 +15,7 @@ export function useSelection(
   }
 
   const select = (shapeId: string) => {
-    const handleSelect = debounce((index: number) => {
+    const handleSelect = debounce((_e: unknown, index: number) => {
       if (
         selection &&
         selection.shapeId === shapeId &&

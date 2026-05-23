@@ -47,19 +47,16 @@ export default React.forwardRef<StageHandle, StageProps>(function Stage(
       const newTop = box3.max.z
       const previousRadius = lastRadius.current
 
-      if (
-        !forceReset &&
-        hasFramed.current &&
-        previousRadius &&
-        previousRadius !== newRadius
-      ) {
-        const ratio = newRadius / previousRadius
-        camera.position.set(
-          camera.position.x * ratio,
-          camera.position.y * ratio,
-          camera.position.z * ratio,
-        )
-        camera.far = Math.max(5000, newRadius * 4)
+      if (!forceReset && hasFramed.current) {
+        if (previousRadius && previousRadius !== newRadius) {
+          const ratio = newRadius / previousRadius
+          camera.position.set(
+            camera.position.x * ratio,
+            camera.position.y * ratio,
+            camera.position.z * ratio,
+          )
+          camera.far = Math.max(5000, newRadius * 4)
+        }
       } else {
         camera.position.set(
           newRadius * 0.25,

@@ -64,6 +64,7 @@ export function OpenSCADViewer({
     return () => {
       geometry?.dispose()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (result?.format === 'svg' && result.blob) {

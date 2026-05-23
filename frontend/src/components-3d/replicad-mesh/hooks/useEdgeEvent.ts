@@ -1,24 +1,22 @@
 import type { ThreeEvent } from '@react-three/fiber'
 import * as React from 'react'
 import { getEdgeIndex } from 'replicad-threejs-helper'
-import * as THREE from 'three'
+import type * as THREE from 'three'
 
-export function useEdgeEvent(onClick: (edgeIndex: number) => void) {
-  const handleEdgeClick = React.useCallback(
-    (e: ThreeEvent<MouseEvent>) => {
-      if (!e.index || !(e.object instanceof THREE.LineSegments)) {
-        return
-      }
-      const edgeIndex = getEdgeIndex(
-        e.index,
-        e.object.geometry as THREE.BufferGeometry,
-      )
-      onClick(edgeIndex)
-    },
-    [onClick],
-  )
+export const getEdgeIndexFromEvent = (
+  event: ThreeEvent<MouseEvent>,
+): number => {
+  const lineSegments = event.object as THREE.LineSegments
+  return getEdgeIndex(event.index!, lineSegments.geometry)
+}
 
-  return {
-    handleEdgeClick,
-  }
+export function useEdgeEvent(
+  onEvent?: ((e: ThreeEvent<MouseEvent>, edgeIndex: number) => void) | null,
+) {
+  return React.useMemo(() => {
+    if (!onEvent) return undefined
+    return (e: ThreeEvent<MouseEvent>) => {
+      onEvent(e, getEdgeIndexFromEvent(e))
+    }
+  }, [onEvent])
 }
