@@ -23,11 +23,13 @@ function SceneLighting() {
 type OpenSCADViewerProps = {
   result: CompileResult | null
   hasError?: boolean
+  onResetView?: (reset: () => void) => void
 }
 
 export function OpenSCADViewer({
   result,
   hasError = false,
+  onResetView,
 }: OpenSCADViewerProps) {
   const [geometry, setGeometry] = React.useState<THREE.BufferGeometry | null>(
     null,
@@ -81,7 +83,7 @@ export function OpenSCADViewer({
         orthographic
         onCreated={(state) => (state.gl.localClippingEnabled = true)}
       >
-        <Scene>
+        <Scene onRef={onResetView}>
           {hasError ? (
             <ErrorMesh />
           ) : (

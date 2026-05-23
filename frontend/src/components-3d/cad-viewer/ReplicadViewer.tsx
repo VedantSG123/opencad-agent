@@ -31,6 +31,7 @@ export const CadViewer: React.FC<CadViewerProps> = ({
   shapes,
   hasError = false,
   selectionMode = 'all',
+  onResetView,
 }) => {
   const [selectedFace, selectFace] = useSelection(selectionMode, [
     'all',
@@ -58,7 +59,7 @@ export const CadViewer: React.FC<CadViewerProps> = ({
         orthographic
         onCreated={(state) => (state.gl.localClippingEnabled = true)}
       >
-        <Scene>
+        <Scene onRef={onResetView}>
           {hasError ? (
             <ErrorMesh />
           ) : (
@@ -92,4 +93,5 @@ type CadViewerProps = {
   shapes: (MeshRenderOutput | SvgRenderOutput)[]
   hasError?: boolean
   selectionMode?: 'all' | 'faces' | 'edges'
+  onResetView?: (reset: () => void) => void
 }
