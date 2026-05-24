@@ -7,12 +7,16 @@ type FocusedPanel = 'editor' | 'viewport'
 interface PanelContextValue {
   isCodeEditorCollapsed: boolean
   isAgentCollapsed: boolean
+  isConsoleCollapsed: boolean
   codeEditorRef: React.RefObject<PanelImperativeHandle | null>
   agentRef: React.RefObject<PanelImperativeHandle | null>
+  consoleRef: React.RefObject<PanelImperativeHandle | null>
   setIsCodeEditorCollapsed: (v: boolean) => void
   setIsAgentCollapsed: (v: boolean) => void
+  setIsConsoleCollapsed: (v: boolean) => void
   toggleCodeEditor: () => void
   toggleAgent: () => void
+  toggleConsole: () => void
 
   isFocusMode: boolean
   focusedPanel: FocusedPanel
@@ -25,11 +29,13 @@ const PanelContext = createContext<PanelContextValue | null>(null)
 export function PanelProvider({ children }: { children: React.ReactNode }) {
   const [isCodeEditorCollapsed, setIsCodeEditorCollapsed] = useState(false)
   const [isAgentCollapsed, setIsAgentCollapsed] = useState(false)
+  const [isConsoleCollapsed, setIsConsoleCollapsed] = useState(true)
   const [isFocusMode, setIsFocusMode] = useState(false)
   const [focusedPanel, setFocusedPanelState] = useState<FocusedPanel>('editor')
 
   const codeEditorRef = useRef<PanelImperativeHandle | null>(null)
   const agentRef = useRef<PanelImperativeHandle | null>(null)
+  const consoleRef = useRef<PanelImperativeHandle | null>(null)
 
   function toggleCodeEditor() {
     const panel = codeEditorRef.current
@@ -55,6 +61,18 @@ export function PanelProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  function toggleConsole() {
+    const panel = consoleRef.current
+    if (!panel) return
+    if (panel.isCollapsed()) {
+      panel.expand()
+      setIsConsoleCollapsed(false)
+    } else {
+      panel.collapse()
+      setIsConsoleCollapsed(true)
+    }
+  }
+
   function toggleFocusMode() {
     setIsFocusMode((v) => !v)
   }
@@ -68,12 +86,16 @@ export function PanelProvider({ children }: { children: React.ReactNode }) {
       value={{
         isCodeEditorCollapsed,
         isAgentCollapsed,
+        isConsoleCollapsed,
         codeEditorRef,
         agentRef,
+        consoleRef,
         setIsCodeEditorCollapsed,
         setIsAgentCollapsed,
+        setIsConsoleCollapsed,
         toggleCodeEditor,
         toggleAgent,
+        toggleConsole,
         isFocusMode,
         focusedPanel,
         toggleFocusMode,

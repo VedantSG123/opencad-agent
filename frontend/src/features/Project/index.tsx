@@ -7,6 +7,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from '@/components/ui/resizable'
+import { OpenSCADProvider } from '@/hooks/useOpenSCAD'
 import { useProjects } from '@/hooks/useProjects'
 import { cn } from '@/lib/utils'
 import type { Project } from '@/types/project'
@@ -151,12 +152,14 @@ export function ProjectPage() {
 
   return (
     <PanelProvider>
-      <div className='h-screen flex flex-col bg-background p-2 overflow-hidden'>
-        <TopBar project={project} />
-        <div className='flex-1 flex overflow-hidden rounded-lg border-2'>
-          <ProjectLayout project={project} />
+      <OpenSCADProvider>
+        <div className='h-screen flex flex-col bg-background p-2 overflow-hidden'>
+          <TopBar project={project} />
+          <div className='flex-1 flex overflow-hidden rounded-lg border-2'>
+            <ProjectLayout project={project} />
+          </div>
         </div>
-      </div>
+      </OpenSCADProvider>
     </PanelProvider>
   )
 }

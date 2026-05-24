@@ -4,17 +4,25 @@ import { getBuilderApi } from '@/kernels/replicad/builderApi'
 import { inSeries } from '@/kernels/replicad/inSeries'
 import type { MeshRenderOutput, SvgRenderOutput } from '@/types'
 
+export type LogEntry = {
+  type: 'log' | 'info' | 'warn' | 'error'
+  text: string
+  timestamp: number
+}
+
 type ReplicadState = {
   code: string
   shapes: (MeshRenderOutput | SvgRenderOutput)[] | null
   error: Error | null
   workerReady: boolean
+  logs: LogEntry[]
 }
 
 type ReplicadActions = {
   setCode: (code: string) => void
   build: () => Promise<void>
   initWorker: () => Promise<void>
+  clearLogs: () => void
 }
 
 const DEFAULT_SCRIPT = `
@@ -64,22 +72,42 @@ export const useReplicad = create<ReplicadState & ReplicadActions>(
     const build = async () => {
       const { code } = get()
       if (!code) {
-        set({ shapes: null, error: null })
+        set({ shapes: null, error: null, logs: [] })
         return
       }
 
       try {
         const result = await builderApi.buildFromCode(code)
 
-        if (Array.isArray(result)) {
-          set({ shapes: result, error: null })
+        if (!result.error) {
+          set({
+            shapes: result.shapes,
+            error: null,
+            logs: result.logs as LogEntry[],
+          })
         } else {
-          set({ shapes: null, error: new Error(result.message) })
+          const errorLog: LogEntry = {
+            type: 'error',
+            text: `${result.message}${result.stack ? `\n${result.stack}` : ''}`,
+            timestamp: Date.now(),
+          }
+          set({
+            shapes: null,
+            error: new Error(result.message),
+            logs: [...result.logs, errorLog] as LogEntry[],
+          })
         }
       } catch (e) {
+        const err = e instanceof Error ? e : new Error(String(e))
+        const errorLog: LogEntry = {
+          type: 'error',
+          text: err.message + (err.stack ? `\n${err.stack}` : ''),
+          timestamp: Date.now(),
+        }
         set({
           shapes: null,
-          error: e instanceof Error ? e : new Error(String(e)),
+          error: err,
+          logs: [errorLog],
         })
       }
     }
@@ -91,9 +119,11 @@ export const useReplicad = create<ReplicadState & ReplicadActions>(
       workerReady: false,
       shapes: null,
       error: null,
+      logs: [],
       setCode: (code: string) => set({ code }),
       build: runBuild,
       initWorker,
+      clearLogs: () => set({ logs: [] }),
     }
   },
 )

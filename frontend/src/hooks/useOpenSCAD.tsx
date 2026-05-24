@@ -7,11 +7,18 @@ import { createOpenSCADApi } from '@/kernels/openscad/openscadApi'
 import type { CompileResult } from '@/kernels/openscad/OpenSCADWrapper'
 import { inSeries } from '@/kernels/replicad/inSeries'
 
+export type LogEntry = {
+  type: 'log' | 'info' | 'warn' | 'error'
+  text: string
+  timestamp: number
+}
+
 type OpenSCADState = {
   result: CompileResult | null
   error: Error | null
   isCompiling: boolean
   isExporting: boolean
+  logs: LogEntry[]
 }
 
 type OpenSCADActions = {
@@ -24,6 +31,7 @@ type OpenSCADActions = {
     remoteFsUrl?: string,
   ) => Promise<CompileResult | null>
   terminate: () => void
+  clearLogs: () => void
 }
 
 export type OpenSCADStore = ReturnType<typeof createOpenSCADStore>
@@ -41,19 +49,46 @@ export function createOpenSCADStore() {
 
       try {
         const result = await api.compile(main, overrides, remoteFsUrl)
+        const now = Date.now()
+        const logs: LogEntry[] = []
+
+        result.stdout.forEach((text, i) => {
+          logs.push({
+            type: 'log',
+            text,
+            timestamp: now + i,
+          })
+        })
+
+        result.stderr.forEach((text, i) => {
+          logs.push({
+            type: 'error',
+            text,
+            timestamp: now + result.stdout.length + i,
+          })
+        })
+
         if (result.error) {
           set({
             result,
             error: new Error(result.stderr.join('\n') || 'Compile error'),
+            logs,
           })
         } else {
-          set({ result, error: null })
+          set({ result, error: null, logs })
         }
       } catch (e) {
         console.log('Compilation failed with error', e)
+        const err = e instanceof Error ? e : new Error(String(e))
+        const errorLog: LogEntry = {
+          type: 'error',
+          text: err.message + (err.stack ? `\n${err.stack}` : ''),
+          timestamp: Date.now(),
+        }
         set({
           result: null,
-          error: e instanceof Error ? e : new Error(String(e)),
+          error: err,
+          logs: [errorLog],
         })
       } finally {
         set({ isCompiling: false })
@@ -67,6 +102,7 @@ export function createOpenSCADStore() {
       error: null,
       isCompiling: false,
       isExporting: false,
+      logs: [],
       compile: runCompile,
       exportSTL: async (
         main: { path: string; code: string },
@@ -90,9 +126,11 @@ export function createOpenSCADStore() {
           error: null,
           isCompiling: false,
           isExporting: false,
+          logs: [],
         })
         api.terminate()
       },
+      clearLogs: () => set({ logs: [] }),
     }
   })
 }

@@ -1,20 +1,47 @@
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from '@/components/ui/resizable'
+import { usePanelContext } from '@/features/Project/context/PanelContext'
+
+import { ConsolePanel } from './editor/ConsolePanel'
 import { EditorDialog } from './editor/EditorDialog'
 import { FileContentView } from './editor/FileContentView'
 import { FileTree } from './editor/FileTree'
 import { RibbonBar } from './editor/RibbonBar'
 
 export function CodeEditorPanel() {
+  const { consoleRef, setIsConsoleCollapsed } = usePanelContext()
+
   return (
     <div className='h-full flex flex-col overflow-hidden'>
       <div className='bg-card'>
         <RibbonBar />
       </div>
-      <div className='flex flex-1 overflow-hidden'>
-        <div className='bg-card'>
-          <FileTree />
-        </div>
-        <FileContentView />
-      </div>
+      <ResizablePanelGroup orientation='vertical' className='flex-1'>
+        <ResizablePanel defaultSize={80} minSize={30}>
+          <div className='flex flex-1 h-full overflow-hidden'>
+            <div className='bg-card'>
+              <FileTree />
+            </div>
+            <FileContentView />
+          </div>
+        </ResizablePanel>
+        <ResizableHandle className='bg-border/60 h-px' />
+        <ResizablePanel
+          defaultSize={20}
+          minSize={10}
+          collapsible
+          collapsedSize={0}
+          panelRef={consoleRef}
+          onResize={(size) => {
+            setIsConsoleCollapsed(size.asPercentage === 0)
+          }}
+        >
+          <ConsolePanel />
+        </ResizablePanel>
+      </ResizablePanelGroup>
       <EditorDialog />
     </div>
   )

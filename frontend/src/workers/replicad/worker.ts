@@ -89,20 +89,121 @@ async function init() {
   return true
 }
 
+type LogEntry = {
+  type: 'log' | 'info' | 'warn' | 'error'
+  text: string
+  timestamp: number
+}
+
+let capturedLogs: LogEntry[] = []
+
+const originalLog = console.log
+const originalInfo = console.info
+const originalWarn = console.warn
+const originalError = console.error
+
+function startCapturingLogs() {
+  capturedLogs = []
+  const capture =
+    (type: 'log' | 'info' | 'warn' | 'error') =>
+    (...args: unknown[]) => {
+      const text = args
+        .map((arg) => {
+          if (arg === null) return 'null'
+          if (arg === undefined) return 'undefined'
+          if (typeof arg === 'object') {
+            try {
+              return JSON.stringify(arg)
+            } catch {
+              return '[Object]'
+            }
+          }
+          if (typeof arg === 'string') return arg
+          if (
+            typeof arg === 'number' ||
+            typeof arg === 'boolean' ||
+            typeof arg === 'bigint' ||
+            typeof arg === 'symbol'
+          ) {
+            return arg.toString()
+          }
+          if (typeof arg === 'function') {
+            return arg.toString()
+          }
+          return ''
+        })
+        .join(' ')
+
+      capturedLogs.push({
+        type,
+        text,
+        timestamp: Date.now(),
+      })
+    }
+
+  console.log = (...args: unknown[]) => {
+    capture('log')(...args)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+    originalLog(...(args as any[]))
+  }
+  console.info = (...args: unknown[]) => {
+    capture('info')(...args)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+    originalInfo(...(args as any[]))
+  }
+  console.warn = (...args: unknown[]) => {
+    capture('warn')(...args)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+    originalWarn(...(args as any[]))
+  }
+  console.error = (...args: unknown[]) => {
+    capture('error')(...args)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+    originalError(...(args as any[]))
+  }
+}
+
+function stopCapturingLogs() {
+  console.log = originalLog
+  console.info = originalInfo
+  console.warn = originalWarn
+  console.error = originalError
+  return capturedLogs
+}
+
 async function buildFromCode(code: string) {
   await init()
 
+  startCapturingLogs()
   let shapes
+  let errorResult = null
 
   try {
     shapes = runFunctionCode(code)
   } catch (e) {
-    return formatException(OC, e)
+    errorResult = formatException(OC, e)
   }
 
-  return getRenderOutput(shapes, (cleanedShapes) => {
+  const logs = stopCapturingLogs()
+
+  if (errorResult) {
+    return {
+      error: true as const,
+      message: errorResult.message,
+      stack: errorResult.stack,
+      logs,
+    }
+  }
+
+  const renderOutput = getRenderOutput(shapes, (cleanedShapes) => {
     SHAPE_MEMO[DEFAULT_MEMO_KEY] = cleanedShapes
   })
+
+  return {
+    error: false as const,
+    shapes: renderOutput,
+    logs,
+  }
 }
 
 function exportToFile(

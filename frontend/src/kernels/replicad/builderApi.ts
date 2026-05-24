@@ -17,8 +17,21 @@ interface CadWorkerService {
         error: true
         message: string
         stack?: string
+        logs: Array<{
+          type: 'log' | 'info' | 'warn' | 'error'
+          text: string
+          timestamp: number
+        }>
       }
-    | Array<SvgRenderOutput | MeshRenderOutput>
+    | {
+        error: false
+        shapes: Array<SvgRenderOutput | MeshRenderOutput>
+        logs: Array<{
+          type: 'log' | 'info' | 'warn' | 'error'
+          text: string
+          timestamp: number
+        }>
+      }
   >
   exportToFile(
     fileType?: ExportFileTypes,

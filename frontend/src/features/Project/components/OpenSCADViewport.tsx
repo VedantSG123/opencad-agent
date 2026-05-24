@@ -1,7 +1,7 @@
 import * as React from 'react'
 
 import { OpenSCADViewer } from '@/components-3d/cad-viewer/OpenSCADViewer'
-import { OpenSCADProvider, useOpenSCAD } from '@/hooks/useOpenSCAD'
+import { useOpenSCAD } from '@/hooks/useOpenSCAD'
 
 import { OpenSCADCompiler } from './OpenSCADCompiler'
 
@@ -46,9 +46,9 @@ function OpenSCADViewportInner() {
 
 export function OpenSCADViewport() {
   return (
-    <OpenSCADProvider>
+    <>
       <OpenSCADCompiler />
       <OpenSCADViewportInner />
-    </OpenSCADProvider>
+    </>
   )
 }

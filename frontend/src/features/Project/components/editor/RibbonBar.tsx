@@ -5,6 +5,7 @@ import {
   Crown,
   PanelLeftClose,
   PanelLeftOpen,
+  Terminal,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -36,7 +37,8 @@ export function RibbonBar() {
     requestCloseTab,
     dirtyTabs,
   } = useEditor()
-  const { isFocusMode, setFocusedPanel } = usePanelContext()
+  const { isFocusMode, setFocusedPanel, toggleConsole, isConsoleCollapsed } =
+    usePanelContext()
   const [mainFileDialogOpen, setMainFileDialogOpen] = useState(false)
 
   const missingMainFile = project !== undefined && project.file === null
@@ -121,6 +123,21 @@ export function RibbonBar() {
           )
         })}
       </div>
+
+      <Button
+        variant='ghost'
+        size='icon'
+        className={cn(
+          'h-7 w-7 shrink-0 transition-colors',
+          !isConsoleCollapsed
+            ? 'text-foreground bg-accent'
+            : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+        )}
+        onClick={toggleConsole}
+        title='Toggle execution console'
+      >
+        <Terminal className='h-4 w-4' />
+      </Button>
 
       {isFocusMode && (
         <button
