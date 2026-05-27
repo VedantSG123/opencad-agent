@@ -13,6 +13,60 @@ export type LogEntry = {
   timestamp: number
 }
 
+const ERROR_PATTERNS = [
+  /^ERROR:/i,
+  /Parser error/i,
+  /Syntax error/i,
+  /Can't open library/i,
+  /Current top level object is empty/i,
+]
+
+const WARN_PATTERNS = [/^WARNING:/i]
+
+const INFO_PATTERNS = [
+  /Geometries in cache:/i,
+  /Geometry cache size in bytes:/i,
+  /CGAL Polyhedrons in cache:/i,
+  /CGAL cache size in bytes:/i,
+  /Total rendering time:/i,
+  /Top level object is a 3D object/i,
+  /^\s*Convex:/i,
+  /^\s*Triangles:/i,
+  /Could not initialize localization/i,
+]
+
+export function classifyOpenScadLog(text: string, timestamp: number): LogEntry {
+  if (ERROR_PATTERNS.some((p) => p.test(text))) {
+    return {
+      type: 'error',
+      text,
+      timestamp,
+    }
+  }
+
+  if (WARN_PATTERNS.some((p) => p.test(text))) {
+    return {
+      type: 'warn',
+      text,
+      timestamp,
+    }
+  }
+
+  if (INFO_PATTERNS.some((p) => p.test(text))) {
+    return {
+      type: 'info',
+      text,
+      timestamp,
+    }
+  }
+
+  return {
+    type: 'log',
+    text,
+    timestamp,
+  }
+}
+
 type OpenSCADState = {
   result: CompileResult | null
   error: Error | null
@@ -52,20 +106,29 @@ export function createOpenSCADStore() {
         const now = Date.now()
         const logs: LogEntry[] = []
 
-        result.stdout.forEach((text, i) => {
-          logs.push({
-            type: 'log',
-            text,
-            timestamp: now + i,
-          })
+        let index = 0
+        result.stdout.forEach((text) => {
+          text
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .forEach((line) => {
+              logs.push({
+                type: 'log',
+                text: line,
+                timestamp: now + index++,
+              })
+            })
         })
 
-        result.stderr.forEach((text, i) => {
-          logs.push({
-            type: 'error',
-            text,
-            timestamp: now + result.stdout.length + i,
-          })
+        result.stderr.forEach((text) => {
+          text
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .forEach((line) => {
+              logs.push(classifyOpenScadLog(line, now + index++))
+            })
         })
 
         if (result.error) {

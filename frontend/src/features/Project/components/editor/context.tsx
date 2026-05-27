@@ -57,6 +57,29 @@ async function buildTree(
   })
 }
 
+function findFileInTree(items: TreeDataItem[], targetPath: string): boolean {
+  for (const item of items) {
+    if (item.children) {
+      if (findFileInTree(item.children, targetPath)) return true
+    } else if (item.id === targetPath) {
+      return true
+    }
+  }
+  return false
+}
+
+function findFirstFile(items: TreeDataItem[]): string | null {
+  for (const item of items) {
+    if (item.children) {
+      const found = findFirstFile(item.children)
+      if (found) return found
+    } else {
+      return item.id
+    }
+  }
+  return null
+}
+
 /** Imperative API that MonacoEditor registers so the context can read/write models. */
 export interface EditorAPI {
   getContent: (path: string) => string | null
@@ -125,6 +148,48 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
     version: number
   }>({ tab: null, version: 0 })
   const [dirtyTabs, setDirtyTabs] = useState<Set<string>>(new Set())
+
+  const hasOpenedDefaultRef = useRef(false)
+
+  useEffect(() => {
+    hasOpenedDefaultRef.current = false
+  }, [project.id])
+
+  useEffect(() => {
+    if (
+      status === 'ready' &&
+      treeData.length > 0 &&
+      !hasOpenedDefaultRef.current
+    ) {
+      hasOpenedDefaultRef.current = true
+      const rel =
+        project.file &&
+        project.directory &&
+        project.file.startsWith(project.directory)
+          ? project.file.slice(project.directory.length)
+          : null
+      const mainFileVirtualPath = rel
+        ? rel.startsWith('/')
+          ? rel
+          : `/${rel}`
+        : `/main${project.cad_kernel === 'replicad' ? '.js' : '.scad'}`
+
+      const exists = findFileInTree(treeData, mainFileVirtualPath)
+      if (exists) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setOpenTabs([mainFileVirtualPath])
+
+        setActiveTab(mainFileVirtualPath)
+      } else {
+        const firstFile = findFirstFile(treeData)
+        if (firstFile) {
+          setOpenTabs([firstFile])
+
+          setActiveTab(firstFile)
+        }
+      }
+    }
+  }, [status, treeData, project])
 
   const isLoadingContent =
     activeTab !== null &&

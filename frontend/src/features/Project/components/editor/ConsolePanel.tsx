@@ -3,28 +3,12 @@ import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
 import { usePanelContext } from '@/features/Project/context/PanelContext'
-import { useOpenSCAD } from '@/hooks/useOpenSCAD'
-import { useReplicad } from '@/hooks/useReplicad'
 import { cn } from '@/lib/utils'
 
-import { useEditor } from './context'
+import { useConsoleLogs } from './useConsoleLogs'
 
 export function ConsolePanel() {
-  const { project } = useEditor()
-  const isReplicad = project?.cad_kernel === 'replicad'
-
-  const replicadLogs = useReplicad((state) => state.logs)
-  const clearReplicadLogs = useReplicad((state) => state.clearLogs)
-  const replicadError = useReplicad((state) => state.error)
-
-  const openscadLogs = useOpenSCAD((state) => state.logs)
-  const clearOpenscadLogs = useOpenSCAD((state) => state.clearLogs)
-  const openscadError = useOpenSCAD((state) => state.error)
-
-  const logs = isReplicad ? replicadLogs : openscadLogs
-  const clearLogs = isReplicad ? clearReplicadLogs : clearOpenscadLogs
-  const error = isReplicad ? replicadError : openscadError
-
+  const { logs, clearLogs, error } = useConsoleLogs()
   const { toggleConsole, isConsoleCollapsed } = usePanelContext()
 
   const scrollRef = React.useRef<HTMLDivElement>(null)
