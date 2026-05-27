@@ -12,7 +12,10 @@ import CadWorker from '@/workers/replicad/worker?worker'
 // Define the worker service interface based on the exposed service
 interface CadWorkerService {
   init(): Promise<boolean>
-  buildFromCode(code: string): Promise<
+  buildFromCode(
+    code: string,
+    params?: Record<string, unknown>,
+  ): Promise<
     | {
         error: true
         message: string
@@ -31,6 +34,7 @@ interface CadWorkerService {
           text: string
           timestamp: number
         }>
+        defaultParams?: Record<string, unknown>
       }
   >
   exportToFile(
@@ -78,8 +82,8 @@ class BuilderApi {
   /**
    * Build CAD shapes from code
    */
-  async buildFromCode(code: string) {
-    return await this.workerApi.buildFromCode(code)
+  async buildFromCode(code: string, params?: Record<string, unknown>) {
+    return await this.workerApi.buildFromCode(code, params)
   }
 
   /**

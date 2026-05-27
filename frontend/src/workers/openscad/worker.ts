@@ -28,9 +28,18 @@ async function exportSTL(
   return getWrapper().exportSTL(main, overrides, remoteFsUrl)
 }
 
+async function checkSyntax(
+  main: { path: string; code: string },
+  overrides?: Record<string, { content: string }>,
+  remoteFsUrl?: string,
+): Promise<CompileResult> {
+  return getWrapper().checkSyntax(main, overrides, remoteFsUrl)
+}
+
 const service = {
   compile,
   exportSTL,
+  checkSyntax,
 }
 
 expose(service)

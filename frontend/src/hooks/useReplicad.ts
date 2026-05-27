@@ -16,11 +16,12 @@ type ReplicadState = {
   error: Error | null
   workerReady: boolean
   logs: LogEntry[]
+  defaultParams: Record<string, unknown> | null
 }
 
 type ReplicadActions = {
   setCode: (code: string) => void
-  build: () => Promise<void>
+  build: (params?: Record<string, unknown>) => Promise<void>
   initWorker: () => Promise<void>
   clearLogs: () => void
 }
@@ -28,9 +29,16 @@ type ReplicadActions = {
 const DEFAULT_SCRIPT = `
 const { draw } = replicad;
 
-const main = () => {
-  const baseWidth = 20;
-  const height = 100;
+const defaultParams = {
+  baseWidth: { value: 20, min: 5, max: 40, step: 1 },
+  height: { value: 100, min: 20, max: 150, step: 5 },
+  thickness: { value: 5, min: 1, max: 10, step: 0.5 },
+  filletRadius: { value: 1.7, min: 0.5, max: 5, step: 0.1 }
+};
+
+const main = (replicad, params) => {
+  const baseWidth = params.baseWidth;
+  const height = params.height;
 
   const profile = draw()
     .hLine(baseWidth)
@@ -51,8 +59,8 @@ const main = () => {
   return profile
     .sketchOnPlane("XZ")
     .revolve()
-    .shell(5, (f) => f.containsPoint([0, 0, height]))
-    .fillet(1.7, (e) => e.inPlane("XY", height));
+    .shell(params.thickness, (f) => f.containsPoint([0, 0, height]))
+    .fillet(params.filletRadius, (e) => e.inPlane("XY", height));
 };
 `
 
@@ -69,21 +77,22 @@ export const useReplicad = create<ReplicadState & ReplicadActions>(
       }
     }
 
-    const build = async () => {
+    const build = async (params?: Record<string, unknown>) => {
       const { code } = get()
       if (!code) {
-        set({ shapes: null, error: null, logs: [] })
+        set({ shapes: null, error: null, logs: [], defaultParams: null })
         return
       }
 
       try {
-        const result = await builderApi.buildFromCode(code)
+        const result = await builderApi.buildFromCode(code, params)
 
         if (!result.error) {
           set({
             shapes: result.shapes,
             error: null,
             logs: result.logs as LogEntry[],
+            defaultParams: result.defaultParams || null,
           })
         } else {
           const errorLog: LogEntry = {
@@ -95,6 +104,7 @@ export const useReplicad = create<ReplicadState & ReplicadActions>(
             shapes: null,
             error: new Error(result.message),
             logs: [...result.logs, errorLog] as LogEntry[],
+            defaultParams: null,
           })
         }
       } catch (e) {
@@ -108,6 +118,7 @@ export const useReplicad = create<ReplicadState & ReplicadActions>(
           shapes: null,
           error: err,
           logs: [errorLog],
+          defaultParams: null,
         })
       }
     }
@@ -120,6 +131,7 @@ export const useReplicad = create<ReplicadState & ReplicadActions>(
       shapes: null,
       error: null,
       logs: [],
+      defaultParams: null,
       setCode: (code: string) => set({ code }),
       build: runBuild,
       initWorker,

@@ -59,22 +59,36 @@ export function OpenSCADCompiler() {
 
   const files = useKernelFiles((state) => state.files)
   const compile = useOpenSCAD((state) => state.compile)
+  const checkSyntax = useOpenSCAD((state) => state.checkSyntax)
 
-  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const syntaxTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  )
+  const renderTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  )
 
   React.useEffect(() => {
     if (!mainFilePath || !mainFileContent) return
 
-    if (timerRef.current) clearTimeout(timerRef.current)
+    if (syntaxTimerRef.current) clearTimeout(syntaxTimerRef.current)
+    if (renderTimerRef.current) clearTimeout(renderTimerRef.current)
 
-    timerRef.current = setTimeout(() => {
-      compile({ path: mainFilePath, code: mainFileContent }, remoteFsUrl)
+    // Fast syntax validation triggers almost instantly (150ms)
+    syntaxTimerRef.current = setTimeout(() => {
+      checkSyntax({ path: mainFilePath, code: mainFileContent }, remoteFsUrl)
     }, 150)
 
+    // Full 3D rendering compilation triggers when typing stops for 1 second (1000ms)
+    renderTimerRef.current = setTimeout(() => {
+      compile({ path: mainFilePath, code: mainFileContent }, remoteFsUrl)
+    }, 1000)
+
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
+      if (syntaxTimerRef.current) clearTimeout(syntaxTimerRef.current)
+      if (renderTimerRef.current) clearTimeout(renderTimerRef.current)
     }
-  }, [files, mainFilePath, mainFileContent, remoteFsUrl, compile])
+  }, [files, mainFilePath, mainFileContent, remoteFsUrl, checkSyntax, compile])
 
   return null
 }

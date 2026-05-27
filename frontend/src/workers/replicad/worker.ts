@@ -17,11 +17,29 @@ const DEFAULT_MEMO_KEY = 'default_shapes'
 function getEditedCode(code: string) {
   return `
 ${code}
-return main(replicad);
+let dp = {}
+try {
+  dp = defaultParams;
+} catch (error) {}
+
+const flattenParams = (p) => {
+  if (!p) return {};
+  const flat = {};
+  for (const [key, val] of Object.entries(p)) {
+    if (val && typeof val === 'object' && 'value' in val) {
+      flat[key] = val.value;
+    } else {
+      flat[key] = val;
+    }
+  }
+  return flat;
+};
+
+return main(replicad, flattenParams(__inputParams || dp));
 `
 }
 
-function runFunctionCode(code: string) {
+function runFunctionCode(code: string, params?: Record<string, unknown>) {
   if (!loaded) {
     throw new Error('CAD worker not initialized')
   }
@@ -30,7 +48,31 @@ function runFunctionCode(code: string) {
   return runFunctionWithContext(editedCode, {
     replicad,
     OC,
+    __inputParams: params,
   })
+}
+
+function extractDefaultParams(code: string): Record<string, unknown> | null {
+  if (!loaded) {
+    throw new Error('CAD worker not initialized')
+  }
+
+  const checkCode = `
+${code}
+try {
+  return defaultParams;
+} catch (error) {
+  return null;
+}
+  `
+  try {
+    return runFunctionWithContext(checkCode, {
+      replicad,
+      OC,
+    })
+  } catch {
+    return null
+  }
 }
 
 function formatException(oc: OpenCascadeInstance | null, e: unknown) {
@@ -171,15 +213,17 @@ function stopCapturingLogs() {
   return capturedLogs
 }
 
-async function buildFromCode(code: string) {
+async function buildFromCode(code: string, params?: Record<string, unknown>) {
   await init()
+
+  const defaultParams = extractDefaultParams(code)
 
   startCapturingLogs()
   let shapes
   let errorResult = null
 
   try {
-    shapes = runFunctionCode(code)
+    shapes = runFunctionCode(code, params)
   } catch (e) {
     errorResult = formatException(OC, e)
   }
@@ -203,6 +247,7 @@ async function buildFromCode(code: string) {
     error: false as const,
     shapes: renderOutput,
     logs,
+    defaultParams,
   }
 }
 

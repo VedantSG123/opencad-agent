@@ -306,4 +306,38 @@ export class OpenSCADWrapper {
       return { blob: null, format: null, stdout, stderr, error: true }
     }
   }
+
+  /**
+   * Checks syntax of OpenSCAD code without generating geometry.
+   */
+  async checkSyntax(
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    remoteFsUrl?: string,
+  ): Promise<CompileResult> {
+    const stdout: string[] = []
+    const stderr: string[] = []
+    const instance = await this.createInstance(
+      stdout,
+      stderr,
+      main,
+      remoteFsUrl,
+      overrides,
+    )
+
+    const targetPath = main.path.startsWith('/') ? main.path : `/${main.path}`
+    this.mkdirForFile(instance, targetPath)
+    instance.FS.writeFile(targetPath, main.code)
+
+    instance.callMain(['-o', '/out.json', '--export-format=param', targetPath])
+
+    const error = stderr.some((line) => line.includes('ERROR:'))
+    return {
+      blob: null,
+      format: null,
+      stdout,
+      stderr,
+      error,
+    }
+  }
 }

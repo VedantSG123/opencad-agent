@@ -6,10 +6,15 @@ import { useEffect, useRef } from 'react'
 import replicadTypes from 'virtual:replicad-types'
 
 import { useTheme } from '@/contexts/theme-context'
+import { useOpenSCAD } from '@/hooks/useOpenSCAD'
 import type { CadKernel } from '@/types/project'
 
 import { usePanelContext } from '../../context/PanelContext'
 import type { EditorAPI } from './context'
+import { registerOpenSCAD } from './openscad/register'
+
+// Register OpenSCAD language support in Monaco
+registerOpenSCAD(monaco)
 
 // Configure Monaco workers once at module level
 window.MonacoEnvironment = {
@@ -52,6 +57,7 @@ const EXT_TO_LANGUAGE: Record<string, string> = {
   yaml: 'yaml',
   yml: 'yaml',
   toml: 'ini',
+  scad: 'openscad',
 }
 
 function detectLanguage(path: string): string {
@@ -89,6 +95,7 @@ export function MonacoEditor({
   const { theme } = useTheme()
   const { isFocusMode, focusedPanel } = usePanelContext()
   const isTransparent = isFocusMode && focusedPanel === 'editor'
+  const openscadMarkers = useOpenSCAD((state) => state.markers)
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const modelsRef = useRef<Map<string, monaco.editor.ITextModel>>(new Map())
@@ -310,6 +317,39 @@ export function MonacoEditor({
     }
     onDirtyChangeRef.current(path, false)
   }, [path, content, isLoading])
+
+  // ── Sync OpenSCAD markers ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (kernel !== 'openscad') return
+
+    const models = modelsRef.current
+    models.forEach((model, modelPath) => {
+      const modelMarkers = openscadMarkers
+        .filter((marker) => {
+          const markerFileNormalized = marker.file.startsWith('/')
+            ? marker.file
+            : `/${marker.file}`
+          const modelPathNormalized = modelPath.startsWith('/')
+            ? modelPath
+            : `/${modelPath}`
+          return modelPathNormalized === markerFileNormalized
+        })
+        .map((marker) => ({
+          startLineNumber: marker.line,
+          startColumn: 1,
+          endLineNumber: marker.line,
+          endColumn: 1000,
+          message: marker.message,
+          severity:
+            marker.severity === 'error'
+              ? monaco.MarkerSeverity.Error
+              : monaco.MarkerSeverity.Warning,
+        }))
+
+      monaco.editor.setModelMarkers(model, 'openscad', modelMarkers)
+    })
+  }, [openscadMarkers, kernel])
 
   // ── Dispose models for closed tabs ─────────────────────────────────────────────
 

@@ -15,6 +15,11 @@ interface OpenSCADWorkerService {
     overrides?: Record<string, { content: string }>,
     remoteFsUrl?: string,
   ): Promise<CompileResult>
+  checkSyntax(
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    remoteFsUrl?: string,
+  ): Promise<CompileResult>
 }
 
 export class OpenSCADApi {
@@ -43,6 +48,14 @@ export class OpenSCADApi {
     remoteFsUrl?: string,
   ): Promise<CompileResult> {
     return this.getWorkerApi().exportSTL(main, overrides, remoteFsUrl)
+  }
+
+  async checkSyntax(
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    remoteFsUrl?: string,
+  ): Promise<CompileResult> {
+    return this.getWorkerApi().checkSyntax(main, overrides, remoteFsUrl)
   }
 
   terminate(): void {

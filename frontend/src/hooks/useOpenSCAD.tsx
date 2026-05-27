@@ -73,9 +73,72 @@ type OpenSCADState = {
   isCompiling: boolean
   isExporting: boolean
   logs: LogEntry[]
+  markers: EditorMarker[]
+}
+
+export type EditorMarker = {
+  severity: 'error' | 'warning'
+  message: string
+  line: number
+  file: string
+}
+
+export function parseOpenSCADDiagnostics(
+  stderrLines: string[],
+): EditorMarker[] {
+  const markers: EditorMarker[] = []
+
+  for (const line of stderrLines) {
+    // 1. ERROR: Parser error in file "filename", line X: message
+    let m = /^ERROR: Parser error in file "([^"]+)", line (\d+): (.*)$/i.exec(
+      line,
+    )
+    if (m) {
+      const [_, file, lineNum, message] = m
+      markers.push({
+        severity: 'error',
+        message: message.trim(),
+        line: Number(lineNum),
+        file,
+      })
+      continue
+    }
+
+    // 2. ERROR: Parser error: message in file filename, line X
+    m = /^ERROR: Parser error: (.*?) in file ([^",]+), line (\d+)$/i.exec(line)
+    if (m) {
+      const [_, message, file, lineNum] = m
+      markers.push({
+        severity: 'error',
+        message: message.trim(),
+        line: Number(lineNum),
+        file,
+      })
+      continue
+    }
+
+    // 3. WARNING: message, in file filename, line X
+    m = /^WARNING: (.*?),? in file ([^,]+), line (\d+)\.?/i.exec(line)
+    if (m) {
+      const [_, message, file, lineNum] = m
+      markers.push({
+        severity: 'warning',
+        message: message.trim(),
+        line: Number(lineNum),
+        file,
+      })
+      continue
+    }
+  }
+
+  return markers
 }
 
 type OpenSCADActions = {
+  checkSyntax: (
+    main: { path: string; code: string },
+    remoteFsUrl?: string,
+  ) => Promise<void>
   compile: (
     main: { path: string; code: string },
     remoteFsUrl?: string,
@@ -94,17 +157,17 @@ export function createOpenSCADStore() {
   const api = createOpenSCADApi()
 
   return createStore<OpenSCADState & OpenSCADActions>((set) => {
-    const compileInternal = async (
+    const checkSyntaxInternal = async (
       main: { path: string; code: string },
       remoteFsUrl?: string,
     ) => {
-      set({ isCompiling: true })
       const overrides = kernelFilesStore.getState().files
 
       try {
-        const result = await api.compile(main, overrides, remoteFsUrl)
+        const result = await api.checkSyntax(main, overrides, remoteFsUrl)
         const now = Date.now()
         const logs: LogEntry[] = []
+        const stderrLines: string[] = []
 
         let index = 0
         result.stdout.forEach((text) => {
@@ -128,17 +191,67 @@ export function createOpenSCADStore() {
             .filter(Boolean)
             .forEach((line) => {
               logs.push(classifyOpenScadLog(line, now + index++))
+              stderrLines.push(line)
             })
         })
+
+        const markers = parseOpenSCADDiagnostics(stderrLines)
+        set({ logs, markers })
+      } catch (e) {
+        console.log('Syntax checking failed with error', e)
+      }
+    }
+
+    const compileInternal = async (
+      main: { path: string; code: string },
+      remoteFsUrl?: string,
+    ) => {
+      set({ isCompiling: true })
+      const overrides = kernelFilesStore.getState().files
+
+      try {
+        const result = await api.compile(main, overrides, remoteFsUrl)
+        const now = Date.now()
+        const logs: LogEntry[] = []
+        const stderrLines: string[] = []
+
+        let index = 0
+        result.stdout.forEach((text) => {
+          text
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .forEach((line) => {
+              logs.push({
+                type: 'log',
+                text: line,
+                timestamp: now + index++,
+              })
+            })
+        })
+
+        result.stderr.forEach((text) => {
+          text
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .forEach((line) => {
+              logs.push(classifyOpenScadLog(line, now + index++))
+              stderrLines.push(line)
+            })
+        })
+
+        const markers = parseOpenSCADDiagnostics(stderrLines)
 
         if (result.error) {
           set({
             result,
             error: new Error(result.stderr.join('\n') || 'Compile error'),
             logs,
+            markers,
           })
         } else {
-          set({ result, error: null, logs })
+          set({ result, error: null, logs, markers })
         }
       } catch (e) {
         console.log('Compilation failed with error', e)
@@ -152,12 +265,14 @@ export function createOpenSCADStore() {
           result: null,
           error: err,
           logs: [errorLog],
+          markers: [],
         })
       } finally {
         set({ isCompiling: false })
       }
     }
 
+    const runCheckSyntax = inSeries(checkSyntaxInternal)
     const runCompile = inSeries(compileInternal)
 
     return {
@@ -166,6 +281,8 @@ export function createOpenSCADStore() {
       isCompiling: false,
       isExporting: false,
       logs: [],
+      markers: [],
+      checkSyntax: runCheckSyntax,
       compile: runCompile,
       exportSTL: async (
         main: { path: string; code: string },
@@ -190,10 +307,11 @@ export function createOpenSCADStore() {
           isCompiling: false,
           isExporting: false,
           logs: [],
+          markers: [],
         })
         api.terminate()
       },
-      clearLogs: () => set({ logs: [] }),
+      clearLogs: () => set({ logs: [], markers: [] }),
     }
   })
 }
