@@ -3,6 +3,8 @@
  */
 import { configure, fs, mounts, Port, vfs } from '@zenfs/core'
 
+import type { ParameterSet } from '@/features/Project/components/editor/openscad/customizer-types'
+
 import { resolveProjectDependencies } from './dependencyScanner'
 import type { InitOptions, OpenSCAD } from './library/openscad'
 import openscad from './library/openscad.js'
@@ -15,6 +17,17 @@ export interface CompileResult {
   stdout: string[]
   stderr: string[]
   error: boolean
+  parameterSet?: ParameterSet
+}
+
+function formatValue(val: unknown): string {
+  if (typeof val === 'string') {
+    return `"${val}"`
+  } else if (Array.isArray(val)) {
+    return `[${val.map(formatValue).join(', ')}]`
+  } else {
+    return `${String(val)}`
+  }
 }
 
 export class OpenSCADWrapper {
@@ -174,6 +187,7 @@ export class OpenSCADWrapper {
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     remoteFsUrl?: string,
+    vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
     const stdout: string[] = []
     const stderr: string[] = []
@@ -190,6 +204,10 @@ export class OpenSCADWrapper {
     this.mkdirForFile(instance, targetPath)
     instance.FS.writeFile(targetPath, main.code)
 
+    const varArgs = vars
+      ? Object.entries(vars).map(([k, v]) => `-D${k}=${formatValue(v)}`)
+      : []
+
     instance.callMain([
       '-o',
       '/out.stl',
@@ -197,6 +215,7 @@ export class OpenSCADWrapper {
       '--enable=manifold',
       '--enable=fast-csg',
       '--enable=lazy-union',
+      ...varArgs,
       targetPath,
     ])
 
@@ -216,7 +235,14 @@ export class OpenSCADWrapper {
           line.includes('Current top level object is not a 3D object.'),
         )
       ) {
-        return this.compileSVG(main, overrides, remoteFsUrl, stdout, stderr)
+        return this.compileSVG(
+          main,
+          overrides,
+          remoteFsUrl,
+          stdout,
+          stderr,
+          vars,
+        )
       }
 
       return { blob: null, format: null, stdout, stderr, error: true }
@@ -229,6 +255,7 @@ export class OpenSCADWrapper {
     remoteFsUrl: string | undefined,
     stdout: string[],
     stderr: string[],
+    vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
     const svgInstance = await this.createInstance(
       stdout,
@@ -242,7 +269,17 @@ export class OpenSCADWrapper {
     this.mkdirForFile(svgInstance, targetPath)
     svgInstance.FS.writeFile(targetPath, main.code)
 
-    svgInstance.callMain(['-o', '/out.svg', '--export-format=svg', targetPath])
+    const varArgs = vars
+      ? Object.entries(vars).map(([k, v]) => `-D${k}=${formatValue(v)}`)
+      : []
+
+    svgInstance.callMain([
+      '-o',
+      '/out.svg',
+      '--export-format=svg',
+      ...varArgs,
+      targetPath,
+    ])
 
     try {
       svgInstance.FS.stat('/out.svg')
@@ -267,6 +304,7 @@ export class OpenSCADWrapper {
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     remoteFsUrl?: string,
+    vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
     const stdout: string[] = []
     const stderr: string[] = []
@@ -282,6 +320,10 @@ export class OpenSCADWrapper {
     this.mkdirForFile(instance, targetPath)
     instance.FS.writeFile(targetPath, main.code)
 
+    const varArgs = vars
+      ? Object.entries(vars).map(([k, v]) => `-D${k}=${formatValue(v)}`)
+      : []
+
     instance.callMain([
       '-o',
       '/out.stl',
@@ -289,6 +331,7 @@ export class OpenSCADWrapper {
       '--enable=manifold',
       '--enable=fast-csg',
       '--enable=lazy-union',
+      ...varArgs,
       targetPath,
     ])
 
@@ -314,6 +357,7 @@ export class OpenSCADWrapper {
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     remoteFsUrl?: string,
+    vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
     const stdout: string[] = []
     const stderr: string[] = []
@@ -329,15 +373,37 @@ export class OpenSCADWrapper {
     this.mkdirForFile(instance, targetPath)
     instance.FS.writeFile(targetPath, main.code)
 
-    instance.callMain(['-o', '/out.json', '--export-format=param', targetPath])
+    const varArgs = vars
+      ? Object.entries(vars).map(([k, v]) => `-D${k}=${formatValue(v)}`)
+      : []
+
+    instance.callMain([
+      '-o',
+      '/out.json',
+      '--export-format=param',
+      ...varArgs,
+      targetPath,
+    ])
 
     const error = stderr.some((line) => line.includes('ERROR:'))
+
+    let parameterSet: ParameterSet | undefined = undefined
+    try {
+      instance.FS.stat('/out.json')
+      const output = instance.FS.readFile('/out.json', { encoding: 'binary' })
+      const decoded = new TextDecoder().decode(output)
+      parameterSet = JSON.parse(decoded) as ParameterSet
+    } catch {
+      // Might not be written if syntax errors exist
+    }
+
     return {
       blob: null,
       format: null,
       stdout,
       stderr,
       error,
+      parameterSet,
     }
   }
 }

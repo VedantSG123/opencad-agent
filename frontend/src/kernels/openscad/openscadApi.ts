@@ -9,16 +9,19 @@ interface OpenSCADWorkerService {
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     remoteFsUrl?: string,
+    vars?: Record<string, unknown>,
   ): Promise<CompileResult>
   exportSTL(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     remoteFsUrl?: string,
+    vars?: Record<string, unknown>,
   ): Promise<CompileResult>
   checkSyntax(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     remoteFsUrl?: string,
+    vars?: Record<string, unknown>,
   ): Promise<CompileResult>
 }
 
@@ -38,24 +41,27 @@ export class OpenSCADApi {
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     remoteFsUrl?: string,
+    vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
-    return this.getWorkerApi().compile(main, overrides, remoteFsUrl)
+    return this.getWorkerApi().compile(main, overrides, remoteFsUrl, vars)
   }
 
   async exportSTL(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     remoteFsUrl?: string,
+    vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
-    return this.getWorkerApi().exportSTL(main, overrides, remoteFsUrl)
+    return this.getWorkerApi().exportSTL(main, overrides, remoteFsUrl, vars)
   }
 
   async checkSyntax(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     remoteFsUrl?: string,
+    vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
-    return this.getWorkerApi().checkSyntax(main, overrides, remoteFsUrl)
+    return this.getWorkerApi().checkSyntax(main, overrides, remoteFsUrl, vars)
   }
 
   terminate(): void {

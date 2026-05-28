@@ -2,6 +2,7 @@ import * as React from 'react'
 import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
+import type { ParameterSet } from '@/features/Project/components/editor/openscad/customizer-types'
 import { kernelFilesStore } from '@/hooks/useKernelFiles'
 import { createOpenSCADApi } from '@/kernels/openscad/openscadApi'
 import type { CompileResult } from '@/kernels/openscad/OpenSCADWrapper'
@@ -74,6 +75,8 @@ type OpenSCADState = {
   isExporting: boolean
   logs: LogEntry[]
   markers: EditorMarker[]
+  parameterSet: ParameterSet | null
+  vars: Record<string, unknown>
 }
 
 export type EditorMarker = {
@@ -149,6 +152,8 @@ type OpenSCADActions = {
   ) => Promise<CompileResult | null>
   terminate: () => void
   clearLogs: () => void
+  setVar: (name: string, value: unknown) => void
+  setVars: (vars: Record<string, unknown>) => void
 }
 
 export type OpenSCADStore = ReturnType<typeof createOpenSCADStore>
@@ -156,15 +161,16 @@ export type OpenSCADStore = ReturnType<typeof createOpenSCADStore>
 export function createOpenSCADStore() {
   const api = createOpenSCADApi()
 
-  return createStore<OpenSCADState & OpenSCADActions>((set) => {
+  return createStore<OpenSCADState & OpenSCADActions>((set, get) => {
     const checkSyntaxInternal = async (
       main: { path: string; code: string },
       remoteFsUrl?: string,
     ) => {
       const overrides = kernelFilesStore.getState().files
+      const vars = get().vars
 
       try {
-        const result = await api.checkSyntax(main, overrides, remoteFsUrl)
+        const result = await api.checkSyntax(main, overrides, remoteFsUrl, vars)
         const now = Date.now()
         const logs: LogEntry[] = []
         const stderrLines: string[] = []
@@ -196,7 +202,35 @@ export function createOpenSCADStore() {
         })
 
         const markers = parseOpenSCADDiagnostics(stderrLines)
-        set({ logs, markers })
+
+        console.log(
+          'Parameter SET result from syntax check',
+          result.parameterSet,
+        )
+
+        if (result.parameterSet !== undefined) {
+          const nextParameterSet = result.parameterSet || null
+          if (nextParameterSet && nextParameterSet.parameters) {
+            const currentVars = get().vars
+            const nextVars: Record<string, unknown> = {}
+            for (const param of nextParameterSet.parameters) {
+              nextVars[param.name] =
+                param.name in currentVars
+                  ? currentVars[param.name]
+                  : param.initial
+            }
+            set({
+              logs,
+              markers,
+              parameterSet: nextParameterSet,
+              vars: nextVars,
+            })
+          } else {
+            set({ logs, markers, parameterSet: null, vars: {} })
+          }
+        } else {
+          set({ logs, markers })
+        }
       } catch (e) {
         console.log('Syntax checking failed with error', e)
       }
@@ -208,9 +242,10 @@ export function createOpenSCADStore() {
     ) => {
       set({ isCompiling: true })
       const overrides = kernelFilesStore.getState().files
+      const vars = get().vars
 
       try {
-        const result = await api.compile(main, overrides, remoteFsUrl)
+        const result = await api.compile(main, overrides, remoteFsUrl, vars)
         const now = Date.now()
         const logs: LogEntry[] = []
         const stderrLines: string[] = []
@@ -282,6 +317,8 @@ export function createOpenSCADStore() {
       isExporting: false,
       logs: [],
       markers: [],
+      parameterSet: null,
+      vars: {},
       checkSyntax: runCheckSyntax,
       compile: runCompile,
       exportSTL: async (
@@ -290,8 +327,9 @@ export function createOpenSCADStore() {
       ) => {
         set({ isExporting: true })
         const overrides = kernelFilesStore.getState().files
+        const vars = get().vars
         try {
-          const result = await api.exportSTL(main, overrides, remoteFsUrl)
+          const result = await api.exportSTL(main, overrides, remoteFsUrl, vars)
           if (result.error) {
             throw new Error(result.stderr.join('\n') || 'Export error')
           }
@@ -308,10 +346,23 @@ export function createOpenSCADStore() {
           isExporting: false,
           logs: [],
           markers: [],
+          parameterSet: null,
+          vars: {},
         })
         api.terminate()
       },
       clearLogs: () => set({ logs: [], markers: [] }),
+      setVar: (name: string, value: unknown) => {
+        set((state) => ({
+          vars: {
+            ...state.vars,
+            [name]: value,
+          },
+        }))
+      },
+      setVars: (vars: Record<string, unknown>) => {
+        set({ vars })
+      },
     }
   })
 }
