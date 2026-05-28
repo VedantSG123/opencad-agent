@@ -150,16 +150,20 @@ export function ProjectPage() {
     )
   }
 
+  const isOpenSCAD = project.cad_kernel === 'openscad'
+
+  const content = (
+    <div className='h-screen flex flex-col bg-background p-2 overflow-hidden'>
+      <TopBar project={project} />
+      <div className='flex-1 flex overflow-hidden rounded-lg border-2'>
+        <ProjectLayout project={project} />
+      </div>
+    </div>
+  )
+
   return (
     <PanelProvider>
-      <OpenSCADProvider>
-        <div className='h-screen flex flex-col bg-background p-2 overflow-hidden'>
-          <TopBar project={project} />
-          <div className='flex-1 flex overflow-hidden rounded-lg border-2'>
-            <ProjectLayout project={project} />
-          </div>
-        </div>
-      </OpenSCADProvider>
+      {isOpenSCAD ? <OpenSCADProvider>{content}</OpenSCADProvider> : content}
     </PanelProvider>
   )
 }

@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react'
 import replicadTypes from 'virtual:replicad-types'
 
 import { useTheme } from '@/contexts/theme-context'
-import { useOpenSCAD } from '@/hooks/useOpenSCAD'
+import { type EditorMarker, useOpenSCAD } from '@/hooks/useOpenSCAD'
 import type { CadKernel } from '@/types/project'
 
 import { usePanelContext } from '../../context/PanelContext'
@@ -79,23 +79,27 @@ interface MonacoEditorProps {
   onClearContent?: (path: string) => void
 }
 
-export function MonacoEditor({
+interface MonacoEditorBaseProps extends MonacoEditorProps {
+  markers: EditorMarker[]
+}
+
+function MonacoEditorBase({
   path,
   content,
   isLoading,
   openTabs,
   kernel,
+  markers,
   onSave,
   onDirtyChange,
   onExternalConflict,
   onRegisterAPI,
   onContentChange,
   onClearContent,
-}: MonacoEditorProps) {
+}: MonacoEditorBaseProps) {
   const { theme } = useTheme()
   const { isFocusMode, focusedPanel } = usePanelContext()
   const isTransparent = isFocusMode && focusedPanel === 'editor'
-  const openscadMarkers = useOpenSCAD((state) => state.markers)
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const modelsRef = useRef<Map<string, monaco.editor.ITextModel>>(new Map())
@@ -325,7 +329,7 @@ export function MonacoEditor({
 
     const models = modelsRef.current
     models.forEach((model, modelPath) => {
-      const modelMarkers = openscadMarkers
+      const modelMarkers = markers
         .filter((marker) => {
           const markerFileNormalized = marker.file.startsWith('/')
             ? marker.file
@@ -349,7 +353,7 @@ export function MonacoEditor({
 
       monaco.editor.setModelMarkers(model, 'openscad', modelMarkers)
     })
-  }, [openscadMarkers, kernel])
+  }, [markers, kernel])
 
   // ── Dispose models for closed tabs ─────────────────────────────────────────────
 
@@ -368,4 +372,16 @@ export function MonacoEditor({
   }, [openTabs])
 
   return <div ref={containerRef} className='w-full h-full' />
+}
+
+function MonacoEditorWithMarkers(props: MonacoEditorProps) {
+  const markers = useOpenSCAD((state) => state.markers)
+  return <MonacoEditorBase {...props} markers={markers} />
+}
+
+export function MonacoEditor(props: MonacoEditorProps) {
+  if (props.kernel === 'openscad') {
+    return <MonacoEditorWithMarkers {...props} />
+  }
+  return <MonacoEditorBase {...props} markers={[]} />
 }

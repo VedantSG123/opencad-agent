@@ -4,14 +4,20 @@ import * as React from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { usePanelContext } from '@/features/Project/context/PanelContext'
+import { type LogEntry, useOpenSCAD } from '@/hooks/useOpenSCAD'
+import { useReplicad } from '@/hooks/useReplicad'
 import { cn } from '@/lib/utils'
 
-import { useConsoleLogs } from './useConsoleLogs'
+import { useEditor } from './context'
 
-export function ConsolePanel() {
-  const { logs, clearLogs, error } = useConsoleLogs()
+interface ConsolePanelBaseProps {
+  logs: LogEntry[]
+  clearLogs: () => void
+  error: Error | null
+}
+
+function ConsolePanelBase({ logs, clearLogs, error }: ConsolePanelBaseProps) {
   const { toggleConsole, isConsoleCollapsed } = usePanelContext()
-
   const scrollRef = React.useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom of logs on update
@@ -67,7 +73,7 @@ export function ConsolePanel() {
         <div className='p-3 font-mono text-xs leading-relaxed space-y-1.5'>
           {logs.length === 0 ? (
             <div className='h-full flex items-center justify-center text-zinc-500 italic select-none'>
-              Console is empty. Run your code to see output logs.
+              {`No logs yet. Output logs from your code (if any) will appear here.`}
             </div>
           ) : (
             logs.map((log, index) => {
@@ -100,4 +106,30 @@ export function ConsolePanel() {
       </ScrollArea>
     </div>
   )
+}
+
+function OpenSCADConsolePanel() {
+  const logs = useOpenSCAD((state) => state.logs)
+  const clearLogs = useOpenSCAD((state) => state.clearLogs)
+  const error = useOpenSCAD((state) => state.error)
+
+  return <ConsolePanelBase logs={logs} clearLogs={clearLogs} error={error} />
+}
+
+function ReplicadConsolePanel() {
+  const logs = useReplicad((state) => state.logs)
+  const clearLogs = useReplicad((state) => state.clearLogs)
+  const error = useReplicad((state) => state.error)
+
+  return <ConsolePanelBase logs={logs} clearLogs={clearLogs} error={error} />
+}
+
+export function ConsolePanel() {
+  const { project } = useEditor()
+
+  if (project?.cad_kernel === 'replicad') {
+    return <ReplicadConsolePanel />
+  }
+
+  return <OpenSCADConsolePanel />
 }
