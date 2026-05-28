@@ -2,6 +2,7 @@ import { ChevronDown, Terminal, Trash2 } from 'lucide-react'
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { usePanelContext } from '@/features/Project/context/PanelContext'
 import { cn } from '@/lib/utils'
 
@@ -62,41 +63,41 @@ export function ConsolePanel() {
       </div>
 
       {/* Console Output Scroll Area */}
-      <div
-        ref={scrollRef}
-        className='flex-1 overflow-y-auto p-3 font-mono text-xs leading-relaxed space-y-1.5 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent'
-      >
-        {logs.length === 0 ? (
-          <div className='h-full flex items-center justify-center text-zinc-500 italic select-none'>
-            Console is empty. Run your code to see output logs.
-          </div>
-        ) : (
-          logs.map((log, index) => {
-            const isError = log.type === 'error'
-            const isWarn = log.type === 'warn'
-            const isInfo = log.type === 'info'
+      <ScrollArea ref={scrollRef} className='flex-1 min-h-0'>
+        <div className='p-3 font-mono text-xs leading-relaxed space-y-1.5'>
+          {logs.length === 0 ? (
+            <div className='h-full flex items-center justify-center text-zinc-500 italic select-none'>
+              Console is empty. Run your code to see output logs.
+            </div>
+          ) : (
+            logs.map((log, index) => {
+              const isError = log.type === 'error'
+              const isWarn = log.type === 'warn'
+              const isInfo = log.type === 'info'
 
-            return (
-              <div
-                key={log.timestamp + '-' + index}
-                className={cn(
-                  'px-2 py-1 rounded-sm whitespace-pre-wrap break-all border-l-2 border-transparent animate-in fade-in duration-200 slide-in-from-bottom-1',
-                  isError && 'bg-rose-500/10 text-rose-400 border-rose-500/80',
-                  isWarn &&
-                    'bg-amber-500/10 text-amber-400 border-amber-500/80',
-                  isInfo && 'text-sky-400',
-                  !isError && !isWarn && !isInfo && 'text-zinc-300',
-                )}
-              >
-                <span className='text-zinc-600 mr-2 select-none'>
-                  [{new Date(log.timestamp).toLocaleTimeString()}]
-                </span>
-                {log.text}
-              </div>
-            )
-          })
-        )}
-      </div>
+              return (
+                <div
+                  key={log.timestamp + '-' + index}
+                  className={cn(
+                    'px-2 py-1 rounded-sm whitespace-pre-wrap break-all border-l-2 border-transparent animate-in fade-in duration-200 slide-in-from-bottom-1',
+                    isError &&
+                      'bg-rose-500/10 text-rose-400 border-rose-500/80',
+                    isWarn &&
+                      'bg-amber-500/10 text-amber-400 border-amber-500/80',
+                    isInfo && 'text-sky-400',
+                    !isError && !isWarn && !isInfo && 'text-zinc-300',
+                  )}
+                >
+                  <span className='text-zinc-600 mr-2 select-none'>
+                    [{new Date(log.timestamp).toLocaleTimeString()}]
+                  </span>
+                  {log.text}
+                </div>
+              )
+            })
+          )}
+        </div>
+      </ScrollArea>
     </div>
   )
 }

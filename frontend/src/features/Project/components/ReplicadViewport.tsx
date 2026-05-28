@@ -54,11 +54,11 @@ export function ReplicadViewport() {
       )}
       {/* Viewport Ribbon Bar */}
       {workerReady && hasParams && (
-        <div className='absolute top-4 left-4 right-4 z-20 flex justify-end gap-2 pointer-events-none'>
+        <div className='absolute top-2 left-2 right-2 z-20 flex justify-end gap-2 pointer-events-none'>
           <button
             onClick={() => setShowParams((prev) => !prev)}
             className={cn(
-              'pointer-events-auto bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs transition-colors hover:text-foreground',
+              'pointer-events-auto bg-background/80 backdrop-blur-sm p-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs transition-colors hover:text-foreground',
               showParams
                 ? 'text-foreground border-blue-500/50 bg-blue-500/10'
                 : 'text-muted-foreground',
@@ -66,7 +66,6 @@ export function ReplicadViewport() {
             title='Toggle parameters panel'
           >
             <SlidersHorizontal className='h-3.5 w-3.5' />
-            <span>Parameters</span>
           </button>
         </div>
       )}
