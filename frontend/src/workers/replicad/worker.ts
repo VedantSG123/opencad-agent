@@ -217,6 +217,18 @@ async function buildFromCode(code: string, params?: Record<string, unknown>) {
   await init()
 
   const defaultParams = extractDefaultParams(code)
+  if (defaultParams && params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (defaultParams[key] !== undefined) {
+        const paramObj = defaultParams[key] as Record<string, unknown>
+        if (paramObj && typeof paramObj === 'object' && 'value' in paramObj) {
+          paramObj.value = value
+        } else {
+          defaultParams[key] = value
+        }
+      }
+    }
+  }
 
   startCapturingLogs()
   let shapes

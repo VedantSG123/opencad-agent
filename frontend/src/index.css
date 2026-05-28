@@ -131,3 +131,10 @@
     @apply font-sans;
   }
 }
+
+/* Restrain LevaPanel height to ensure internal scrolling */
+.Leva-container > div {
+  position: relative !important;
+  max-height: calc(100vh - 8rem) !important;
+}
+

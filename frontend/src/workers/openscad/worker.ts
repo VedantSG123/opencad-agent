@@ -34,9 +34,8 @@ async function checkSyntax(
   main: { path: string; code: string },
   overrides?: Record<string, { content: string }>,
   remoteFsUrl?: string,
-  vars?: Record<string, unknown>,
 ): Promise<CompileResult> {
-  return getWrapper().checkSyntax(main, overrides, remoteFsUrl, vars)
+  return getWrapper().checkSyntax(main, overrides, remoteFsUrl)
 }
 
 const service = {

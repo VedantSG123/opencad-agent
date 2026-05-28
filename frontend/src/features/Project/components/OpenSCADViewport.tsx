@@ -134,7 +134,7 @@ function OpenSCADViewportInner() {
 
       {/* Floating Parameters Panel */}
       {hasParams && parameterSet && showParams && (
-        <div className='absolute z-10 top-14 right-4 max-h-[calc(100%-5rem)] overflow-hidden flex flex-col'>
+        <div className='absolute z-10 top-14 right-4'>
           <OpenSCADParametersPanel
             parameterSet={parameterSet}
             vars={vars}

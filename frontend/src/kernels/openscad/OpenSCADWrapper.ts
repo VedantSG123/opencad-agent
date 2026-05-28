@@ -357,7 +357,6 @@ export class OpenSCADWrapper {
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     remoteFsUrl?: string,
-    vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
     const stdout: string[] = []
     const stderr: string[] = []
@@ -373,17 +372,7 @@ export class OpenSCADWrapper {
     this.mkdirForFile(instance, targetPath)
     instance.FS.writeFile(targetPath, main.code)
 
-    const varArgs = vars
-      ? Object.entries(vars).map(([k, v]) => `-D${k}=${formatValue(v)}`)
-      : []
-
-    instance.callMain([
-      '-o',
-      '/out.json',
-      '--export-format=param',
-      ...varArgs,
-      targetPath,
-    ])
+    instance.callMain(['-o', '/out.json', '--export-format=param', targetPath])
 
     const error = stderr.some((line) => line.includes('ERROR:'))
 

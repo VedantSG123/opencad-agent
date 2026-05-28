@@ -5,7 +5,7 @@ import { CadViewer } from '@/components-3d/cad-viewer/ReplicadViewer'
 import { useReplicad } from '@/hooks/useReplicad'
 import { cn } from '@/lib/utils'
 
-import { ParametersPanel } from './editor/ParametersPanel'
+import { ReplicadParametersPanel } from './editor/ReplicadParametersPanel'
 import { ReplicadCompiler } from './ReplicadCompiler'
 
 export function ReplicadViewport() {
@@ -19,6 +19,14 @@ export function ReplicadViewport() {
 
   const hasParams = React.useMemo(() => {
     return defaultParams ? Object.keys(defaultParams).length > 0 : false
+  }, [defaultParams])
+
+  const vars = React.useMemo(() => {
+    const v: Record<string, unknown> = {}
+    for (const [key, config] of Object.entries(defaultParams || {})) {
+      v[key] = (config as Record<string, unknown>)?.value
+    }
+    return v
   }, [defaultParams])
 
   return (
@@ -64,8 +72,12 @@ export function ReplicadViewport() {
       )}
       {/* Floating Parameters Panel */}
       {workerReady && hasParams && defaultParams && showParams && (
-        <div className='absolute z-10 top-14 right-4 max-h-[calc(100%-5rem)] overflow-hidden flex flex-col'>
-          <ParametersPanel defaultParams={defaultParams} onApply={build} />
+        <div className='absolute z-10 top-14 right-4'>
+          <ReplicadParametersPanel
+            defaultParams={defaultParams}
+            vars={vars}
+            onApply={build}
+          />
         </div>
       )}
     </div>
