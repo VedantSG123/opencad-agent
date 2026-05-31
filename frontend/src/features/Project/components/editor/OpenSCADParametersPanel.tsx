@@ -2,6 +2,7 @@ import { button, folder, LevaPanel, useControls, useCreateStore } from 'leva'
 import * as React from 'react'
 
 import type { Parameter, ParameterSet } from './openscad/customizer-types'
+import { useLevaTheme } from './useLevaTheme'
 
 interface OpenSCADParametersPanelProps {
   parameterSet: ParameterSet
@@ -124,6 +125,7 @@ export function OpenSCADParametersPanel({
   onApply,
 }: OpenSCADParametersPanelProps) {
   const store = useCreateStore()
+  const levaTheme = useLevaTheme()
 
   // Rebuild the schema when parameter definitions or values (vars) change
   const schema = React.useMemo(() => {
@@ -160,28 +162,7 @@ export function OpenSCADParametersPanel({
           drag: false,
           filter: false,
         }}
-        theme={{
-          colors: {
-            elevation1: '#18181b', // dark zinc-900 card bg
-            elevation2: '#1f1f23', // dark charcoal input background
-            elevation3: '#27272a', // dark border highlight
-            highlight1: '#3b82f6', // blue-500 accent
-            highlight2: '#2563eb', // blue-600 active
-            highlight3: '#1d4ed8', // blue-700
-            accent1: '#3b82f6',
-            accent2: '#60a5fa',
-            accent3: '#1d4ed8',
-            vivid1: '#ef4444',
-            folderWidgetColor: '#3f3f46',
-            folderTextColor: '#a1a1aa',
-            toolTipBackground: '#27272a',
-            toolTipText: '#f4f4f5',
-          },
-          sizes: {
-            rootWidth: '288px',
-            controlWidth: '130px',
-          },
-        }}
+        theme={levaTheme}
       />
     </div>
   )

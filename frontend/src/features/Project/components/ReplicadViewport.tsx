@@ -71,7 +71,7 @@ export function ReplicadViewport() {
       )}
       {/* Floating Parameters Panel */}
       {workerReady && hasParams && defaultParams && showParams && (
-        <div className='absolute z-10 top-14 right-4'>
+        <div className='absolute z-10 top-8 right-0'>
           <ReplicadParametersPanel
             defaultParams={defaultParams}
             vars={vars}

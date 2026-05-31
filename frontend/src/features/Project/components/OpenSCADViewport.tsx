@@ -133,7 +133,7 @@ function OpenSCADViewportInner() {
 
       {/* Floating Parameters Panel */}
       {hasParams && parameterSet && showParams && (
-        <div className='absolute z-10 top-14 right-4'>
+        <div className='absolute z-10 top-8 right-0'>
           <OpenSCADParametersPanel
             parameterSet={parameterSet}
             vars={vars}
