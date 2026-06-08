@@ -1,0 +1,26 @@
+{
+  "name": "electron-app",
+  "version": "1.0.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint .",
+    "start": "electron dist/main.js",
+    "dev": "tsc && concurrently -k -n \"tsc,electron\" -c \"blue,green\" \"tsc -w\" \"electron dist/main.js\""
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^20.14.2",
+    "concurrently": "^8.2.2",
+    "electron": "^30.0.1",
+    "eslint": "^10.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "globals": "^17.3.0",
+    "jiti": "^2.7.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.56.0"
+  }
+}
