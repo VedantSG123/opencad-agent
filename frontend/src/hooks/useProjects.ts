@@ -3,21 +3,11 @@ import axios from 'axios'
 import { toast } from 'sonner'
 
 import axiosInstance from '@/lib/axios'
-import type { CadKernel, Project } from '@/types/project'
-
-// ─── API payload types ────────────────────────────────────────────────────────
-
-interface CreateProjectPayload {
-  name: string
-  cad_kernel: CadKernel
-  directory: string
-  action: 'create' | 'open'
-}
-
-interface UpdateProjectPayload {
-  name?: string
-  file?: string | null
-}
+import type {
+  CreateProjectPayload,
+  Project,
+  UpdateProjectPayload,
+} from '@/types/project'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -111,5 +101,3 @@ export function useDeleteProject() {
     },
   })
 }
-
-export type { CreateProjectPayload, UpdateProjectPayload }

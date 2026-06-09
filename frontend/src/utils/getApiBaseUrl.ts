@@ -1,6 +1,6 @@
 export function getBaseApiUrl(): string {
-  if (import.meta.env.DEV) {
-    return 'http://localhost:3000/api'
+  if (window.electron?.backendPort) {
+    return `http://127.0.0.1:${window.electron.backendPort}/api`
   }
-  return '/api'
+  return 'http://localhost:3000/api'
 }

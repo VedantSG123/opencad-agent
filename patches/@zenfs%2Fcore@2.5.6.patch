@@ -1,0 +1,10 @@
+diff --git a/dist/index.js b/dist/index.js
+index c4121ccb2833c4fbce894ac918261fd6f3d372fc..20f927c9fa869130cd2ccbe248a4201e487a6fef 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -17,4 +17,4 @@ export default fs;
+ export * from './node/compat.js';
+ export * as vfs from './vfs/index.js';
+ import $pkg from '../package.json' with { type: 'json' };
+-globalThis.__zenfs__ = Object.assign(Object.create(fs), { _version: $pkg.version });
++try { globalThis.__zenfs__ = Object.assign(Object.create(fs), { _version: $pkg.version }); } catch (_) {}

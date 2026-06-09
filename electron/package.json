@@ -1,26 +1,61 @@
 {
-  "name": "electron-app",
+  "name": "opencad-agent-desktop",
   "version": "1.0.0",
+  "description": "OpenCAD Agent Desktop Application",
+  "homepage": "https://github.com/VedantSG123/opencad-agent",
+  "author": {
+    "name": "VedantSG123",
+    "email": "vedantghonge0@outlook.com"
+  },
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
     "lint": "eslint .",
     "start": "electron dist/main.js",
-    "dev": "tsc && concurrently -k -n \"tsc,electron\" -c \"blue,green\" \"tsc -w\" \"electron dist/main.js\""
+    "dev": "tsc && concurrently -k -n \"tsc,electron\" -c \"blue,green\" \"tsc -w\" \"electron dist/main.js\"",
+    "package": "electron-builder"
   },
   "dependencies": {},
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
     "@types/node": "^20.14.2",
     "concurrently": "^8.2.2",
     "electron": "^30.0.1",
-    "eslint": "^10.0.0",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.5",
-    "eslint-plugin-simple-import-sort": "^12.1.1",
-    "globals": "^17.3.0",
+    "electron-builder": "^24.13.3",
     "jiti": "^2.7.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.0"
+  },
+  "build": {
+    "appId": "com.opencad.agent",
+    "productName": "OpenCAD Agent",
+    "directories": {
+      "output": "dist-packaged"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend/dist/backend-api",
+        "to": "bin/backend-api"
+      },
+      {
+        "from": "../backend/src/db/migrations",
+        "to": "bin/migrations"
+      },
+      {
+        "from": "../frontend/dist",
+        "to": "frontend"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "maintainer": "Vedant <vedant@example.com>",
+      "category": "Development"
+    }
   }
 }

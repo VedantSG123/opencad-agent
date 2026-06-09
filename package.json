@@ -1,0 +1,34 @@
+{
+  "name": "opencad-desktop-app",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "electron"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n \"frontend,electron\" -c \"blue,green\" \"(cd frontend && bun dev)\" \"(cd electron && bun dev)\"",
+    "build:frontend": "(cd frontend && bun run build)",
+    "build:backend": "(cd backend && bun run build)",
+    "build:electron": "(cd electron && bun run build)",
+    "build": "bun run build:frontend && bun run build:backend && bun run build:electron",
+    "lint:frontend": "(cd frontend && bun run lint)",
+    "lint:backend": "(cd backend && bun run lint)",
+    "lint:electron": "(cd electron && bun run lint)",
+    "lint": "bun run lint:frontend && bun run lint:backend && bun run lint:electron",
+    "package": "bun run build && (cd electron && bun run package)"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^8.2.2",
+    "eslint": "^10.0.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "globals": "^17.3.0",
+    "prettier": "^3.8.1"
+  }
+}

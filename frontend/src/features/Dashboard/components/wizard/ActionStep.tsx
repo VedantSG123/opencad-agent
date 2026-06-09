@@ -6,7 +6,7 @@ type WizardAction = 'create' | 'open'
 
 const ACTIONS: {
   key: WizardAction
-  icon: React.ElementType
+  icon: React.ComponentType<{ className?: string }>
   title: string
   desc: string
 }[] = [

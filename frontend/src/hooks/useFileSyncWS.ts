@@ -116,9 +116,7 @@ export function useFileSyncWS(projectId: string): FileSyncWS {
   const readdirWithTypes = useCallback(
     (path: string) => {
       if (status !== 'ready') return Promise.reject(new FSNotReadyError())
-      return fs.promises.readdir(path, { withFileTypes: true }) as Promise<
-        FSEntry[]
-      >
+      return fs.promises.readdir(path, { withFileTypes: true })
     },
     [status],
   )

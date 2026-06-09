@@ -91,7 +91,7 @@ export const useReplicad = create<ReplicadState & ReplicadActions>(
           set({
             shapes: result.shapes,
             error: null,
-            logs: result.logs as LogEntry[],
+            logs: result.logs,
             defaultParams: result.defaultParams || null,
           })
         } else {

@@ -1,5 +1,6 @@
 export interface ElectronAPI {
   isElectron: boolean
+  backendPort: number
   pingBackend: () => Promise<string>
   openFileDialog: (options: {
     mode: 'file' | 'directory'

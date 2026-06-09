@@ -51,7 +51,9 @@ export function Dashboard() {
             <span>Running in Electron Desktop App</span>
           </div>
           <div className='flex items-center gap-4'>
-            {pingResult && <span className='font-mono text-[11px]'>{pingResult}</span>}
+            {pingResult && (
+              <span className='font-mono text-[11px]'>{pingResult}</span>
+            )}
             <Button
               size='xs'
               variant='outline'

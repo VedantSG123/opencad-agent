@@ -1,10 +1,38 @@
 import { spawn } from "child_process";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import * as fs from "fs";
+import * as net from "net";
 import * as path from "path";
 
 let mainWindow: BrowserWindow | null = null;
 let backendProcess: ReturnType<typeof spawn> | null = null;
+let backendPort = 3000;
+
+function findFreePort(startPort: number = 3000): Promise<number> {
+  return new Promise((resolve) => {
+    const checkPort = (port: number) => {
+      const server = net.createServer();
+      server.once("error", (err: unknown) => {
+        const error = err as { code?: string };
+        if (error.code === "EADDRINUSE") {
+          checkPort(port + 1);
+        } else {
+          checkPort(port + 1);
+        }
+      });
+
+      server.once("listening", () => {
+        server.close(() => {
+          resolve(port);
+        });
+      });
+
+      server.listen(port, "127.0.0.1");
+    };
+
+    checkPort(startPort);
+  });
+}
 
 function getBackendDir() {
   let backendDir = path.resolve(__dirname, "../backend");
@@ -14,14 +42,35 @@ function getBackendDir() {
   return backendDir;
 }
 
-function startBackend() {
-  const backendDir = getBackendDir();
-  console.log(`Starting Elysia backend in directory: ${backendDir}`);
+function startBackend(port: number) {
+  let binPath: string;
+  let args: string[];
+  let cwdPath: string;
 
-  backendProcess = spawn("bun", ["run", "src/index.ts"], {
-    cwd: backendDir,
+  if (app.isPackaged) {
+    // In production, the backend-api binary and migrations are placed in the resources directory
+    binPath = path.join(process.resourcesPath, "bin", "backend-api");
+    cwdPath = path.join(process.resourcesPath, "bin");
+    args = [];
+  } else {
+    // In development, spawn bun to run src/index.ts
+    binPath = "bun";
+    cwdPath = getBackendDir();
+    args = ["run", "src/index.ts"];
+  }
+
+  console.log(
+    `Starting Elysia backend on port ${port}. Executable: ${binPath}`,
+  );
+
+  backendProcess = spawn(binPath, args, {
+    cwd: cwdPath,
     stdio: "inherit",
-    env: { ...process.env, NODE_ENV: "development" },
+    env: {
+      ...process.env,
+      NODE_ENV: app.isPackaged ? "production" : "development",
+      PORT: String(port),
+    },
   });
 
   backendProcess.on("error", (err) => {
@@ -33,7 +82,7 @@ function startBackend() {
   });
 }
 
-function createWindow() {
+function createWindow(port: number) {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -41,12 +90,11 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      additionalArguments: [`--backend-port=${port}`],
     },
     autoHideMenuBar: true,
   });
 
-  // In development, load the Vite dev server URL.
-  // In production, we would load the built dist/index.html.
   if (process.env.NODE_ENV === "development" || !app.isPackaged) {
     mainWindow.loadURL("http://localhost:5173").catch((err) => {
       console.error("Failed to load URL:", err);
@@ -54,7 +102,7 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow
-      .loadFile(path.join(__dirname, "../frontend/dist/index.html"))
+      .loadFile(path.join(process.resourcesPath, "frontend", "index.html"))
       .catch((err) => {
         console.error("Failed to load static file:", err);
       });
@@ -68,12 +116,12 @@ function createWindow() {
 // IPC Handlers
 ipcMain.handle("ping-backend", async () => {
   try {
-    const res = await fetch("http://localhost:3000/");
+    const res = await fetch(`http://127.0.0.1:${backendPort}/`);
     const text = await res.text();
     return `Main Process Response: SUCCESS (Elysia Backend says: "${text}")`;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
-    return `Main Process Response: FAILED (Could not connect to Elysia on port 3000. Error: ${msg})`;
+    return `Main Process Response: FAILED (Could not connect to Elysia on port ${backendPort}. Error: ${msg})`;
   }
 });
 
@@ -118,13 +166,14 @@ ipcMain.handle("readdir", async (_event, dirPath: string) => {
   return fs.promises.readdir(dirPath);
 });
 
-app.whenReady().then(() => {
-  startBackend();
-  createWindow();
+app.whenReady().then(async () => {
+  backendPort = await findFreePort(3000);
+  startBackend(backendPort);
+  createWindow(backendPort);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+      createWindow(backendPort);
     }
   });
 });

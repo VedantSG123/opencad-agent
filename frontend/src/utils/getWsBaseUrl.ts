@@ -1,7 +1,6 @@
 export function getBaseWsUrl(): string {
-  if (import.meta.env.DEV) {
-    return 'ws://localhost:3000/api'
+  if (window.electron?.backendPort) {
+    return `ws://127.0.0.1:${window.electron.backendPort}/api`
   }
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${protocol}//${window.location.host}`
+  return 'ws://localhost:3000/api'
 }

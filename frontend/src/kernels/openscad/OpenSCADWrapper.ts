@@ -52,7 +52,7 @@ export class OpenSCADWrapper {
 
     // Unmount stale /project mount
     if (mounts.has('/project')) {
-      ;(vfs.umount as unknown as (path: string) => void)('/project')
+      vfs.umount('/project')
     }
 
     // Create new connection

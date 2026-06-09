@@ -5,8 +5,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { CreateProjectPayload } from '@/hooks/useProjects'
 import { useCreateProject } from '@/hooks/useProjects'
+import type { CreateProjectPayload } from '@/types/project'
 
 import { ProjectWizard } from './wizard'
 

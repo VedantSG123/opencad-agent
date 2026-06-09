@@ -272,7 +272,7 @@ export function buildOpenSCADCompletionItemProvider(
                 kind: monacoInstance.languages.CompletionItemKind.File,
                 insertText: fileName + '>\n',
                 range,
-              } as monaco.languages.CompletionItem)
+              })
             }
           }
           suggestions.sort((a, b) =>

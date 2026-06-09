@@ -33,6 +33,7 @@ function replicadTypesPlugin(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [
     replicadTypesPlugin(),
     openscadPlugin(),
@@ -50,5 +51,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  build: {
+    target: 'es2022',
   },
 })

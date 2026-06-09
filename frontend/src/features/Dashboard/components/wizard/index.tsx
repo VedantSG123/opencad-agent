@@ -3,8 +3,7 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import type { CreateProjectPayload } from '@/hooks/useProjects'
-import type { CadKernel } from '@/types/project'
+import type { CadKernel, CreateProjectPayload } from '@/types/project'
 
 import { ActionStep } from './ActionStep'
 import { DetailsStep } from './DetailsStep'
