@@ -31,7 +31,7 @@ export class BunSqliteStorage implements UmzugStorage<Database> {
       ON CONFLICT(name) DO NOTHING
     `)
 
-    stmt.run({ migrationName: name })
+    stmt.run({ $migrationName: name })
   }
 
   /**
@@ -44,7 +44,7 @@ export class BunSqliteStorage implements UmzugStorage<Database> {
       WHERE name = $migrationName
     `)
 
-    stmt.run({ migrationName: name })
+    stmt.run({ $migrationName: name })
   }
 
   /**
