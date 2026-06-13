@@ -2,25 +2,24 @@ import { wrap } from 'comlink'
 
 import OpenSCADWorker from '@/workers/openscad/worker?worker'
 
+import { resolveProjectDependencies } from './dependencyScanner'
+import { LibraryLoader } from './libraryLoader'
 import type { CompileResult } from './OpenSCADWrapper'
 
 interface OpenSCADWorkerService {
   compile(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
-    remoteFsUrl?: string,
     vars?: Record<string, unknown>,
   ): Promise<CompileResult>
   exportSTL(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
-    remoteFsUrl?: string,
     vars?: Record<string, unknown>,
   ): Promise<CompileResult>
   checkSyntax(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
-    remoteFsUrl?: string,
   ): Promise<CompileResult>
 }
 
@@ -36,30 +35,105 @@ export class OpenSCADApi {
     return this.workerApi
   }
 
+  private async resolveOverrides(
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    projectDirectory?: string,
+  ): Promise<Record<string, { content: string }>> {
+    const finalOverrides = { ...overrides }
+    const electron = window.electron
+    if (!projectDirectory || !electron) return finalOverrides
+
+    try {
+      const loader = new LibraryLoader()
+      const dependencyPaths = await resolveProjectDependencies(
+        main.code,
+        main.path,
+        async (p) => {
+          if (finalOverrides[p]) return finalOverrides[p].content
+          if (loader.isLibraryPath(p)) return null
+
+          try {
+            const separator = p.startsWith('/') ? '' : '/'
+            const res = await electron.readFile(
+              projectDirectory + separator + p,
+            )
+            if (res.success) {
+              return res.data
+            }
+            return null
+          } catch {
+            return null
+          }
+        },
+      )
+
+      for (const p of dependencyPaths) {
+        const normalizedP = p.startsWith('/') ? p : `/${p}`
+        if (
+          normalizedP ===
+          (main.path.startsWith('/') ? main.path : `/${main.path}`)
+        )
+          continue
+        if (finalOverrides[p]) continue
+        if (loader.isLibraryPath(p)) continue
+
+        try {
+          const separator = p.startsWith('/') ? '' : '/'
+          const res = await electron.readFile(projectDirectory + separator + p)
+          if (res.success) {
+            finalOverrides[p] = { content: res.data }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    } catch (err) {
+      console.error('Failed to resolve dependencies on main thread:', err)
+    }
+
+    return finalOverrides
+  }
+
   async compile(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
-    remoteFsUrl?: string,
+    projectDirectory?: string,
     vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
-    return this.getWorkerApi().compile(main, overrides, remoteFsUrl, vars)
+    const resolvedOverrides = await this.resolveOverrides(
+      main,
+      overrides,
+      projectDirectory,
+    )
+    return this.getWorkerApi().compile(main, resolvedOverrides, vars)
   }
 
   async exportSTL(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
-    remoteFsUrl?: string,
+    projectDirectory?: string,
     vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
-    return this.getWorkerApi().exportSTL(main, overrides, remoteFsUrl, vars)
+    const resolvedOverrides = await this.resolveOverrides(
+      main,
+      overrides,
+      projectDirectory,
+    )
+    return this.getWorkerApi().exportSTL(main, resolvedOverrides, vars)
   }
 
   async checkSyntax(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
-    remoteFsUrl?: string,
+    projectDirectory?: string,
   ): Promise<CompileResult> {
-    return this.getWorkerApi().checkSyntax(main, overrides, remoteFsUrl)
+    const resolvedOverrides = await this.resolveOverrides(
+      main,
+      overrides,
+      projectDirectory,
+    )
+    return this.getWorkerApi().checkSyntax(main, resolvedOverrides)
   }
 
   terminate(): void {

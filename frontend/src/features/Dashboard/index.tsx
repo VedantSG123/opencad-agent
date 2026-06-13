@@ -28,7 +28,13 @@ export function Dashboard() {
       setPinging(true)
       window.electron
         .pingBackend()
-        .then((res) => setPingResult(res))
+        .then((res) => {
+          if (res.success) {
+            setPingResult(res.data)
+          } else {
+            setPingResult(`Error: ${res.error.message}`)
+          }
+        })
         .catch((err: unknown) => {
           const msg = err instanceof Error ? err.message : 'Unknown error'
           setPingResult(`Error: ${msg}`)

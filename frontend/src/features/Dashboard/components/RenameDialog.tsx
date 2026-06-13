@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -10,7 +11,11 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useRenameProject } from '@/hooks/useProjects'
+import {
+  extractErrorMessage,
+  useInvalidateProjects,
+  useRenameProject,
+} from '@/hooks/useProjects'
 import type { Project } from '@/types/project'
 
 interface RenameDialogProps {
@@ -20,14 +25,23 @@ interface RenameDialogProps {
 
 export function RenameDialog({ project, onClose }: RenameDialogProps) {
   const [name, setName] = useState(project?.name || '')
-  const { mutate, isPending } = useRenameProject()
+  const { mutateAsync: renameProject } = useRenameProject()
+  const { invalidateProjects } = useInvalidateProjects()
+  const [isRenaming, setIsRenaming] = useState(false)
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (!project || !name.trim() || name.trim() === project.name) return
-    mutate(
-      { id: project.id, payload: { name: name.trim() } },
-      { onSuccess: onClose },
-    )
+    setIsRenaming(true)
+    try {
+      await renameProject({ id: project.id, payload: { name: name.trim() } })
+      await invalidateProjects()
+      toast.success('Project renamed')
+      onClose()
+    } catch (error) {
+      toast.error(extractErrorMessage(error, 'Failed to rename project'))
+    } finally {
+      setIsRenaming(false)
+    }
   }
 
   return (
@@ -50,16 +64,16 @@ export function RenameDialog({ project, onClose }: RenameDialogProps) {
           />
         </div>
         <div className='flex justify-end gap-2 pt-1'>
-          <Button variant='outline' onClick={onClose} disabled={isPending}>
+          <Button variant='outline' onClick={onClose} disabled={isRenaming}>
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={
-              !name.trim() || name.trim() === project?.name || isPending
+              !name.trim() || name.trim() === project?.name || isRenaming
             }
           >
-            {isPending ? 'Renaming…' : 'Rename'}
+            {isRenaming ? 'Renaming…' : 'Rename'}
           </Button>
         </div>
       </DialogContent>

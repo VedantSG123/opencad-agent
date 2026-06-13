@@ -14,7 +14,6 @@
     "@ai-sdk/openai": "^3.0.31",
     "@elysiajs/cors": "^1.4.1",
     "@opeoginni/github-copilot-openai-compatible": "^1.0.0",
-    "@zenfs/core": "^2.5.6",
     "ai": "^6.0.97",
     "ajv": "^8.18.0",
     "chokidar": "^5.0.0",
@@ -30,8 +29,5 @@
     "jiti": "^2.6.1",
     "typescript-eslint": "^8.56.0"
   },
-  "module": "src/index.js",
-  "patchedDependencies": {
-    "@zenfs/core@2.5.6": "patches/@zenfs%2Fcore@2.5.6.patch"
-  }
+  "module": "src/index.js"
 }

@@ -5,7 +5,6 @@ import { FSNotReadyError } from '@/hooks/useFileSyncWS'
 import { type KernelFilesState, useKernelFiles } from '@/hooks/useKernelFiles'
 import { useOpenSCAD } from '@/hooks/useOpenSCAD'
 import { toFsPath } from '@/lib/utils'
-import { getBaseWsUrl } from '@/utils/getWsBaseUrl'
 
 import { useEditor } from './editor/context'
 
@@ -15,10 +14,6 @@ export function OpenSCADCompiler() {
   const mainFilePath = React.useMemo(() => {
     if (!project?.file || !project.directory) return null
     return toFsPath(project.directory, project.file)
-  }, [project])
-
-  const remoteFsUrl = React.useMemo(() => {
-    return `${getBaseWsUrl()}/ws/sync?projectId=${project.id}`
   }, [project])
 
   const selectMainFileContent = React.useCallback(
@@ -31,12 +26,16 @@ export function OpenSCADCompiler() {
   const [fsContent, setFsContent] = React.useState<string | undefined>()
 
   React.useEffect(() => {
+    let cancelled = false
     if (!mainFilePath || editorContent !== undefined) {
-      setFsContent(undefined)
+      Promise.resolve().then(() => {
+        if (!cancelled) {
+          setFsContent(undefined)
+        }
+      })
       return
     }
 
-    let cancelled = false
     const normalizedPath = mainFilePath.startsWith('/')
       ? mainFilePath.slice(1)
       : mainFilePath
@@ -44,7 +43,7 @@ export function OpenSCADCompiler() {
       .then((content) => {
         if (!cancelled) setFsContent(content)
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (cancelled) return
         if (error instanceof FSNotReadyError) return
         toast.error('Failed to read file from remote FS')
@@ -76,19 +75,29 @@ export function OpenSCADCompiler() {
 
     // Fast syntax validation triggers almost instantly (150ms)
     syntaxTimerRef.current = setTimeout(() => {
-      checkSyntax({ path: mainFilePath, code: mainFileContent }, remoteFsUrl)
+      checkSyntax(
+        { path: mainFilePath, code: mainFileContent },
+        project.directory,
+      )
     }, 150)
 
     // Full 3D rendering compilation triggers when typing stops for 1 second (1000ms)
     renderTimerRef.current = setTimeout(() => {
-      compile({ path: mainFilePath, code: mainFileContent }, remoteFsUrl)
+      compile({ path: mainFilePath, code: mainFileContent }, project.directory)
     }, 1000)
 
     return () => {
       if (syntaxTimerRef.current) clearTimeout(syntaxTimerRef.current)
       if (renderTimerRef.current) clearTimeout(renderTimerRef.current)
     }
-  }, [files, mainFilePath, mainFileContent, remoteFsUrl, checkSyntax, compile])
+  }, [
+    files,
+    mainFilePath,
+    mainFileContent,
+    project.directory,
+    checkSyntax,
+    compile,
+  ])
 
   return null
 }

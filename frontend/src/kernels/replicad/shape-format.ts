@@ -123,6 +123,7 @@ function createBaseInputShapesArray(
         if (!inputShape.shape) {
           return {
             shape: inputShape,
+            name: undefined,
           }
         }
 

@@ -15,7 +15,9 @@
     "dev": "tsc && concurrently -k -n \"tsc,electron\" -c \"blue,green\" \"tsc -w\" \"electron dist/main.js\"",
     "package": "electron-builder"
   },
-  "dependencies": {},
+  "dependencies": {
+    "chokidar": "^5.0.0"
+  },
   "devDependencies": {
     "@types/node": "^20.14.2",
     "concurrently": "^8.2.2",

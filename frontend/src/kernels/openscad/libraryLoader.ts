@@ -1,12 +1,9 @@
-import { Zip } from '@zenfs/archives'
-import { configure, fs, mounts } from '@zenfs/core'
+import { unzipSync } from 'fflate'
 
 import libsConfig from '../../../openscad-libs-config.json'
 
-// Fast lookup for known library names (first path segment)
 const LIBRARY_NAMES = new Set(libsConfig.libraries.map((lib) => lib.name))
 
-// Reverse map: root-level alias → { libName, internalPath }
 type SymlinkEntry = { libName: string; internalPath: string }
 const SYMLINK_ALIASES = new Map<string, SymlinkEntry>()
 for (const lib of libsConfig.libraries) {
@@ -19,97 +16,75 @@ for (const lib of libsConfig.libraries) {
   }
 }
 
-/**
- * Lazily mounts OpenSCAD library ZIPs via zenfs's Zip backend.
- *
- * Each library is mounted once at /libraries/{name} and a directory
- * symlink /{name} → /libraries/{name} is created so OpenSCAD can
- * resolve `include <LibName/file.scad>` paths. Per-library symlink
- * aliases (e.g. smooth_prim.scad) are also created from config.
- *
- * Mounts and symlinks persist across compilations; only the first
- * access per library incurs a network fetch.
- */
 export class LibraryLoader {
-  // Tracks in-flight mount promises to deduplicate concurrent requests
-  private mounting = new Map<string, Promise<void>>()
+  private cache = new Map<string, Record<string, Uint8Array>>()
+  private mounting = new Map<string, Promise<Record<string, Uint8Array>>>()
 
-  /**
-   * Returns true if path refers to a known library (by library-name
-   * first segment or a configured root-level alias).
-   */
   isLibraryPath(path: string): boolean {
     return this.resolveLibraryName(path) !== null
   }
 
-  /** Resolves the library name from a path, or null if not a library. */
   private resolveLibraryName(path: string): string | null {
     const normalized = path.startsWith('/') ? path.slice(1) : path
     const firstSegment = normalized.split('/')[0]
 
     if (LIBRARY_NAMES.has(firstSegment)) return firstSegment
 
-    // Check configured root-level aliases (e.g. smooth_prim.scad)
     const alias = SYMLINK_ALIASES.get(firstSegment)
     return alias ? alias.libName : null
   }
 
-  private async ensureMounted(libName: string): Promise<void> {
-    const mountPoint = `/libraries/${libName}`
-    if (mounts.has(mountPoint)) return
+  private async getLibraryFiles(
+    libName: string,
+  ): Promise<Record<string, Uint8Array>> {
+    const cached = this.cache.get(libName)
+    if (cached) return cached
 
-    if (this.mounting.has(libName)) {
-      await this.mounting.get(libName)
-      return
-    }
+    const active = this.mounting.get(libName)
+    if (active) return active
 
-    const promise = this.doMount(libName, mountPoint).catch((err) => {
+    const promise = (async () => {
+      const resp = await fetch(`/libraries/${libName}.zip`)
+      if (!resp.ok) {
+        throw new Error(`Failed to fetch library zip: ${libName}`)
+      }
+      const buffer = await resp.arrayBuffer()
+      const files = unzipSync(new Uint8Array(buffer))
+      this.cache.set(libName, files)
       this.mounting.delete(libName)
-      throw err
-    })
+      return files
+    })()
+
     this.mounting.set(libName, promise)
-    await promise
+    return promise
   }
 
-  private async doMount(libName: string, mountPoint: string): Promise<void> {
-    const resp = await fetch(`/libraries/${libName}.zip`)
-    if (!resp.ok) {
-      throw new Error(
-        `[LibraryLoader] Failed to fetch ${libName}.zip: ${resp.status}`,
-      )
-    }
-    const data = await resp.arrayBuffer()
+  private getRelativePath(path: string, libName: string): string {
+    const normalized = path.startsWith('/') ? path.slice(1) : path
+    const parts = normalized.split('/')
+    const firstSegment = parts[0]
 
-    await configure({ mounts: { [mountPoint]: { backend: Zip, data } } })
-
-    // Primary directory symlink: /{libName} → /libraries/{libName}
-    try {
-      await fs.promises.symlink(mountPoint, `/${libName}`)
-    } catch {
-      // symlink already exists from a previous worker invocation
+    const alias = SYMLINK_ALIASES.get(firstSegment)
+    if (alias) {
+      parts[0] = alias.internalPath
+      return parts.join('/')
     }
 
-    // Extra root-level aliases defined in config
-    const libConfig = libsConfig.libraries.find((l) => l.name === libName)
-    if ('symlinks' in libConfig! && libConfig.symlinks) {
-      for (const [alias, target] of Object.entries(
-        libConfig.symlinks as unknown as Record<string, string>,
-      )) {
-        try {
-          await fs.promises.symlink(`${mountPoint}/${target}`, `/${alias}`)
-        } catch {
-          // already exists
-        }
-      }
+    if (parts[0] === libName) {
+      parts.shift()
     }
+    return parts.join('/')
   }
 
   async readFileAsText(path: string): Promise<string | null> {
     const libName = this.resolveLibraryName(path)
     if (!libName) return null
     try {
-      await this.ensureMounted(libName)
-      return await fs.promises.readFile(path, 'utf8')
+      const files = await this.getLibraryFiles(libName)
+      const relativePath = this.getRelativePath(path, libName)
+      const fileData = files[relativePath]
+      if (!fileData) return null
+      return new TextDecoder().decode(fileData)
     } catch {
       return null
     }
@@ -119,8 +94,9 @@ export class LibraryLoader {
     const libName = this.resolveLibraryName(path)
     if (!libName) return null
     try {
-      await this.ensureMounted(libName)
-      return await fs.promises.readFile(path)
+      const files = await this.getLibraryFiles(libName)
+      const relativePath = this.getRelativePath(path, libName)
+      return files[relativePath] || null
     } catch {
       return null
     }

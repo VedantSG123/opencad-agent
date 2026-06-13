@@ -140,15 +140,17 @@ export function parseOpenSCADDiagnostics(
 type OpenSCADActions = {
   checkSyntax: (
     main: { path: string; code: string },
-    remoteFsUrl?: string,
+    projectDirectory?: string,
   ) => Promise<void>
   compile: (
     main: { path: string; code: string },
-    remoteFsUrl?: string,
+    projectDirectory?: string,
+    vars?: Record<string, unknown>,
   ) => Promise<void>
   exportSTL: (
     main: { path: string; code: string },
-    remoteFsUrl?: string,
+    projectDirectory?: string,
+    vars?: Record<string, unknown>,
   ) => Promise<CompileResult | null>
   terminate: () => void
   clearLogs: () => void
@@ -164,12 +166,12 @@ export function createOpenSCADStore() {
   return createStore<OpenSCADState & OpenSCADActions>((set, get) => {
     const checkSyntaxInternal = async (
       main: { path: string; code: string },
-      remoteFsUrl?: string,
+      projectDirectory?: string,
     ) => {
       const overrides = kernelFilesStore.getState().files
 
       try {
-        const result = await api.checkSyntax(main, overrides, remoteFsUrl)
+        const result = await api.checkSyntax(main, overrides, projectDirectory)
         const now = Date.now()
         const logs: LogEntry[] = []
         const stderrLines: string[] = []
@@ -232,14 +234,19 @@ export function createOpenSCADStore() {
 
     const compileInternal = async (
       main: { path: string; code: string },
-      remoteFsUrl?: string,
+      projectDirectory?: string,
     ) => {
       set({ isCompiling: true })
       const overrides = kernelFilesStore.getState().files
       const vars = get().vars
 
       try {
-        const result = await api.compile(main, overrides, remoteFsUrl, vars)
+        const result = await api.compile(
+          main,
+          overrides,
+          projectDirectory,
+          vars,
+        )
         const now = Date.now()
         const logs: LogEntry[] = []
         const stderrLines: string[] = []
@@ -317,13 +324,18 @@ export function createOpenSCADStore() {
       compile: runCompile,
       exportSTL: async (
         main: { path: string; code: string },
-        remoteFsUrl?: string,
+        projectDirectory?: string,
       ) => {
         set({ isExporting: true })
         const overrides = kernelFilesStore.getState().files
         const vars = get().vars
         try {
-          const result = await api.exportSTL(main, overrides, remoteFsUrl, vars)
+          const result = await api.exportSTL(
+            main,
+            overrides,
+            projectDirectory,
+            vars,
+          )
           if (result.error) {
             throw new Error(result.stderr.join('\n') || 'Export error')
           }

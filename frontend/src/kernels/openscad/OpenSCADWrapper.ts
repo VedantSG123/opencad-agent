@@ -1,8 +1,3 @@
-/**
- * Reference from: https://github.com/seasick/openscad-web-gui/blob/main/src/worker/openSCAD.ts
- */
-import { configure, fs, mounts, Port, vfs } from '@zenfs/core'
-
 import type { ParameterSet } from '@/features/Project/components/editor/openscad/customizer-types'
 
 import { resolveProjectDependencies } from './dependencyScanner'
@@ -32,97 +27,42 @@ function formatValue(val: unknown): string {
 
 export class OpenSCADWrapper {
   private libraryLoader = new LibraryLoader()
-  private ws: WebSocket | undefined
-  private currentRemoteFsUrl: string | undefined
-
-  private async ensureRemoteFs(remoteFsUrl?: string): Promise<void> {
-    if (!remoteFsUrl) return
-
-    // Reuse existing connection if URL matches
-    if (
-      this.currentRemoteFsUrl === remoteFsUrl &&
-      this.ws?.readyState === WebSocket.OPEN
-    )
-      return
-
-    // Close stale connection
-    this.ws?.close()
-    this.ws = undefined
-    this.currentRemoteFsUrl = undefined
-
-    // Unmount stale /project mount
-    if (mounts.has('/project')) {
-      vfs.umount('/project')
-    }
-
-    // Create new connection
-    this.ws = new WebSocket(remoteFsUrl)
-    await new Promise<void>((resolve, reject) => {
-      this.ws!.onopen = () => resolve()
-      this.ws!.onerror = reject
-    })
-
-    await configure({
-      mounts: {
-        '/project': { backend: Port, port: this.ws, disableAsyncCache: true },
-      },
-    })
-
-    this.currentRemoteFsUrl = remoteFsUrl
-  }
 
   private async createInstance(
     stdout: string[],
     stderr: string[],
     main: { path: string; code: string },
-    remoteFsUrl?: string,
     overrides?: Record<string, { content: string }>,
   ): Promise<OpenSCAD> {
     const options: InitOptions = {
       noInitialRun: true,
-      locateFile: (path: string) => {
-        if (path === 'openscad.wasm') return wasmUrl
-        return path
+      locateFile: (p: string) => {
+        if (p === 'openscad.wasm') return wasmUrl
+        return p
       },
       print: (text: string) => stdout.push(text),
       printErr: (text: string) => stderr.push(text),
     }
 
     const instance = await openscad(options)
-
-    await this.setupFS(instance, main, remoteFsUrl, overrides)
-
+    await this.setupFS(instance, main, overrides)
     return instance
   }
 
   private async setupFS(
     instance: OpenSCAD,
     main: { path: string; code: string },
-    remoteFsUrl?: string,
     overrides?: Record<string, { content: string }>,
   ) {
-    await this.ensureRemoteFs(remoteFsUrl)
-
     // Resolve dependencies recursively starting from the main file
     const dependencyPaths = await resolveProjectDependencies(
       main.code,
       main.path,
       async (p) => {
-        // 1. Check overrides
+        // 1. Check overrides first
         if (overrides && overrides[p]) return overrides[p].content
 
-        // 2. Check remote project (preferred over bundled libraries so users
-        //    can drop an edited copy of a library file into their project)
-        if (remoteFsUrl) {
-          try {
-            const zenPath = `/project${p.startsWith('/') ? '' : '/'}${p}`
-            return await fs.promises.readFile(zenPath, 'utf8')
-          } catch {
-            // not found in project — fall through to libraries
-          }
-        }
-
-        // 3. Check bundled libraries
+        // 2. Check bundled libraries
         return await this.libraryLoader.readFileAsText(p)
       },
     )
@@ -139,23 +79,10 @@ export class OpenSCADWrapper {
       // Skip the main file, it's handled by the caller
       if (normalizedDepPath === normalizedMainPath) continue
 
-      let content: string | Uint8Array | null = null
-
-      // Priority: Overrides > Remote project > Bundled libraries
-      if (overrides && overrides[depPath]) {
-        content = overrides[depPath].content
-      } else if (remoteFsUrl) {
-        try {
-          const zenPath = `/project${depPath.startsWith('/') ? '' : '/'}${depPath}`
-          content = await fs.promises.readFile(zenPath)
-        } catch {
-          /* not in project — fall through to libraries */
-        }
-      }
-
-      if (content === null) {
-        content = await this.libraryLoader.readFile(depPath)
-      }
+      const content =
+        overrides && overrides[depPath]
+          ? overrides[depPath].content
+          : await this.libraryLoader.readFile(depPath)
 
       if (content) {
         this.mkdirForFile(instance, normalizedDepPath)
@@ -186,18 +113,11 @@ export class OpenSCADWrapper {
   async compile(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
-    remoteFsUrl?: string,
     vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
     const stdout: string[] = []
     const stderr: string[] = []
-    const instance = await this.createInstance(
-      stdout,
-      stderr,
-      main,
-      remoteFsUrl,
-      overrides,
-    )
+    const instance = await this.createInstance(stdout, stderr, main, overrides)
 
     // Ensure leading slash for Emscripten FS
     const targetPath = main.path.startsWith('/') ? main.path : `/${main.path}`
@@ -235,14 +155,7 @@ export class OpenSCADWrapper {
           line.includes('Current top level object is not a 3D object.'),
         )
       ) {
-        return this.compileSVG(
-          main,
-          overrides,
-          remoteFsUrl,
-          stdout,
-          stderr,
-          vars,
-        )
+        return this.compileSVG(main, overrides, stdout, stderr, vars)
       }
 
       return { blob: null, format: null, stdout, stderr, error: true }
@@ -252,7 +165,6 @@ export class OpenSCADWrapper {
   private async compileSVG(
     main: { path: string; code: string },
     overrides: Record<string, { content: string }> | undefined,
-    remoteFsUrl: string | undefined,
     stdout: string[],
     stderr: string[],
     vars?: Record<string, unknown>,
@@ -261,7 +173,6 @@ export class OpenSCADWrapper {
       stdout,
       stderr,
       main,
-      remoteFsUrl,
       overrides,
     )
 
@@ -303,18 +214,11 @@ export class OpenSCADWrapper {
   async exportSTL(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
-    remoteFsUrl?: string,
     vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
     const stdout: string[] = []
     const stderr: string[] = []
-    const instance = await this.createInstance(
-      stdout,
-      stderr,
-      main,
-      remoteFsUrl,
-      overrides,
-    )
+    const instance = await this.createInstance(stdout, stderr, main, overrides)
 
     const targetPath = main.path.startsWith('/') ? main.path : `/${main.path}`
     this.mkdirForFile(instance, targetPath)
@@ -356,17 +260,10 @@ export class OpenSCADWrapper {
   async checkSyntax(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
-    remoteFsUrl?: string,
   ): Promise<CompileResult> {
     const stdout: string[] = []
     const stderr: string[] = []
-    const instance = await this.createInstance(
-      stdout,
-      stderr,
-      main,
-      remoteFsUrl,
-      overrides,
-    )
+    const instance = await this.createInstance(stdout, stderr, main, overrides)
 
     const targetPath = main.path.startsWith('/') ? main.path : `/${main.path}`
     this.mkdirForFile(instance, targetPath)

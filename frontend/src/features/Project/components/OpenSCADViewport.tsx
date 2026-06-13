@@ -5,7 +5,6 @@ import { OpenSCADViewer } from '@/components-3d/cad-viewer/OpenSCADViewer'
 import { type KernelFilesState, useKernelFiles } from '@/hooks/useKernelFiles'
 import { useOpenSCAD } from '@/hooks/useOpenSCAD'
 import { cn, toFsPath } from '@/lib/utils'
-import { getBaseWsUrl } from '@/utils/getWsBaseUrl'
 
 import { useEditor } from './editor/context'
 import { OpenSCADParametersPanel } from './editor/OpenSCADParametersPanel'
@@ -32,10 +31,6 @@ function OpenSCADViewportInner() {
     return toFsPath(project.directory, project.file)
   }, [project])
 
-  const remoteFsUrl = React.useMemo(() => {
-    return `${getBaseWsUrl()}/ws/sync?projectId=${project.id}`
-  }, [project])
-
   const selectMainFileContent = React.useCallback(
     (state: KernelFilesState) =>
       mainFilePath ? state.files[mainFilePath]?.content : undefined,
@@ -46,12 +41,16 @@ function OpenSCADViewportInner() {
   const [fsContent, setFsContent] = React.useState<string | undefined>()
 
   React.useEffect(() => {
+    let cancelled = false
     if (!mainFilePath || editorContent !== undefined) {
-      setFsContent(undefined)
+      Promise.resolve().then(() => {
+        if (!cancelled) {
+          setFsContent(undefined)
+        }
+      })
       return
     }
 
-    let cancelled = false
     const normalizedPath = mainFilePath.startsWith('/')
       ? mainFilePath.slice(1)
       : mainFilePath
@@ -79,10 +78,13 @@ function OpenSCADViewportInner() {
     (nextVars: Record<string, unknown>) => {
       setVars(nextVars)
       if (mainFilePath && mainFileContent) {
-        compile({ path: mainFilePath, code: mainFileContent }, remoteFsUrl)
+        compile(
+          { path: mainFilePath, code: mainFileContent },
+          project.directory,
+        )
       }
     },
-    [setVars, compile, mainFilePath, mainFileContent, remoteFsUrl],
+    [setVars, compile, mainFilePath, mainFileContent, project.directory],
   )
 
   React.useEffect(() => {

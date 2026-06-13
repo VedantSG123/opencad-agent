@@ -56,7 +56,7 @@ function makeFunctionoidSuggestion(
   }
   let insertText = `${name.replaceAll('$', '\\$')}(${argSnippets.join(', ')})`
   if (mod.referencesChildren !== null) {
-    insertText += mod.referencesChildren ? ' ${' + ++i + ':children}' : ';'
+    insertText += mod.referencesChildren ? ' ${' + (i + 1) + ':children}' : ';'
   }
   return {
     label: mod.signature,

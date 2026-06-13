@@ -28,12 +28,16 @@ export function ReplicadCompiler() {
   const editorContent = useKernelFiles(selectMainFileContent)
 
   React.useEffect(() => {
+    let cancelled = false
     if (!mainFilePath || editorContent !== undefined) {
-      setFsContent(undefined)
+      Promise.resolve().then(() => {
+        if (!cancelled) {
+          setFsContent(undefined)
+        }
+      })
       return
     }
 
-    let cancelled = false
     const normalizedPath = mainFilePath.startsWith('/')
       ? mainFilePath.slice(1)
       : mainFilePath

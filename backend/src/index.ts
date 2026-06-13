@@ -4,7 +4,6 @@ import { Elysia } from 'elysia'
 import { umzug } from './db/migrate'
 import { projectsRoutes } from './routes/projects/index'
 import { providersRoutes } from './routes/providers/index'
-import { wsRoutes } from './routes/ws/index'
 import { isDevelopment } from './utils/isEnv'
 import { logger, logixlysiaIns } from './utils/logger'
 
@@ -26,9 +25,7 @@ const app = new Elysia()
   )
   .use(logixlysiaIns)
   .get('/', () => 'Hello Elysia')
-  .group('/api', (app) =>
-    app.use(providersRoutes).use(projectsRoutes).use(wsRoutes),
-  )
+  .group('/api', (app) => app.use(providersRoutes).use(projectsRoutes))
 
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000
 

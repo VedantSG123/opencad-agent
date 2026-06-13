@@ -1,12 +1,40 @@
 import { Layers } from 'lucide-react'
+import { useState } from 'react'
+import { toast } from 'sonner'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { useCreateProject } from '@/hooks/useProjects'
+import {
+  extractErrorMessage,
+  useCreateProject,
+  useInvalidateProjects,
+} from '@/hooks/useProjects'
+import type { CreateProjectPayload } from '@/types/project'
 
 import { ProjectWizard } from './wizard'
 
 export function OnboardingScreen() {
-  const { mutate, isPending } = useCreateProject()
+  const { mutateAsync: createProject } = useCreateProject()
+  const { invalidateProjects } = useInvalidateProjects()
+  const [isCreating, setIsCreating] = useState(false)
+
+  async function handleComplete(payload: CreateProjectPayload) {
+    setIsCreating(true)
+    try {
+      const created = await createProject(payload)
+      await invalidateProjects()
+      if (window.electron) {
+        const res = await window.electron.addProjectRoot(created.directory)
+        if (!res.success) {
+          throw new Error(res.error.message)
+        }
+      }
+      toast.success('Project created successfully')
+    } catch (error) {
+      toast.error(extractErrorMessage(error, 'Failed to create project'))
+    } finally {
+      setIsCreating(false)
+    }
+  }
 
   return (
     <div className='flex flex-col items-center justify-center flex-1 px-4 py-16'>
@@ -22,10 +50,7 @@ export function OnboardingScreen() {
         </div>
         <Card>
           <CardContent className='pt-6 pb-5 px-6'>
-            <ProjectWizard
-              onComplete={(payload) => mutate(payload)}
-              isLoading={isPending}
-            />
+            <ProjectWizard onComplete={handleComplete} isLoading={isCreating} />
           </CardContent>
         </Card>
       </div>

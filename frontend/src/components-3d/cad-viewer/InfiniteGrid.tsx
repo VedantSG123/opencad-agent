@@ -88,7 +88,7 @@ export function InfiniteGridMaterial({
 }
 
 export function InfiniteGrid() {
-  const gridMaterial = React.useRef(InfiniteGridMaterial())
+  const gridMaterial = React.useMemo(() => InfiniteGridMaterial(), [])
 
-  return <Plane material={gridMaterial.current} />
+  return <Plane material={gridMaterial} />
 }

@@ -36,13 +36,19 @@ export function OpenSCADViewer({
   )
 
   React.useEffect(() => {
+    let cancelled = false
     const blob = result?.blob
     if (!blob || hasError || result?.format === 'svg') {
-      setGeometry(null)
+      Promise.resolve().then(() => {
+        if (!cancelled) {
+          setGeometry((prev) => {
+            if (prev) prev.dispose()
+            return null
+          })
+        }
+      })
       return
     }
-
-    let cancelled = false
 
     blob.arrayBuffer().then((buffer) => {
       if (cancelled) return

@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { toast } from 'sonner'
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,7 +11,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { useDeleteProject } from '@/hooks/useProjects'
+import {
+  extractErrorMessage,
+  useDeleteProject,
+  useInvalidateProjects,
+} from '@/hooks/useProjects'
 import type { Project } from '@/types/project'
 
 interface DeleteDialogProps {
@@ -17,11 +24,29 @@ interface DeleteDialogProps {
 }
 
 export function DeleteDialog({ project, onClose }: DeleteDialogProps) {
-  const { mutate, isPending } = useDeleteProject()
+  const { mutateAsync: deleteProject } = useDeleteProject()
+  const { invalidateProjects } = useInvalidateProjects()
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (!project) return
-    mutate(project.id, { onSuccess: onClose })
+    setIsDeleting(true)
+    try {
+      await deleteProject(project.id)
+      await invalidateProjects()
+      if (window.electron) {
+        const res = await window.electron.refreshProjectRoots()
+        if (!res.success) {
+          throw new Error(res.error.message)
+        }
+      }
+      toast.success('Project deleted')
+      onClose()
+    } catch (error) {
+      toast.error(extractErrorMessage(error, 'Failed to delete project'))
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -36,13 +61,13 @@ export function DeleteDialog({ project, onClose }: DeleteDialogProps) {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            disabled={isPending}
+            disabled={isDeleting}
             className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
           >
-            {isPending ? 'Deleting…' : 'Delete'}
+            {isDeleting ? 'Deleting…' : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
