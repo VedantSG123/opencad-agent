@@ -20,28 +20,6 @@ export function Dashboard() {
   const [renameTarget, setRenameTarget] = useState<Project | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
   const [newProjectOpen, setNewProjectOpen] = useState(false)
-  const [pingResult, setPingResult] = useState<string | null>(null)
-  const [pinging, setPinging] = useState(false)
-
-  const handlePing = () => {
-    if (window.electron) {
-      setPinging(true)
-      window.electron
-        .pingBackend()
-        .then((res) => {
-          if (res.success) {
-            setPingResult(res.data)
-          } else {
-            setPingResult(`Error: ${res.error.message}`)
-          }
-        })
-        .catch((err: unknown) => {
-          const msg = err instanceof Error ? err.message : 'Unknown error'
-          setPingResult(`Error: ${msg}`)
-        })
-        .finally(() => setPinging(false))
-    }
-  }
 
   const hasProjects = !isLoading && !isError && !!projects?.length
   const isEmpty = !isLoading && !isError && !projects?.length
@@ -49,30 +27,6 @@ export function Dashboard() {
   return (
     <div className='min-h-screen flex flex-col bg-background'>
       <DashboardHeader onNewProject={() => setNewProjectOpen(true)} />
-
-      {window.electron && (
-        <div className='flex items-center justify-between border-b border-border bg-muted/50 px-6 py-2 text-xs text-muted-foreground'>
-          <div className='flex items-center gap-2'>
-            <span className='h-2 w-2 animate-pulse rounded-full bg-emerald-500' />
-            <span>Running in Electron Desktop App</span>
-          </div>
-          <div className='flex items-center gap-4'>
-            {pingResult && (
-              <span className='font-mono text-[11px]'>{pingResult}</span>
-            )}
-            <Button
-              size='xs'
-              variant='outline'
-              className='h-6 px-2 text-[10px]'
-              onClick={handlePing}
-              disabled={pinging}
-            >
-              {pinging ? 'Pinging...' : 'Test Backend Connection'}
-            </Button>
-          </div>
-        </div>
-      )}
-
       <main className='flex-1 flex flex-col max-w-7xl w-full mx-auto px-6 py-8'>
         {isError && (
           <div className='flex flex-col items-center justify-center flex-1 gap-4 text-center'>
