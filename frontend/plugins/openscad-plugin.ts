@@ -12,9 +12,88 @@ import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { promisify } from 'node:util'
 
+import { unzipSync, zipSync } from 'fflate'
 import type { Plugin } from 'vite'
 
 const execAsync = promisify(exec)
+
+// ---------------------------------------------------------------------------
+// Helpers for cross-platform file walker and pattern matcher
+// ---------------------------------------------------------------------------
+
+interface FileEntry {
+  absolutePath: string
+  relativePath: string
+}
+
+async function getFiles(dir: string, baseDir = dir): Promise<FileEntry[]> {
+  const files: FileEntry[] = []
+  const entries = await fs.readdir(dir, { withFileTypes: true })
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      files.push(...(await getFiles(fullPath, baseDir)))
+    } else if (entry.isFile()) {
+      files.push({
+        absolutePath: fullPath,
+        relativePath: path.relative(baseDir, fullPath).replace(/\\/g, '/'),
+      })
+    }
+  }
+  return files
+}
+
+function matchesPattern(
+  relPath: string,
+  pattern: string,
+  absoluteFilePath: string,
+  fullSourceDir: string,
+): boolean {
+  if (pattern.includes('..')) {
+    const targetAbsPath = path.resolve(fullSourceDir, pattern)
+    return absoluteFilePath === targetAbsPath
+  }
+
+  const normalizedRelPath = relPath.replace(/\\/g, '/')
+  const filename = path.basename(normalizedRelPath)
+
+  if (pattern.includes('**')) {
+    if (pattern.startsWith('**/*.')) {
+      const ext = pattern.slice(5)
+      return normalizedRelPath.endsWith('.' + ext)
+    }
+    const regexPattern = pattern
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\\\*\\\*/g, '.*')
+      .replace(/\\\*/g, '[^/]*')
+    const regex = new RegExp('^' + regexPattern + '$')
+    return regex.test(normalizedRelPath)
+  }
+
+  if (pattern.includes('*')) {
+    if (pattern.startsWith('*.')) {
+      const ext = pattern.slice(2)
+      return normalizedRelPath.endsWith('.' + ext)
+    }
+    const regexPattern = pattern
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\\\*/g, '[^/]*')
+    const regex = new RegExp('^' + regexPattern + '$')
+    return regex.test(normalizedRelPath)
+  }
+
+  if (filename === pattern) {
+    return true
+  }
+  if (
+    normalizedRelPath === pattern ||
+    normalizedRelPath.startsWith(pattern + '/')
+  ) {
+    return true
+  }
+
+  return false
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -185,46 +264,36 @@ class OpenSCADLibrariesPlugin {
     await this.ensureDir(path.dirname(outputPath))
 
     const fullSourceDir = path.join(sourceDir, workingDir)
+    const allFiles = await getFiles(sourceDir)
 
-    let findCmd: string
-    if (includes.length > 0) {
-      const patterns = includes
-        .map((pattern) => {
-          if (pattern.includes('**/*.')) {
-            const parts = pattern.split('/')
-            const dir = parts[0]
-            const file = parts[parts.length - 1]
-            return `-path "./${dir}/*" -name "${file}"`
-          }
-          if (pattern.includes('**')) {
-            return `-name "${pattern.replace('**/', '')}"`
-          }
-          if (pattern.includes('*')) {
-            return `-name "${pattern}"`
-          }
-          if (pattern.includes('/')) {
-            return `-path "./${pattern}"`
-          }
-          return `-name "${pattern}" -o -path "./${pattern}/*"`
-        })
-        .join(' -o ')
-      findCmd = `find . \\( ${patterns} \\)`
-    } else {
-      findCmd = 'find . -name "*.scad"'
+    const zipFiles: Record<string, Uint8Array> = {}
+    const actualIncludes = includes.length > 0 ? includes : ['**/*.scad']
+
+    for (const file of allFiles) {
+      const relPath = path
+        .relative(fullSourceDir, file.absolutePath)
+        .replace(/\\/g, '/')
+
+      const isIncluded = actualIncludes.some((pat) =>
+        matchesPattern(relPath, pat, file.absolutePath, fullSourceDir),
+      )
+      if (!isIncluded) continue
+
+      const isExcluded = excludes.some((pat) =>
+        matchesPattern(relPath, pat, file.absolutePath, fullSourceDir),
+      )
+      if (isExcluded) continue
+
+      const content = await fs.readFile(file.absolutePath)
+      const zipPath = relPath.startsWith('../')
+        ? path.basename(relPath)
+        : relPath
+      zipFiles[zipPath] = new Uint8Array(content)
     }
 
-    if (excludes.length > 0) {
-      const excludeFlags = excludes
-        .map(
-          (p) => `-not -path "*/${p.replace('**/', '').replace('/**', '')}*"`,
-        )
-        .join(' ')
-      findCmd += ` ${excludeFlags}`
-    }
-
-    const zipCmd = `cd ${fullSourceDir} && ${findCmd} | zip -r ${path.resolve(outputPath)} -@`
+    const zipped = zipSync(zipFiles)
     console.log(`[openscad-plugin] Creating zip: ${outputPath}`)
-    await execAsync(zipCmd)
+    await fs.writeFile(outputPath, zipped)
   }
 
   // ---------------------------------------------------------------------------
@@ -259,16 +328,28 @@ class OpenSCADLibrariesPlugin {
       }
 
       // Validate the zip — a partial/corrupted download will fail the test.
+      let decompressed: Record<string, Uint8Array> | null = null
       try {
-        await execAsync(`unzip -t ${wasmZip}`)
+        const zipBuffer = await fs.readFile(wasmZip)
+        decompressed = unzipSync(new Uint8Array(zipBuffer))
       } catch {
         console.warn('[openscad-plugin] Zip is corrupt, re-downloading...')
         await fs.rm(wasmZip, { force: true })
         await this.downloadFile(wasmBuild.url, wasmZip)
+        const zipBuffer = await fs.readFile(wasmZip)
+        decompressed = unzipSync(new Uint8Array(zipBuffer))
       }
 
       console.log(`[openscad-plugin] Extracting WASM to ${wasmDir}`)
-      await execAsync(`cd ${wasmDir} && unzip -o ../${path.basename(wasmZip)}`)
+      for (const [relPath, data] of Object.entries(decompressed)) {
+        const targetPath = path.join(wasmDir, relPath)
+        if (relPath.endsWith('/')) {
+          await fs.mkdir(targetPath, { recursive: true })
+        } else {
+          await fs.mkdir(path.dirname(targetPath), { recursive: true })
+          await fs.writeFile(targetPath, data)
+        }
+      }
     }
 
     // Copy openscad.js and openscad.wasm directly into the src library dir so
@@ -310,9 +391,33 @@ class OpenSCADLibrariesPlugin {
     const fontsZip = path.join(this.publicLibsDir, 'fonts.zip')
 
     console.log('[openscad-plugin] Creating fonts.zip')
-    await execAsync(
-      `zip -r ${fontsZip} -j fonts.conf ${notoDir}/*.ttf ${liberationDir}/*.ttf ${liberationDir}/LICENSE ${liberationDir}/AUTHORS`,
-    )
+    const zipFiles: Record<string, Uint8Array> = {}
+    const fontsConfContent = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+  <dir>/fonts</dir>
+  <cachedir>/cachedir</cachedir>
+</fontconfig>`
+    zipFiles['fonts.conf'] = new TextEncoder().encode(fontsConfContent)
+
+    const notoFiles = await fs.readdir(notoDir)
+    for (const file of notoFiles) {
+      if (file.endsWith('.ttf')) {
+        const content = await fs.readFile(path.join(notoDir, file))
+        zipFiles[file] = new Uint8Array(content)
+      }
+    }
+
+    const liberationFiles = await fs.readdir(liberationDir)
+    for (const file of liberationFiles) {
+      if (file.endsWith('.ttf') || file === 'LICENSE' || file === 'AUTHORS') {
+        const content = await fs.readFile(path.join(liberationDir, file))
+        zipFiles[file] = new Uint8Array(content)
+      }
+    }
+
+    const zipped = zipSync(zipFiles)
+    await fs.writeFile(fontsZip, zipped)
 
     console.log('[openscad-plugin] Fonts setup completed')
   }
