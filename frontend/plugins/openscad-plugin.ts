@@ -63,7 +63,7 @@ function matchesPattern(
       return normalizedRelPath.endsWith('.' + ext)
     }
     const regexPattern = pattern
-      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/[.+^${}()|[\]\\*]/g, '\\$&')
       .replace(/\\\*\\\*/g, '.*')
       .replace(/\\\*/g, '[^/]*')
     const regex = new RegExp('^' + regexPattern + '$')
@@ -76,7 +76,7 @@ function matchesPattern(
       return normalizedRelPath.endsWith('.' + ext)
     }
     const regexPattern = pattern
-      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/[.+^${}()|[\]\\*]/g, '\\$&')
       .replace(/\\\*/g, '[^/]*')
     const regex = new RegExp('^' + regexPattern + '$')
     return regex.test(normalizedRelPath)
@@ -328,7 +328,7 @@ class OpenSCADLibrariesPlugin {
       }
 
       // Validate the zip — a partial/corrupted download will fail the test.
-      let decompressed: Record<string, Uint8Array> | null = null
+      let decompressed!: Record<string, Uint8Array>
       try {
         const zipBuffer = await fs.readFile(wasmZip)
         decompressed = unzipSync(new Uint8Array(zipBuffer))
