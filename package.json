@@ -17,6 +17,8 @@
     "lint:backend": "(cd backend && bun run lint)",
     "lint:electron": "(cd electron && bun run lint)",
     "lint": "bun run lint:frontend && bun run lint:backend && bun run lint:electron",
+    "format": "prettier --write \"{backend,frontend,electron}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,json,css}\" \"*.{json,mjs,mts}\"",
+    "format:check": "prettier --check \"{backend,frontend,electron}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,json,css}\" \"*.{json,mjs,mts}\"",
     "package": "bun run build && (cd electron && bun run package)"
   },
   "devDependencies": {
