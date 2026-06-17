@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
+import { joinPaths } from '@/lib/utils'
+
 import type { WatchEvent } from '../types/electron'
 export type { WatchEvent }
 
@@ -80,10 +82,7 @@ export function useFileSyncWS(
 
   const resolvePath = useCallback(
     (virtualPath: string) => {
-      const cleanPath = virtualPath.startsWith('/')
-        ? virtualPath
-        : `/${virtualPath}`
-      return projectDirectory + cleanPath
+      return joinPaths(projectDirectory, virtualPath)
     },
     [projectDirectory],
   )

@@ -1,5 +1,6 @@
 import { wrap } from 'comlink'
 
+import { joinPaths } from '@/lib/utils'
 import OpenSCADWorker from '@/workers/openscad/worker?worker'
 
 import { resolveProjectDependencies } from './dependencyScanner'
@@ -54,10 +55,7 @@ export class OpenSCADApi {
           if (loader.isLibraryPath(p)) return null
 
           try {
-            const separator = p.startsWith('/') ? '' : '/'
-            const res = await electron.readFile(
-              projectDirectory + separator + p,
-            )
+            const res = await electron.readFile(joinPaths(projectDirectory, p))
             if (res.success) {
               return res.data
             }
@@ -79,8 +77,7 @@ export class OpenSCADApi {
         if (loader.isLibraryPath(p)) continue
 
         try {
-          const separator = p.startsWith('/') ? '' : '/'
-          const res = await electron.readFile(projectDirectory + separator + p)
+          const res = await electron.readFile(joinPaths(projectDirectory, p))
           if (res.success) {
             finalOverrides[p] = { content: res.data }
           }
@@ -101,6 +98,31 @@ export class OpenSCADApi {
     projectDirectory?: string,
     vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
+    const electron = window.electron
+    if (electron) {
+      const res = await electron.compileOpenSCAD(
+        main,
+        overrides,
+        projectDirectory,
+        vars,
+      )
+      if (!res.success) {
+        throw new Error(
+          res.error.message || 'Compilation failed via Electron IPC',
+        )
+      }
+      const data = res.data
+      let blob: Blob | null = null
+      if (data.blob) {
+        const mimeType = data.format === 'svg' ? 'image/svg+xml' : 'model/stl'
+        blob = new Blob([new Uint8Array(data.blob)], { type: mimeType })
+      }
+      return {
+        ...data,
+        blob,
+      }
+    }
+
     const resolvedOverrides = await this.resolveOverrides(
       main,
       overrides,
@@ -115,6 +137,30 @@ export class OpenSCADApi {
     projectDirectory?: string,
     vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
+    const electron = window.electron
+    if (electron) {
+      const res = await electron.exportSTLOpenSCAD(
+        main,
+        overrides,
+        projectDirectory,
+        vars,
+      )
+      if (!res.success) {
+        throw new Error(
+          res.error.message || 'STL Export failed via Electron IPC',
+        )
+      }
+      const data = res.data
+      let blob: Blob | null = null
+      if (data.blob) {
+        blob = new Blob([new Uint8Array(data.blob)], { type: 'model/stl' })
+      }
+      return {
+        ...data,
+        blob,
+      }
+    }
+
     const resolvedOverrides = await this.resolveOverrides(
       main,
       overrides,
@@ -128,6 +174,25 @@ export class OpenSCADApi {
     overrides?: Record<string, { content: string }>,
     projectDirectory?: string,
   ): Promise<CompileResult> {
+    const electron = window.electron
+    if (electron) {
+      const res = await electron.checkSyntaxOpenSCAD(
+        main,
+        overrides,
+        projectDirectory,
+      )
+      if (!res.success) {
+        throw new Error(
+          res.error.message || 'Syntax checking failed via Electron IPC',
+        )
+      }
+      const data = res.data
+      return {
+        ...data,
+        blob: null,
+      }
+    }
+
     const resolvedOverrides = await this.resolveOverrides(
       main,
       overrides,

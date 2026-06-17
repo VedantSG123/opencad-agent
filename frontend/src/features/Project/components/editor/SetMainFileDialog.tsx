@@ -15,7 +15,7 @@ import {
   useInvalidateProjects,
   useSetProjectFile,
 } from '@/hooks/useProjects'
-import { cn } from '@/lib/utils'
+import { cn, joinPaths } from '@/lib/utils'
 
 import { useEditor } from './context'
 
@@ -41,7 +41,7 @@ export function SetMainFileDialog({ open, onClose }: SetMainFileDialogProps) {
   async function handleConfirm() {
     if (!project || !selected) return
     // Virtual path is e.g. "/main.js"; absolute = directory + virtual path
-    const absolutePath = project.directory + selected
+    const absolutePath = joinPaths(project.directory, selected)
     setIsSaving(true)
     try {
       await setProjectFile({ id: project.id, file: absolutePath })
