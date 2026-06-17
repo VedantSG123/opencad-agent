@@ -1,3 +1,5 @@
+import { isAbsolute, relative, resolve } from 'node:path'
+
 import { Elysia, t } from 'elysia'
 
 import { SUPPORTED_CAD_KERNELS } from '../../cad'
@@ -51,7 +53,11 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
       if (!existing) return status(404, { message: 'Project not found' })
 
       if ('file' in body && body.file != null) {
-        if (!body.file.startsWith(existing.directory + '/')) {
+        const normDir = resolve(existing.directory)
+        const normFile = resolve(body.file)
+        const rel = relative(normDir, normFile)
+        const isInside = rel && !rel.startsWith('..') && !isAbsolute(rel)
+        if (!isInside) {
           return status(400, {
             message: 'File must be inside the project directory',
           })
