@@ -26,9 +26,9 @@ dist-ssr
 .agents
 skills-lock.json
 
-# OpenSCAD plugin — downloaded sources and generated artifacts
-# openscad.d.ts is intentionally kept (custom type definitions)
-libs/
-public/libraries/
-src/kernels/openscad/library/openscad.js
-src/kernels/openscad/library/openscad.wasm
+# Download Setup files
+temp
+
+# OpenSCAD libraries
+openscad-libs
+src/lib/openscad/openscad.js

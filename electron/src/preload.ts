@@ -33,6 +33,49 @@ export interface ElectronAPI {
   onWatch: (handler: (event: WatchEvent) => void) => () => void
   refreshProjectRoots: () => Promise<Result<{ count: number }>>
   addProjectRoot: (directory: string) => Promise<Result<{ count: number }>>
+  compileOpenSCAD: (
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    projectDirectory?: string,
+    vars?: Record<string, unknown>,
+  ) => Promise<
+    Result<{
+      blob: Uint8Array | null
+      format: 'stl' | 'svg' | null
+      stdout: string[]
+      stderr: string[]
+      error: boolean
+      parameterSet?: unknown
+    }>
+  >
+  exportSTLOpenSCAD: (
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    projectDirectory?: string,
+    vars?: Record<string, unknown>,
+  ) => Promise<
+    Result<{
+      blob: Uint8Array | null
+      format: 'stl' | 'svg' | null
+      stdout: string[]
+      stderr: string[]
+      error: boolean
+    }>
+  >
+  checkSyntaxOpenSCAD: (
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    projectDirectory?: string,
+  ) => Promise<
+    Result<{
+      blob: null
+      format: null
+      stdout: string[]
+      stderr: string[]
+      error: boolean
+      parameterSet?: unknown
+    }>
+  >
 }
 
 // Find --backend-port in process.argv
@@ -54,6 +97,29 @@ const api: ElectronAPI = {
   refreshProjectRoots: () => ipcRenderer.invoke('projects:refresh-roots'),
   addProjectRoot: (directory) =>
     ipcRenderer.invoke('projects:add-root', directory),
+  compileOpenSCAD: (main, overrides, projectDirectory, vars) =>
+    ipcRenderer.invoke(
+      'openscad:compile',
+      main,
+      overrides,
+      projectDirectory,
+      vars,
+    ),
+  exportSTLOpenSCAD: (main, overrides, projectDirectory, vars) =>
+    ipcRenderer.invoke(
+      'openscad:exportSTL',
+      main,
+      overrides,
+      projectDirectory,
+      vars,
+    ),
+  checkSyntaxOpenSCAD: (main, overrides, projectDirectory) =>
+    ipcRenderer.invoke(
+      'openscad:checkSyntax',
+      main,
+      overrides,
+      projectDirectory,
+    ),
   onWatch: (handler) => {
     const listener = (_event: IpcRendererEvent, data: WatchEvent) =>
       handler(data)

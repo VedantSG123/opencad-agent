@@ -8,15 +8,20 @@
     "email": "vedantghonge0@outlook.com"
   },
   "main": "dist/main.js",
+  "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "bun scripts/setup-openscad.ts && tsc",
     "lint": "eslint .",
     "start": "electron dist/main.js",
-    "dev": "tsc && concurrently -k -n \"tsc,electron\" -c \"blue,green\" \"tsc -w\" \"electron dist/main.js\"",
+    "dev": "bun scripts/setup-openscad.ts && tsc && concurrently -k -n \"tsc,electron\" -c \"blue,green\" \"tsc -w\" \"electron dist/main.js\"",
     "package": "electron-builder"
   },
   "dependencies": {
-    "chokidar": "^5.0.0"
+    "@zenfs/archives": "^1.3.6",
+    "@zenfs/core": "^2.5.7",
+    "chokidar": "^5.0.0",
+    "comctx": "^1.7.5",
+    "fflate": "^0.8.3"
   },
   "devDependencies": {
     "@types/node": "^20.14.2",
@@ -49,6 +54,10 @@
       {
         "from": "../frontend/dist",
         "to": "frontend"
+      },
+      {
+        "from": "openscad-libs",
+        "to": "openscad-libs"
       }
     ],
     "linux": {

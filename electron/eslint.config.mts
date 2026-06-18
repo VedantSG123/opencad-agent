@@ -11,7 +11,9 @@ export default defineConfig([
       'dist/**',
       'dist-packaged/**',
       'node_modules/**',
-      'eslint.config.mts',
+      'src/lib/openscad/openscad.js',
+      'temp/**',
+      'openscad-libs/**',
     ],
   },
   {
@@ -28,7 +30,9 @@ export default defineConfig([
     files: ['**/*.{ts,mts,cts}'],
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        projectService: {
+          allowDefaultProject: ['eslint.config.mts', 'scripts/*.ts'],
+        },
         tsconfigRootDir: (import.meta as unknown as { dirname: string })
           .dirname,
       },

@@ -1,11 +1,21 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { fileURLToPath } from 'node:url'
+
 import { spawn } from 'child_process'
 import type { FSWatcher } from 'chokidar' with { 'resolution-mode': 'import' }
+import { defineProxy } from 'comctx'
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import * as fs from 'fs'
 import * as net from 'net'
 import * as path from 'path'
+import { Worker } from 'worker_threads'
+
+import { NodeAdapter } from './workers/openscad/nodeAdapter.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
 class AppError extends Error {
   constructor(
     public code: string,
@@ -224,10 +234,10 @@ function startBackend(port: number) {
     cwdPath = path.join(process.resourcesPath, 'bin')
     args = []
   } else {
-    // In development, spawn bun to run src/index.ts
+    // In development, spawn bun to run src/index.ts in watch mode
     binPath = 'bun'
     cwdPath = getBackendDir()
-    args = ['run', 'src/index.ts']
+    args = ['run', '--watch', 'src/index.ts']
   }
 
   console.log(`Starting Elysia backend on port ${port}. Executable: ${binPath}`)
@@ -487,6 +497,117 @@ ipcMain.handle(
   }),
 )
 
+// OpenSCAD Worker Lazy Spawning & Lifecycle
+import type { OpenSCADWorkerService } from './workers/openscad/worker.js'
+let openscadWorker: Worker | null = null
+let openscadWorkerApi: OpenSCADWorkerService | null = null
+
+function getOpenSCADWorker(): OpenSCADWorkerService {
+  if (!openscadWorker) {
+    const isPackaged = app.isPackaged
+    const openscadResourcesPath = isPackaged
+      ? path.join(process.resourcesPath, 'openscad-libs')
+      : path.join(__dirname, '..', 'openscad-libs')
+
+    const workerPath = path.join(__dirname, 'workers/openscad/worker.js')
+    console.log(`Spawning OpenSCAD Node worker from: ${workerPath}`)
+    console.log(`Using OpenSCAD resources path: ${openscadResourcesPath}`)
+
+    openscadWorker = new Worker(workerPath, {
+      workerData: { openscadResourcesPath },
+    })
+
+    openscadWorker.on('error', (err) => {
+      console.error('OpenSCAD Node worker error:', err)
+    })
+
+    openscadWorker.on('exit', (code) => {
+      console.log(`OpenSCAD Node worker exited with code ${code}`)
+      openscadWorker = null
+      openscadWorkerApi = null
+    })
+
+    if (!openscadWorker) {
+      console.error('Failed to spawn OpenSCAD Node worker.')
+    }
+
+    const [, inject] = defineProxy(() => ({}) as OpenSCADWorkerService, {
+      namespace: 'openscad-worker',
+      heartbeatCheck: false,
+      transfer: true,
+    })
+
+    openscadWorkerApi = inject(
+      new NodeAdapter(openscadWorker, 'openscad-worker-injector'),
+    )
+  }
+  return openscadWorkerApi!
+}
+
+ipcMain.handle(
+  'openscad:compile',
+  createHandler(
+    async (
+      _event,
+      main: { path: string; code: string },
+      overrides?: Record<string, { content: string }>,
+      projectDirectory?: string,
+      vars?: Record<string, unknown>,
+    ) => {
+      const validatedProjDir = projectDirectory
+        ? validatePath(projectDirectory)
+        : undefined
+      const api = getOpenSCADWorker()
+      const result = await api.compile(main, overrides, validatedProjDir, vars)
+      return result
+    },
+  ),
+)
+
+ipcMain.handle(
+  'openscad:exportSTL',
+  createHandler(
+    async (
+      _event,
+      main: { path: string; code: string },
+      overrides?: Record<string, { content: string }>,
+      projectDirectory?: string,
+      vars?: Record<string, unknown>,
+    ) => {
+      const validatedProjDir = projectDirectory
+        ? validatePath(projectDirectory)
+        : undefined
+      const api = getOpenSCADWorker()
+      const result = await api.exportSTL(
+        main,
+        overrides,
+        validatedProjDir,
+        vars,
+      )
+      return result
+    },
+  ),
+)
+
+ipcMain.handle(
+  'openscad:checkSyntax',
+  createHandler(
+    async (
+      _event,
+      main: { path: string; code: string },
+      overrides?: Record<string, { content: string }>,
+      projectDirectory?: string,
+    ) => {
+      const validatedProjDir = projectDirectory
+        ? validatePath(projectDirectory)
+        : undefined
+      const api = getOpenSCADWorker()
+      const result = await api.checkSyntax(main, overrides, validatedProjDir)
+      return result
+    },
+  ),
+)
+
 app.whenReady().then(async () => {
   try {
     backendPort = await findFreePort(3000)
@@ -517,6 +638,10 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
+  if (openscadWorker) {
+    console.log('Terminating OpenSCAD Node worker...')
+    openscadWorker.terminate()
+  }
   if (dirWatcher) {
     console.log(`Closing directory watcher for: ${watchedDirPath}`)
     dirWatcher.close().catch((err: Error) => console.error(err))
