@@ -31,7 +31,11 @@ export default defineConfig([
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['eslint.config.mts', 'scripts/*.ts'],
+          allowDefaultProject: [
+            'eslint.config.mts',
+            'scripts/*.ts',
+            'src/preload.ts',
+          ],
         },
         tsconfigRootDir: (import.meta as unknown as { dirname: string })
           .dirname,

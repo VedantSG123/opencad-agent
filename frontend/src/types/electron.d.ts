@@ -14,6 +14,15 @@ export type Result<T> =
   | { success: true; data: T }
   | { success: false; error: { code: string; message: string } }
 
+export interface OpenSCADIpcResult {
+  blob: Uint8Array | null
+  format: 'stl' | 'svg' | null
+  stdout: string[]
+  stderr: string[]
+  error: boolean
+  parameterSet?: unknown
+}
+
 export interface ElectronAPI {
   isElectron: boolean
   backendPort: number
@@ -30,6 +39,23 @@ export interface ElectronAPI {
   onWatch: (handler: (event: WatchEvent) => void) => () => void
   refreshProjectRoots: () => Promise<Result<{ count: number }>>
   addProjectRoot: (directory: string) => Promise<Result<{ count: number }>>
+  compileOpenSCAD: (
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    projectDirectory?: string,
+    vars?: Record<string, unknown>,
+  ) => Promise<Result<OpenSCADIpcResult>>
+  exportSTLOpenSCAD: (
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    projectDirectory?: string,
+    vars?: Record<string, unknown>,
+  ) => Promise<Result<OpenSCADIpcResult>>
+  checkSyntaxOpenSCAD: (
+    main: { path: string; code: string },
+    overrides?: Record<string, { content: string }>,
+    projectDirectory?: string,
+  ) => Promise<Result<OpenSCADIpcResult>>
 }
 
 declare global {

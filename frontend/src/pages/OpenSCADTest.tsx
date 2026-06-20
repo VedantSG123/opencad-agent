@@ -2,7 +2,7 @@ import * as React from 'react'
 import * as THREE from 'three'
 
 import { OpenSCADViewer } from '../components-3d/cad-viewer/OpenSCADViewer'
-import { OpenSCADProvider, useOpenSCAD } from '../hooks/useOpenSCAD'
+import { NodeOpenSCADProvider, useNodeOpenSCAD } from '../hooks/useNodeOpenSCAD'
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1)
 
@@ -14,10 +14,11 @@ difference() {
 }
 `
 
-function OpenSCADTestInner() {
-  const result = useOpenSCAD((state) => state.result)
-  const error = useOpenSCAD((state) => state.error)
-  const compile = useOpenSCAD((state) => state.compile)
+function NodeOpenSCADTestInner() {
+  const result = useNodeOpenSCAD((state) => state.result)
+  const error = useNodeOpenSCAD((state) => state.error)
+  const compile = useNodeOpenSCAD((state) => state.compile)
+  const isCompiling = useNodeOpenSCAD((state) => state.isCompiling)
 
   React.useEffect(() => {
     compile({
@@ -28,6 +29,9 @@ function OpenSCADTestInner() {
 
   return (
     <div className='w-full h-screen fixed top-0 left-0 -z-10 bg-background'>
+      <div className='absolute top-4 right-4 z-10 text-xs text-muted-foreground'>
+        Node worker {isCompiling ? 'compiling...' : 'idle'}
+      </div>
       <OpenSCADViewer result={result} hasError={!!error} />
     </div>
   )
@@ -35,8 +39,8 @@ function OpenSCADTestInner() {
 
 export default function OpenSCADTest() {
   return (
-    <OpenSCADProvider>
-      <OpenSCADTestInner />
-    </OpenSCADProvider>
+    <NodeOpenSCADProvider>
+      <NodeOpenSCADTestInner />
+    </NodeOpenSCADProvider>
   )
 }

@@ -78,8 +78,10 @@ function formatValue(val: unknown): string {
 
 export class OpenSCADWrapper {
   private libraryLoader: LibraryLoader
+  private openscadResourcesPath: string
 
   constructor(openscadResourcesPath: string) {
+    this.openscadResourcesPath = openscadResourcesPath
     this.libraryLoader = new LibraryLoader(openscadResourcesPath)
   }
 
@@ -90,8 +92,15 @@ export class OpenSCADWrapper {
     projectDirectory?: string,
     overrides?: Record<string, { content: string }>,
   ): Promise<OpenSCAD> {
+    const wasmPath = path.join(this.openscadResourcesPath, 'openscad.wasm')
+
     const options = {
       noInitialRun: true,
+      wasmBinary: await fsPromises.readFile(wasmPath),
+      locateFile: (p: string) => {
+        if (p === 'openscad.wasm') return wasmPath
+        return p
+      },
       print: (text: string) => stdout.push(text),
       printErr: (text: string) => stderr.push(text),
     }

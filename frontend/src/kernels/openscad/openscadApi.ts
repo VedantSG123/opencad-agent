@@ -118,8 +118,12 @@ export class OpenSCADApi {
         blob = new Blob([new Uint8Array(data.blob)], { type: mimeType })
       }
       return {
-        ...data,
         blob,
+        format: data.format,
+        stdout: data.stdout,
+        stderr: data.stderr,
+        error: data.error,
+        parameterSet: data.parameterSet as CompileResult['parameterSet'],
       }
     }
 
@@ -156,8 +160,12 @@ export class OpenSCADApi {
         blob = new Blob([new Uint8Array(data.blob)], { type: 'model/stl' })
       }
       return {
-        ...data,
         blob,
+        format: data.format,
+        stdout: data.stdout,
+        stderr: data.stderr,
+        error: data.error,
+        parameterSet: data.parameterSet as CompileResult['parameterSet'],
       }
     }
 
@@ -188,8 +196,12 @@ export class OpenSCADApi {
       }
       const data = res.data
       return {
-        ...data,
         blob: null,
+        format: data.format,
+        stdout: data.stdout,
+        stderr: data.stderr,
+        error: data.error,
+        parameterSet: data.parameterSet as CompileResult['parameterSet'],
       }
     }
 

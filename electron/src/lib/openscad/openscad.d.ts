@@ -3,6 +3,7 @@ export interface InitOptions {
   print?: (text: string) => void
   printErr?: (text: string) => void
   locateFile?: (path: string, prefix: string) => string
+  wasmBinary?: ArrayBufferView | ArrayBuffer
 }
 export interface OpenSCAD {
   callMain(args: Array<string>): number

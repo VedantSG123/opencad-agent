@@ -399,6 +399,14 @@ class OpenSCADSetup {
       await fs.copyFile(srcWasm, wasmDestDev)
     }
     console.log(`[setup-openscad] WASM copied to ${WASM_DEV_DIR}`)
+
+    // Copy to resources dir (for runtime and packaging)
+    await fs.mkdir(RESOURCES_DIR, { recursive: true })
+    await fs.copyFile(srcJs, jsDestProd)
+    if (existsSync(srcWasm)) {
+      await fs.copyFile(srcWasm, wasmDestProd)
+    }
+    console.log(`[setup-openscad] WASM copied to ${RESOURCES_DIR}`)
   }
 
   // ── Fonts ───────────────────────────────────────────────────────────

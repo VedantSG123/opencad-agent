@@ -32,3 +32,4 @@ temp
 # OpenSCAD libraries
 openscad-libs
 src/lib/openscad/openscad.js
+src/lib/openscad/openscad.wasm

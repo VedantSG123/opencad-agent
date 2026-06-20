@@ -9,7 +9,6 @@ export function registerOpenSCADIpc(ipcMain: IpcMain) {
     'openscad:compile',
     createHandler(
       async (
-        _event,
         main: { path: string; code: string },
         overrides?: Record<string, { content: string }>,
         projectDirectory?: string,
@@ -28,7 +27,6 @@ export function registerOpenSCADIpc(ipcMain: IpcMain) {
     'openscad:exportSTL',
     createHandler(
       async (
-        _event,
         main: { path: string; code: string },
         overrides?: Record<string, { content: string }>,
         projectDirectory?: string,
@@ -47,7 +45,6 @@ export function registerOpenSCADIpc(ipcMain: IpcMain) {
     'openscad:checkSyntax',
     createHandler(
       async (
-        _event,
         main: { path: string; code: string },
         overrides?: Record<string, { content: string }>,
         projectDirectory?: string,
