@@ -3,7 +3,7 @@ import * as React from 'react'
 
 import { OpenSCADViewer } from '@/components-3d/cad-viewer/OpenSCADViewer'
 import { type KernelFilesState, useKernelFiles } from '@/hooks/useKernelFiles'
-import { useOpenSCAD } from '@/hooks/useOpenSCAD'
+import { useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
 import { cn, toFsPath } from '@/lib/utils'
 
 import { useEditor } from './editor/context'
@@ -11,13 +11,13 @@ import { OpenSCADParametersPanel } from './editor/OpenSCADParametersPanel'
 import { OpenSCADCompiler } from './OpenSCADCompiler'
 
 function OpenSCADViewportInner() {
-  const result = useOpenSCAD((state) => state.result)
-  const error = useOpenSCAD((state) => state.error)
-  const isCompiling = useOpenSCAD((state) => state.isCompiling)
-  const parameterSet = useOpenSCAD((state) => state.parameterSet)
-  const vars = useOpenSCAD((state) => state.vars)
-  const setVars = useOpenSCAD((state) => state.setVars)
-  const compile = useOpenSCAD((state) => state.compile)
+  const result = useNodeOpenSCAD((state) => state.result)
+  const error = useNodeOpenSCAD((state) => state.error)
+  const isCompiling = useNodeOpenSCAD((state) => state.isCompiling)
+  const parameterSet = useNodeOpenSCAD((state) => state.parameterSet)
+  const vars = useNodeOpenSCAD((state) => state.vars)
+  const setVars = useNodeOpenSCAD((state) => state.setVars)
+  const compile = useNodeOpenSCAD((state) => state.compile)
 
   const [resetView, setResetView] = React.useState<(() => void) | null>(null)
   const [showParams, setShowParams] = React.useState(true)

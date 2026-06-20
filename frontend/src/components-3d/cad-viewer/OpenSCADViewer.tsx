@@ -4,7 +4,7 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 
 import { OpenSCADSVGViewer } from '@/components/custom/SvgViewer'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
-import type { CompileResult } from '@/kernels/openscad/OpenSCADWrapper'
+import type { CompileResult } from '@/kernels/openscad/nodeOpenSCADApi'
 
 import { Canvas } from './Canvas'
 import { ErrorMesh } from './ErrorMesh'

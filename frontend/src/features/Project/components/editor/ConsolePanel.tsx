@@ -4,7 +4,7 @@ import * as React from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { usePanelContext } from '@/features/Project/context/PanelContext'
-import { type LogEntry, useOpenSCAD } from '@/hooks/useOpenSCAD'
+import { type LogEntry, useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
 import { useReplicad } from '@/hooks/useReplicad'
 import { cn } from '@/lib/utils'
 
@@ -109,9 +109,9 @@ function ConsolePanelBase({ logs, clearLogs, error }: ConsolePanelBaseProps) {
 }
 
 function OpenSCADConsolePanel() {
-  const logs = useOpenSCAD((state) => state.logs)
-  const clearLogs = useOpenSCAD((state) => state.clearLogs)
-  const error = useOpenSCAD((state) => state.error)
+  const logs = useNodeOpenSCAD((state) => state.logs)
+  const clearLogs = useNodeOpenSCAD((state) => state.clearLogs)
+  const error = useNodeOpenSCAD((state) => state.error)
 
   return <ConsolePanelBase logs={logs} clearLogs={clearLogs} error={error} />
 }

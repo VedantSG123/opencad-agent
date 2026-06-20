@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react'
 import replicadTypes from 'virtual:replicad-types'
 
 import { useTheme } from '@/contexts/theme-context'
-import { type EditorMarker, useOpenSCAD } from '@/hooks/useOpenSCAD'
+import { type EditorMarker, useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
 import type { CadKernel } from '@/types/project'
 
 import { usePanelContext } from '../../context/PanelContext'
@@ -375,7 +375,7 @@ function MonacoEditorBase({
 }
 
 function MonacoEditorWithMarkers(props: MonacoEditorProps) {
-  const markers = useOpenSCAD((state) => state.markers)
+  const markers = useNodeOpenSCAD((state) => state.markers)
   return <MonacoEditorBase {...props} markers={markers} />
 }
 

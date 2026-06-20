@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 
 import { FSNotReadyError } from '@/hooks/useFileSyncWS'
 import { type KernelFilesState, useKernelFiles } from '@/hooks/useKernelFiles'
-import { useOpenSCAD } from '@/hooks/useOpenSCAD'
+import { useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
 import { toFsPath } from '@/lib/utils'
 
 import { useEditor } from './editor/context'
@@ -57,8 +57,8 @@ export function OpenSCADCompiler() {
   const mainFileContent = editorContent ?? fsContent
 
   const files = useKernelFiles((state) => state.files)
-  const compile = useOpenSCAD((state) => state.compile)
-  const checkSyntax = useOpenSCAD((state) => state.checkSyntax)
+  const compile = useNodeOpenSCAD((state) => state.compile)
+  const checkSyntax = useNodeOpenSCAD((state) => state.checkSyntax)
 
   const syntaxTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
     null,

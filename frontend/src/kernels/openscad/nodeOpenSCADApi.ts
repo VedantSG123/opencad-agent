@@ -1,4 +1,13 @@
-import type { CompileResult } from './OpenSCADWrapper'
+import type { ParameterSet } from '@/features/Project/components/editor/openscad/customizer-types'
+
+export interface CompileResult {
+  blob: Blob | null
+  format: 'stl' | 'svg' | null
+  stdout: string[]
+  stderr: string[]
+  error: boolean
+  parameterSet?: ParameterSet
+}
 
 function toCompileResult(data: {
   blob: Uint8Array | null

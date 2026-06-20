@@ -4,8 +4,10 @@ import { createStore } from 'zustand/vanilla'
 
 import type { ParameterSet } from '@/features/Project/components/editor/openscad/customizer-types'
 import { kernelFilesStore } from '@/hooks/useKernelFiles'
-import { createNodeOpenSCADApi } from '@/kernels/openscad/nodeOpenSCADApi'
-import type { CompileResult } from '@/kernels/openscad/OpenSCADWrapper'
+import {
+  type CompileResult,
+  createNodeOpenSCADApi,
+} from '@/kernels/openscad/nodeOpenSCADApi'
 import { inSeries } from '@/kernels/replicad/inSeries'
 
 export type LogEntry = {
