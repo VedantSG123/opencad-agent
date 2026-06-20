@@ -270,17 +270,20 @@ export class OpenSCADWrapper {
       ? Object.entries(vars).map(([k, v]) => `-D${k}=${formatValue(v)}`)
       : []
 
-    const callMainStart = performance.now()
-    instance.callMain([
+    const args = [
       '-o',
       '/out.off',
       '--export-format=off',
-      '--enable=manifold',
-      '--enable=fast-csg',
+      '--backend=manifold',
       '--enable=lazy-union',
       ...varArgs,
       targetPath,
-    ])
+    ]
+
+    console.log('[OpenSCADWrapper:compile] callMain arguments:', args)
+
+    const callMainStart = performance.now()
+    instance.callMain(args)
     const callMainDuration = performance.now() - callMainStart
     console.log(
       `[OpenSCADWrapper:compile] OpenSCAD callMain (OFF export) took ${callMainDuration.toFixed(2)}ms`,
@@ -481,8 +484,7 @@ export class OpenSCADWrapper {
       '-o',
       '/out.stl',
       '--export-format=binstl',
-      '--enable=manifold',
-      '--enable=fast-csg',
+      '--backend=manifold',
       '--enable=lazy-union',
       ...varArgs,
       targetPath,
@@ -561,8 +563,11 @@ export class OpenSCADWrapper {
       `[OpenSCADWrapper:checkSyntax] FS write/setup took ${fsDuration.toFixed(2)}ms`,
     )
 
+    const args = ['-o', '/out.json', '--export-format=param', targetPath]
+    console.log('[OpenSCADWrapper:checkSyntax] callMain arguments:', args)
+
     const callMainStart = performance.now()
-    instance.callMain(['-o', '/out.json', '--export-format=param', targetPath])
+    instance.callMain(args)
     const callMainDuration = performance.now() - callMainStart
     console.log(
       `[OpenSCADWrapper:checkSyntax] OpenSCAD callMain (syntax check) took ${callMainDuration.toFixed(2)}ms`,
