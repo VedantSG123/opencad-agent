@@ -41,7 +41,7 @@ export interface ElectronAPI {
   ) => Promise<
     Result<{
       blob: Uint8Array | null
-      format: 'stl' | 'svg' | null
+      format: 'off' | 'stl' | 'svg' | null
       stdout: string[]
       stderr: string[]
       error: boolean

@@ -2,7 +2,7 @@ import type { ParameterSet } from '@/features/Project/components/editor/openscad
 
 export interface CompileResult {
   blob: Blob | null
-  format: 'stl' | 'svg' | null
+  format: 'off' | 'stl' | 'svg' | null
   stdout: string[]
   stderr: string[]
   error: boolean
@@ -11,7 +11,7 @@ export interface CompileResult {
 
 function toCompileResult(data: {
   blob: Uint8Array | null
-  format: 'stl' | 'svg' | null
+  format: 'off' | 'stl' | 'svg' | null
   stdout: string[]
   stderr: string[]
   error: boolean
@@ -19,7 +19,12 @@ function toCompileResult(data: {
 }): CompileResult {
   let blob: Blob | null = null
   if (data.blob) {
-    const mimeType = data.format === 'svg' ? 'image/svg+xml' : 'model/stl'
+    const mimeType =
+      data.format === 'svg'
+        ? 'image/svg+xml'
+        : data.format === 'off'
+          ? 'text/plain'
+          : 'model/stl'
     blob = new Blob([new Uint8Array(data.blob)], { type: mimeType })
   }
   return {
