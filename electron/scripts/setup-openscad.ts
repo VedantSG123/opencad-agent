@@ -229,10 +229,18 @@ class OpenSCADSetup {
     return new Promise((resolve, reject) => {
       https
         .get(url, (response) => {
-          if (response.statusCode === 301 || response.statusCode === 302) {
-            this.downloadFile(response.headers.location!, outputPath)
-              .then(resolve)
-              .catch(reject)
+          if (
+            response.statusCode === 301 ||
+            response.statusCode === 302 ||
+            response.statusCode === 307 ||
+            response.statusCode === 308
+          ) {
+            if (response.headers.location) {
+              this.downloadFile(response.headers.location, outputPath)
+                .then(resolve)
+                .catch(reject)
+              return
+            }
           }
           if (response.statusCode !== 200) {
             reject(
