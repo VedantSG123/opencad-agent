@@ -1,3 +1,14 @@
+/**
+ * Utility to scan OpenSCAD code for dependencies.
+ *
+ * Optimized for browser/WASM execution:
+ * - Only mounts required assets into the Emscripten VFS
+ * - Recursively resolves .scad dependencies
+ * - Ignores comments to avoid false positives
+ * - Supports multiline OpenSCAD syntax
+ * - Prevents path traversal outside virtual root
+ */
+
 const ALLOWED_EXTENSIONS = [
   '.scad',
   '.json',

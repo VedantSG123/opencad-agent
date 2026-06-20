@@ -122,9 +122,6 @@ export class OpenSCADWrapper {
       main.path,
       async (p: string) => {
         if (overrides && overrides[p]) return overrides[p].content
-        if (this.libraryLoader.isLibraryPath(p)) {
-          return await this.libraryLoader.readFileAsText(p)
-        }
         if (projectDirectory) {
           try {
             const resolvedPath = path.join(projectDirectory, p)
@@ -132,6 +129,9 @@ export class OpenSCADWrapper {
           } catch {
             // Not found
           }
+        }
+        if (this.libraryLoader.isLibraryPath(p)) {
+          return await this.libraryLoader.readFileAsText(p)
         }
         return null
       },
@@ -145,20 +145,25 @@ export class OpenSCADWrapper {
         ? main.path
         : `/${main.path}`
 
+      // Skip the main file, it's handled by the caller
       if (normalizedDepPath === normalizedMainPath) continue
 
       let content: string | Uint8Array | null = null
+
+      // Priority: Overrides > project files > Bundled libraries
       if (overrides && overrides[depPath]) {
         content = overrides[depPath].content
-      } else if (this.libraryLoader.isLibraryPath(depPath)) {
-        content = await this.libraryLoader.readFile(depPath)
       } else if (projectDirectory) {
         try {
           const resolvedPath = path.join(projectDirectory, depPath)
           content = await fsPromises.readFile(resolvedPath)
         } catch {
-          // Ignore
+          /* not in project — fall through to libraries */
         }
+      }
+
+      if (content === null) {
+        content = await this.libraryLoader.readFile(depPath)
       }
 
       if (content) {
