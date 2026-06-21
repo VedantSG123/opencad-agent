@@ -21,7 +21,7 @@ export function StepIndicator({ step }: { step: number }) {
                   isActive && 'border-primary text-primary bg-background',
                   !isDone &&
                     !isActive &&
-                    'border-muted text-muted-foreground bg-background',
+                    'border-foreground/40 text-foreground/40 bg-background',
                 )}
               >
                 {isDone ? <Check className='w-4 h-4' /> : num}
@@ -41,7 +41,7 @@ export function StepIndicator({ step }: { step: number }) {
               <div
                 className={cn(
                   'h-px w-14 mx-2 mb-5 transition-colors',
-                  isDone ? 'bg-primary' : 'bg-border',
+                  isDone ? 'bg-primary' : 'bg-foreground/40',
                 )}
               />
             )}
