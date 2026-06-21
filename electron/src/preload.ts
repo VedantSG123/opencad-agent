@@ -25,6 +25,8 @@ export interface PerfMetrics {
 export interface ElectronAPI {
   isElectron: boolean
   backendPort: number
+  platform: string
+  updateTheme: (theme: 'dark' | 'light') => void
   pingBackend: () => Promise<Result<string>>
   openFileDialog: (options: {
     mode: 'file' | 'directory'
@@ -109,6 +111,8 @@ const backendPort = portArg ? parseInt(portArg.split('=')[1], 10) : 3000
 const api: ElectronAPI = {
   isElectron: true,
   backendPort,
+  platform: process.platform,
+  updateTheme: (theme) => ipcRenderer.send('theme:change', theme),
   pingBackend: () => ipcRenderer.invoke('backend:ping'),
   openFileDialog: (options) => ipcRenderer.invoke('dialog:open', options),
   readFile: (filePath) => ipcRenderer.invoke('fs:read', filePath),

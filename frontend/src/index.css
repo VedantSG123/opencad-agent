@@ -137,3 +137,11 @@
   position: relative !important;
   max-height: calc(100vh - 8rem) !important;
 }
+
+.electron-drag {
+  -webkit-app-region: drag;
+}
+
+.electron-no-drag {
+  -webkit-app-region: no-drag;
+}

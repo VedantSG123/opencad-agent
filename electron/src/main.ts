@@ -132,6 +132,16 @@ function createWindow(port: number) {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
+    titleBarStyle: 'hidden',
+    ...(process.platform !== 'darwin'
+      ? {
+          titleBarOverlay: {
+            color: '#09090b',
+            symbolColor: '#a1a1aa',
+            height: 48,
+          },
+        }
+      : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -178,6 +188,20 @@ app.whenReady().then(async () => {
     registerFsIpc(ipcMain)
     registerWorkspaceIpc(ipcMain, backendPort)
     registerOpenSCADIpc(ipcMain)
+
+    ipcMain.on('theme:change', (_event, theme: 'dark' | 'light') => {
+      if (
+        mainWindow &&
+        !mainWindow.isDestroyed() &&
+        process.platform !== 'darwin'
+      ) {
+        mainWindow.setTitleBarOverlay({
+          color: theme === 'dark' ? '#09090b' : '#ffffff',
+          symbolColor: theme === 'dark' ? '#a1a1aa' : '#71717a',
+          height: 48,
+        })
+      }
+    })
 
     // Broadcast performance metrics every second
     setInterval(() => {

@@ -30,9 +30,22 @@ export function TopBar({ project }: TopBarProps) {
     toggleFocusMode,
   } = usePanelContext()
 
+  const isElectron = typeof window !== 'undefined' && !!window.electron
+  const isMac = isElectron && window.electron?.platform === 'darwin'
+  const isWinOrLinux = isElectron && window.electron?.platform !== 'darwin'
+
   return (
-    <header className='flex items-center h-12 px-0 gap-3 shrink-0'>
-      <Button variant='ghost' size='icon' onClick={() => navigate('/')}>
+    <header
+      className={`flex items-center h-10 px-0 gap-3 shrink-0 select-none ${
+        isElectron ? 'electron-drag' : ''
+      } ${isMac ? 'pl-[80px]' : ''} ${isWinOrLinux ? 'pr-[100px]' : ''}`}
+    >
+      <Button
+        variant='ghost'
+        size='icon'
+        onClick={() => navigate('/')}
+        className='electron-no-drag shrink-0'
+      >
         <ArrowLeft className='h-4 w-4' />
       </Button>
 
@@ -51,9 +64,11 @@ export function TopBar({ project }: TopBarProps) {
         </Tooltip>
       )}
 
-      <span className='font-semibold truncate'>{project?.name ?? '—'}</span>
+      <span className='font-semibold truncate select-none'>
+        {project?.name ?? '—'}
+      </span>
 
-      <div className='ml-auto flex items-center gap-0.5'>
+      <div className='ml-auto flex items-center gap-0.5 electron-no-drag'>
         <Tooltip>
           <TooltipTrigger asChild>
             <div className='flex items-center gap-1.5'>
@@ -88,7 +103,7 @@ export function TopBar({ project }: TopBarProps) {
           <TooltipTrigger asChild>
             <button
               onClick={toggleAgent}
-              className='p-0.5rounded-md text-muted-foreground hover:text-foreground transition-colors'
+              className='p-0.5 rounded-md text-muted-foreground hover:text-foreground transition-colors'
             >
               <PanelRight isCollapsed={isAgentCollapsed} />
             </button>

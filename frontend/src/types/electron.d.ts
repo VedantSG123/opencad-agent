@@ -40,6 +40,8 @@ export interface PerfMetrics {
 export interface ElectronAPI {
   isElectron: boolean
   backendPort: number
+  platform: string
+  updateTheme: (theme: 'dark' | 'light') => void
   pingBackend: () => Promise<Result<string>>
   openFileDialog: (options: {
     mode: 'file' | 'directory'

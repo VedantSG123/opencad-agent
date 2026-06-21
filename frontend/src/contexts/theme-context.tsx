@@ -39,6 +39,9 @@ export function ThemeProvider({
     const root = window.document.documentElement
     root.classList.remove('light', 'dark')
     root.classList.add(theme)
+    if (window.electron && typeof window.electron.updateTheme === 'function') {
+      window.electron.updateTheme(theme)
+    }
   }, [theme])
 
   const value = {
