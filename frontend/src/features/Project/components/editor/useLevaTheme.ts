@@ -2,20 +2,20 @@ import { useTheme } from '@/contexts/theme-context'
 
 const darkTheme = {
   colors: {
-    elevation1: '#18181b', // dark zinc-900 card bg
-    elevation2: '#1f1f23', // dark charcoal input background
-    elevation3: '#27272a', // dark border highlight
-    highlight1: '#3b82f6', // blue-500 accent
-    highlight2: '#2563eb', // blue-600 active
-    highlight3: '#1d4ed8', // blue-700
-    accent1: '#3b82f6',
-    accent2: '#60a5fa',
-    accent3: '#1d4ed8',
-    vivid1: '#ef4444',
-    folderWidgetColor: '#3f3f46',
-    folderTextColor: '#a1a1aa',
-    toolTipBackground: '#27272a',
-    toolTipText: '#f4f4f5',
+    elevation1: 'var(--card)', // Match app's card background
+    elevation2: 'var(--background)', // Match app's input/background inset
+    elevation3: 'var(--border)', // Match app's border highlight
+    highlight1: 'var(--muted-foreground)', // Muted labels
+    highlight2: 'var(--foreground)', // Regular text/values
+    highlight3: 'var(--foreground)', // Active state
+    accent1: '#fbbf24', // Yellow accent
+    accent2: '#f59e0b', // Hover yellow
+    accent3: '#d97706', // Pressed yellow
+    vivid1: 'var(--destructive)',
+    folderWidgetColor: 'var(--border)',
+    folderTextColor: 'var(--muted-foreground)',
+    toolTipBackground: 'var(--popover)',
+    toolTipText: 'var(--popover-foreground)',
   },
   sizes: {
     rootWidth: '288px',
@@ -25,20 +25,20 @@ const darkTheme = {
 
 const lightTheme = {
   colors: {
-    elevation1: '#ffffff', // pure white card bg
-    elevation2: '#f3f4f6', // light gray input background
-    elevation3: '#e5e7eb', // border highlight
-    highlight1: '#4b5563', // muted text / label color
-    highlight2: '#1f2937', // regular text / values
-    highlight3: '#111827', // bright text / active
-    accent1: '#3b82f6', // primary blue accent
-    accent2: '#2563eb', // secondary blue accent
-    accent3: '#1d4ed8', // tertiary blue accent
-    vivid1: '#ef4444',
-    folderWidgetColor: '#9ca3af',
-    folderTextColor: '#374151',
-    toolTipBackground: '#111827',
-    toolTipText: '#f9fafb',
+    elevation1: 'var(--card)', // Match app's card background
+    elevation2: 'var(--background)', // Match app's input background
+    elevation3: 'var(--border)', // Match app's border highlight
+    highlight1: 'var(--muted-foreground)', // Muted labels
+    highlight2: 'var(--foreground)', // Regular text/values
+    highlight3: 'var(--foreground)', // Active state
+    accent1: '#fbbf24', // Yellow accent
+    accent2: '#f59e0b', // Hover yellow
+    accent3: '#d97706', // Pressed yellow
+    vivid1: 'var(--destructive)',
+    folderWidgetColor: 'var(--border)',
+    folderTextColor: 'var(--muted-foreground)',
+    toolTipBackground: 'var(--popover)',
+    toolTipText: 'var(--popover-foreground)',
   },
   sizes: {
     rootWidth: '288px',
