@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
+import { usePanelContext } from '../../context/PanelContext'
 import { useEditor } from './context'
 
 function useMainFileRenderItem(mainFileVirtualPath: string | null) {
@@ -43,6 +44,8 @@ function useMainFileRenderItem(mainFileVirtualPath: string | null) {
 }
 
 export function FileTree() {
+  const { isFocusMode, focusedPanel } = usePanelContext()
+
   const { project, sidebarOpen, treeData, fsStatus, fsError, openFile } =
     useEditor()
 
@@ -53,11 +56,14 @@ export function FileTree() {
 
   const renderItem = useMainFileRenderItem(mainFileVirtualPath)
 
+  const isTransparent = isFocusMode && focusedPanel === 'editor'
+
   return (
     <div
       className={cn(
         'flex flex-col border-r overflow-hidden transition-all duration-200 shrink-0',
         sidebarOpen ? 'w-52' : 'w-0',
+        isTransparent && 'bg-background/80',
       )}
     >
       <div className='w-52 flex flex-col h-full overflow-hidden'>
