@@ -32,6 +32,11 @@ export interface OpenSCADIpcResult {
   parameterSet?: unknown
 }
 
+export interface PerfMetrics {
+  mainMetrics: { cpu: number; mem: number } | null
+  rendererMetrics: { cpu: number; mem: number } | null
+}
+
 export interface ElectronAPI {
   isElectron: boolean
   backendPort: number
@@ -69,6 +74,7 @@ export interface ElectronAPI {
   executeOpenSCAD: (
     request: OpenSCADRequest,
   ) => Promise<Result<OpenSCADIpcResult>>
+  onMetrics: (handler: (metrics: PerfMetrics) => void) => () => void
 }
 
 declare global {

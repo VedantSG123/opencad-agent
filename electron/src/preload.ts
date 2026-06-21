@@ -17,6 +17,11 @@ export type Result<T> =
   | { success: true; data: T }
   | { success: false; error: { code: string; message: string } }
 
+export interface PerfMetrics {
+  mainMetrics: { cpu: number; mem: number } | null
+  rendererMetrics: { cpu: number; mem: number } | null
+}
+
 export interface ElectronAPI {
   isElectron: boolean
   backendPort: number
@@ -94,6 +99,7 @@ export interface ElectronAPI {
       parameterSet?: unknown
     }>
   >
+  onMetrics: (handler: (metrics: PerfMetrics) => void) => () => void
 }
 
 // Find --backend-port in process.argv
@@ -146,6 +152,14 @@ const api: ElectronAPI = {
     ipcRenderer.on('file-changed', listener)
     return () => {
       ipcRenderer.removeListener('file-changed', listener)
+    }
+  },
+  onMetrics: (handler) => {
+    const listener = (_event: IpcRendererEvent, data: PerfMetrics) =>
+      handler(data)
+    ipcRenderer.on('perf-metrics', listener)
+    return () => {
+      ipcRenderer.removeListener('perf-metrics', listener)
     }
   },
 }

@@ -178,6 +178,34 @@ app.whenReady().then(async () => {
     registerFsIpc(ipcMain)
     registerWorkspaceIpc(ipcMain, backendPort)
     registerOpenSCADIpc(ipcMain)
+
+    // Broadcast performance metrics every second
+    setInterval(() => {
+      if (!mainWindow || mainWindow.isDestroyed()) return
+
+      const metrics = app.getAppMetrics()
+      let mainMetrics: { cpu: number; mem: number } | null = null
+      let rendererMetrics: { cpu: number; mem: number } | null = null
+
+      for (const proc of metrics) {
+        if (proc.type === 'Browser') {
+          mainMetrics = {
+            cpu: proc.cpu.percentCPUUsage,
+            mem: proc.memory.workingSetSize / 1024,
+          }
+        } else if (proc.type === 'Tab') {
+          rendererMetrics = {
+            cpu: proc.cpu.percentCPUUsage,
+            mem: proc.memory.workingSetSize / 1024,
+          }
+        }
+      }
+
+      mainWindow.webContents.send('perf-metrics', {
+        mainMetrics,
+        rendererMetrics,
+      })
+    }, 1000)
   } catch (err: any) {
     console.error('Failed during initialization:', err)
     dialog.showErrorBox(
