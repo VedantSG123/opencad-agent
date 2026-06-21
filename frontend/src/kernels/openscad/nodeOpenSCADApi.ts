@@ -1,8 +1,9 @@
 import type { ParameterSet } from '@/features/Project/components/editor/openscad/customizer-types'
+import type { OpenSCADRequest } from '@/types/electron'
 
 export interface CompileResult {
   blob: Blob | null
-  format: 'off' | 'stl' | 'svg' | null
+  format: string | null
   stdout: string[]
   stderr: string[]
   error: boolean
@@ -11,7 +12,7 @@ export interface CompileResult {
 
 function toCompileResult(data: {
   blob: Uint8Array | null
-  format: 'off' | 'stl' | 'svg' | null
+  format: string | null
   stdout: string[]
   stderr: string[]
   error: boolean
@@ -19,12 +20,15 @@ function toCompileResult(data: {
 }): CompileResult {
   let blob: Blob | null = null
   if (data.blob) {
-    const mimeType =
-      data.format === 'svg'
-        ? 'image/svg+xml'
-        : data.format === 'off'
-          ? 'text/plain'
-          : 'model/stl'
+    let mimeType = 'application/octet-stream'
+    const fmt = data.format?.toLowerCase()
+    if (fmt === 'svg') {
+      mimeType = 'image/svg+xml'
+    } else if (fmt === 'off') {
+      mimeType = 'text/plain'
+    } else if (fmt === 'stl') {
+      mimeType = 'model/stl'
+    }
     blob = new Blob([new Uint8Array(data.blob)], { type: mimeType })
   }
   return {
@@ -59,30 +63,42 @@ export class NodeOpenSCADApi {
     return res.data
   }
 
+  async execute(request: OpenSCADRequest): Promise<CompileResult> {
+    const electron = this.getElectron()
+    const data = await this.handleIpc(() => electron.executeOpenSCAD(request))
+    return toCompileResult(data)
+  }
+
   async compile(
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     projectDirectory?: string,
     vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
-    const electron = this.getElectron()
-    const data = await this.handleIpc(() =>
-      electron.compileOpenSCAD(main, overrides, projectDirectory, vars),
-    )
-    return toCompileResult(data)
+    return this.execute({
+      action: 'compile',
+      main,
+      overrides,
+      projectDirectory,
+      vars,
+    })
   }
 
-  async exportSTL(
+  async export(
     main: { path: string; code: string },
+    format: string,
     overrides?: Record<string, { content: string }>,
     projectDirectory?: string,
     vars?: Record<string, unknown>,
   ): Promise<CompileResult> {
-    const electron = this.getElectron()
-    const data = await this.handleIpc(() =>
-      electron.exportSTLOpenSCAD(main, overrides, projectDirectory, vars),
-    )
-    return toCompileResult(data)
+    return this.execute({
+      action: 'export',
+      format,
+      main,
+      overrides,
+      projectDirectory,
+      vars,
+    })
   }
 
   async checkSyntax(
@@ -90,11 +106,12 @@ export class NodeOpenSCADApi {
     overrides?: Record<string, { content: string }>,
     projectDirectory?: string,
   ): Promise<CompileResult> {
-    const electron = this.getElectron()
-    const data = await this.handleIpc(() =>
-      electron.checkSyntaxOpenSCAD(main, overrides, projectDirectory),
-    )
-    return toCompileResult(data)
+    return this.execute({
+      action: 'checkSyntax',
+      main,
+      overrides,
+      projectDirectory,
+    })
   }
 }
 

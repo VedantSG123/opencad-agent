@@ -14,9 +14,18 @@ export type Result<T> =
   | { success: true; data: T }
   | { success: false; error: { code: string; message: string } }
 
+export interface OpenSCADRequest {
+  action: 'compile' | 'export' | 'checkSyntax'
+  main: { path: string; code: string }
+  overrides?: Record<string, { content: string }>
+  projectDirectory?: string
+  vars?: Record<string, unknown>
+  format?: string
+}
+
 export interface OpenSCADIpcResult {
   blob: Uint8Array | null
-  format: 'stl' | 'svg' | null
+  format: string | null
   stdout: string[]
   stderr: string[]
   error: boolean
@@ -45,8 +54,9 @@ export interface ElectronAPI {
     projectDirectory?: string,
     vars?: Record<string, unknown>,
   ) => Promise<Result<OpenSCADIpcResult>>
-  exportSTLOpenSCAD: (
+  exportOpenSCAD: (
     main: { path: string; code: string },
+    format: string,
     overrides?: Record<string, { content: string }>,
     projectDirectory?: string,
     vars?: Record<string, unknown>,
@@ -55,6 +65,9 @@ export interface ElectronAPI {
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
     projectDirectory?: string,
+  ) => Promise<Result<OpenSCADIpcResult>>
+  executeOpenSCAD: (
+    request: OpenSCADRequest,
   ) => Promise<Result<OpenSCADIpcResult>>
 }
 

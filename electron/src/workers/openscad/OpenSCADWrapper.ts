@@ -59,7 +59,7 @@ export interface ParameterSet {
 
 export interface CompileResult {
   blob: Uint8Array | null
-  format: 'off' | 'stl' | 'svg' | null
+  format: string | null
   stdout: string[]
   stderr: string[]
   error: boolean
@@ -231,12 +231,15 @@ export class OpenSCADWrapper {
     }
   }
 
-  async compile(
-    main: { path: string; code: string },
-    overrides?: Record<string, { content: string }>,
-    projectDirectory?: string,
-    vars?: Record<string, unknown>,
-  ): Promise<CompileResult> {
+  async execute(request: {
+    action: 'compile' | 'export' | 'checkSyntax'
+    main: { path: string; code: string }
+    overrides?: Record<string, { content: string }>
+    projectDirectory?: string
+    vars?: Record<string, unknown>
+    format?: string
+  }): Promise<CompileResult> {
+    const { action, main, overrides, projectDirectory, vars, format } = request
     const stdout: string[] = []
     const stderr: string[] = []
 
@@ -256,216 +259,156 @@ export class OpenSCADWrapper {
       ? Object.entries(vars).map(([k, v]) => `-D${k}=${formatValue(v)}`)
       : []
 
-    const args = [
-      '-o',
-      '/out.off',
-      '--export-format=off',
-      '--backend=manifold',
-      '--enable=lazy-union',
-      ...varArgs,
-      targetPath,
-    ]
-
-    try {
-      instance.callMain(args)
-    } catch {
-      return { blob: null, format: null, stdout, stderr, error: true }
-    }
-
-    try {
-      instance.FS.stat('/out.off')
-      const output = instance.FS.readFile('/out.off', { encoding: 'binary' })
-
-      return {
-        blob: output.slice(),
-        format: 'off',
-        stdout,
-        stderr,
-        error: false,
-      }
-    } catch {
-      if (
-        stderr.some((line) =>
-          line.includes('Current top level object is not a 3D object.'),
-        )
-      ) {
-        const svgResult = await this.compileSVG(
-          main,
-          overrides,
-          projectDirectory,
+    if (action === 'checkSyntax') {
+      const outPath = '/out.json'
+      const args = ['-o', outPath, '--export-format=param', targetPath]
+      try {
+        instance.callMain(args)
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err)
+        stderr.push(errMsg)
+        return {
+          blob: null,
+          format: null,
           stdout,
           stderr,
-          vars,
-        )
-
-        return svgResult
+          error: true,
+          parameterSet: undefined,
+        }
       }
 
-      return { blob: null, format: null, stdout, stderr, error: true }
-    }
-  }
-
-  private async compileSVG(
-    main: { path: string; code: string },
-    overrides: Record<string, { content: string }> | undefined,
-    projectDirectory: string | undefined,
-    stdout: string[],
-    stderr: string[],
-    vars?: Record<string, unknown>,
-  ): Promise<CompileResult> {
-    const svgInstance = await this.createInstance(
-      stdout,
-      stderr,
-      main,
-      projectDirectory,
-      overrides,
-    )
-
-    const targetPath = main.path.startsWith('/') ? main.path : `/${main.path}`
-    this.mkdirForFile(svgInstance, targetPath)
-    svgInstance.FS.writeFile(targetPath, main.code)
-
-    const varArgs = vars
-      ? Object.entries(vars).map(([k, v]) => `-D${k}=${formatValue(v)}`)
-      : []
-
-    try {
-      svgInstance.callMain([
-        '-o',
-        '/out.svg',
-        '--export-format=svg',
-        ...varArgs,
-        targetPath,
-      ])
-    } catch {
-      return { blob: null, format: null, stdout, stderr, error: true }
-    }
-
-    try {
-      svgInstance.FS.stat('/out.svg')
-      const output = svgInstance.FS.readFile('/out.svg', { encoding: 'binary' })
-
-      return {
-        blob: output.slice(),
-        format: 'svg',
-        stdout,
-        stderr,
-        error: false,
+      const error = stderr.some((line) => line.includes('ERROR:'))
+      let parameterSet: ParameterSet | undefined = undefined
+      try {
+        instance.FS.stat(outPath)
+        const output = instance.FS.readFile(outPath, { encoding: 'binary' })
+        const decoded = new TextDecoder().decode(output)
+        parameterSet = JSON.parse(decoded) as ParameterSet
+      } catch {
+        // Ignored or failed
       }
-    } catch {
-      return { blob: null, format: null, stdout, stderr, error: true }
-    }
-  }
 
-  async exportSTL(
-    main: { path: string; code: string },
-    overrides?: Record<string, { content: string }>,
-    projectDirectory?: string,
-    vars?: Record<string, unknown>,
-  ): Promise<CompileResult> {
-    const stdout: string[] = []
-    const stderr: string[] = []
-
-    const instance = await this.createInstance(
-      stdout,
-      stderr,
-      main,
-      projectDirectory,
-      overrides,
-    )
-
-    const targetPath = main.path.startsWith('/') ? main.path : `/${main.path}`
-    this.mkdirForFile(instance, targetPath)
-    instance.FS.writeFile(targetPath, main.code)
-
-    const varArgs = vars
-      ? Object.entries(vars).map(([k, v]) => `-D${k}=${formatValue(v)}`)
-      : []
-
-    try {
-      instance.callMain([
-        '-o',
-        '/out.stl',
-        '--export-format=binstl',
-        '--backend=manifold',
-        '--enable=lazy-union',
-        ...varArgs,
-        targetPath,
-      ])
-    } catch {
-      return { blob: null, format: null, stdout, stderr, error: true }
-    }
-
-    try {
-      instance.FS.stat('/out.stl')
-      const output = instance.FS.readFile('/out.stl', { encoding: 'binary' })
-
-      return {
-        blob: output.slice(),
-        format: 'stl',
-        stdout,
-        stderr,
-        error: false,
-      }
-    } catch {
-      return { blob: null, format: null, stdout, stderr, error: true }
-    }
-  }
-
-  async checkSyntax(
-    main: { path: string; code: string },
-    overrides?: Record<string, { content: string }>,
-    projectDirectory?: string,
-  ): Promise<CompileResult> {
-    const stdout: string[] = []
-    const stderr: string[] = []
-
-    const instance = await this.createInstance(
-      stdout,
-      stderr,
-      main,
-      projectDirectory,
-      overrides,
-    )
-
-    const targetPath = main.path.startsWith('/') ? main.path : `/${main.path}`
-    this.mkdirForFile(instance, targetPath)
-    instance.FS.writeFile(targetPath, main.code)
-
-    const args = ['-o', '/out.json', '--export-format=param', targetPath]
-
-    try {
-      instance.callMain(args)
-    } catch {
       return {
         blob: null,
         format: null,
         stdout,
         stderr,
-        error: true,
-        parameterSet: undefined,
+        error,
+        parameterSet,
       }
     }
 
-    const error = stderr.some((line) => line.includes('ERROR:'))
+    if (action === 'compile') {
+      const outPath = '/out.off'
+      const args = [
+        '-o',
+        outPath,
+        '--export-format=off',
+        '--backend=manifold',
+        '--enable=lazy-union',
+        ...varArgs,
+        targetPath,
+      ]
 
-    let parameterSet: ParameterSet | undefined = undefined
-    try {
-      instance.FS.stat('/out.json')
-      const output = instance.FS.readFile('/out.json', { encoding: 'binary' })
-      const decoded = new TextDecoder().decode(output)
-      parameterSet = JSON.parse(decoded) as ParameterSet
-    } catch {
-      // Ignored or failed
+      try {
+        instance.callMain(args)
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err)
+        stderr.push(errMsg)
+        return { blob: null, format: null, stdout, stderr, error: true }
+      }
+
+      try {
+        instance.FS.stat(outPath)
+        const output = instance.FS.readFile(outPath, { encoding: 'binary' })
+        return {
+          blob: output.slice(),
+          format: 'off',
+          stdout,
+          stderr,
+          error: false,
+        }
+      } catch (err: unknown) {
+        if (
+          stderr.some((line) =>
+            line.includes('Current top level object is not a 3D object.'),
+          )
+        ) {
+          // Retry compiling as SVG on the existing instance (libs/fonts are already loaded)
+          try {
+            instance.callMain([
+              '-o',
+              '/out.svg',
+              '--export-format=svg',
+              ...varArgs,
+              targetPath,
+            ])
+            instance.FS.stat('/out.svg')
+            const output = instance.FS.readFile('/out.svg', {
+              encoding: 'binary',
+            })
+            return {
+              blob: output.slice(),
+              format: 'svg',
+              stdout,
+              stderr,
+              error: false,
+            }
+          } catch (svgErr: unknown) {
+            const svgErrMsg =
+              svgErr instanceof Error ? svgErr.message : String(svgErr)
+            stderr.push(svgErrMsg)
+            return { blob: null, format: null, stdout, stderr, error: true }
+          }
+        }
+        const errMsg = err instanceof Error ? err.message : String(err)
+        stderr.push(errMsg)
+        return { blob: null, format: null, stdout, stderr, error: true }
+      }
     }
 
-    return {
-      blob: null,
-      format: null,
-      stdout,
-      stderr,
-      error,
-      parameterSet,
+    if (action === 'export') {
+      const exportFormat = format || 'binstl'
+      const normalizedFormat = exportFormat.toLowerCase()
+      const openSCADFormat =
+        normalizedFormat === 'stl' ? 'binstl' : normalizedFormat
+      const fileExt = normalizedFormat === 'binstl' ? 'stl' : normalizedFormat
+
+      const outPath = `/out.${fileExt}`
+
+      try {
+        instance.callMain([
+          '-o',
+          outPath,
+          `--export-format=${openSCADFormat}`,
+          '--backend=manifold',
+          '--enable=lazy-union',
+          ...varArgs,
+          targetPath,
+        ])
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err)
+        stderr.push(errMsg)
+        return { blob: null, format: null, stdout, stderr, error: true }
+      }
+
+      try {
+        instance.FS.stat(outPath)
+        const output = instance.FS.readFile(outPath, { encoding: 'binary' })
+        return {
+          blob: output.slice(),
+          format: fileExt,
+          stdout,
+          stderr,
+          error: false,
+        }
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err)
+        stderr.push(errMsg)
+        return { blob: null, format: null, stdout, stderr, error: true }
+      }
     }
+
+    throw new Error(`Unknown action: ${action as string}`)
   }
 }

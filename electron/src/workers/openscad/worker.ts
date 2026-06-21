@@ -16,30 +16,15 @@ const { openscadResourcesPath } = workerData as {
 const wrapper = new OpenSCADWrapper(openscadResourcesPath)
 
 const service = {
-  compile(
-    main: { path: string; code: string },
-    overrides?: Record<string, { content: string }>,
-    projectDirectory?: string,
-    vars?: Record<string, unknown>,
-  ) {
-    return wrapper.compile(main, overrides, projectDirectory, vars)
-  },
-
-  exportSTL(
-    main: { path: string; code: string },
-    overrides?: Record<string, { content: string }>,
-    projectDirectory?: string,
-    vars?: Record<string, unknown>,
-  ) {
-    return wrapper.exportSTL(main, overrides, projectDirectory, vars)
-  },
-
-  checkSyntax(
-    main: { path: string; code: string },
-    overrides?: Record<string, { content: string }>,
-    projectDirectory?: string,
-  ) {
-    return wrapper.checkSyntax(main, overrides, projectDirectory)
+  execute(request: {
+    action: 'compile' | 'export' | 'checkSyntax'
+    main: { path: string; code: string }
+    overrides?: Record<string, { content: string }>
+    projectDirectory?: string
+    vars?: Record<string, unknown>
+    format?: string
+  }) {
+    return wrapper.execute(request)
   },
 }
 

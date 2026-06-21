@@ -130,10 +130,10 @@ type NodeOpenSCADActions = {
     projectDirectory?: string,
     vars?: Record<string, unknown>,
   ) => Promise<void>
-  exportSTL: (
+  export: (
     main: { path: string; code: string },
+    format: string,
     projectDirectory?: string,
-    vars?: Record<string, unknown>,
   ) => Promise<CompileResult | null>
   clearLogs: () => void
   setVar: (name: string, value: unknown) => void
@@ -304,16 +304,18 @@ export function createNodeOpenSCADStore() {
       vars: {},
       checkSyntax: runCheckSyntax,
       compile: runCompile,
-      exportSTL: async (
+      export: async (
         main: { path: string; code: string },
+        format: string,
         projectDirectory?: string,
       ) => {
         set({ isExporting: true })
         const overrides = kernelFilesStore.getState().files
         const vars = get().vars
         try {
-          const result = await api.exportSTL(
+          const result = await api.export(
             main,
+            format,
             overrides,
             projectDirectory,
             vars,

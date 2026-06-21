@@ -13,7 +13,6 @@ import { registerDialogIpc } from './ipc/dialog.js'
 import { registerFsIpc } from './ipc/fs.js'
 import { registerOpenSCADIpc } from './ipc/openscad.js'
 import { registerWorkspaceIpc } from './ipc/workspace.js'
-import { terminateOpenSCADWorker } from './utils/cad/openscad-worker.js'
 import { stopWatcher } from './utils/watcher.js'
 import { loadAllowedWorkspaceRoots } from './utils/workspace.js'
 
@@ -202,7 +201,6 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
-  terminateOpenSCADWorker().catch(() => {})
   stopWatcher().catch(() => {})
   if (backendProcess) {
     console.log('Killing backend process tree...')

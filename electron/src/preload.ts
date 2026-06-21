@@ -48,15 +48,16 @@ export interface ElectronAPI {
       parameterSet?: unknown
     }>
   >
-  exportSTLOpenSCAD: (
+  exportOpenSCAD: (
     main: { path: string; code: string },
+    format: string,
     overrides?: Record<string, { content: string }>,
     projectDirectory?: string,
     vars?: Record<string, unknown>,
   ) => Promise<
     Result<{
       blob: Uint8Array | null
-      format: 'stl' | 'svg' | null
+      format: string | null
       stdout: string[]
       stderr: string[]
       error: boolean
@@ -70,6 +71,23 @@ export interface ElectronAPI {
     Result<{
       blob: null
       format: null
+      stdout: string[]
+      stderr: string[]
+      error: boolean
+      parameterSet?: unknown
+    }>
+  >
+  executeOpenSCAD: (request: {
+    action: 'compile' | 'export' | 'checkSyntax'
+    main: { path: string; code: string }
+    overrides?: Record<string, { content: string }>
+    projectDirectory?: string
+    vars?: Record<string, unknown>
+    format?: string
+  }) => Promise<
+    Result<{
+      blob: Uint8Array | null
+      format: string | null
       stdout: string[]
       stderr: string[]
       error: boolean
@@ -105,10 +123,11 @@ const api: ElectronAPI = {
       projectDirectory,
       vars,
     ),
-  exportSTLOpenSCAD: (main, overrides, projectDirectory, vars) =>
+  exportOpenSCAD: (main, format, overrides, projectDirectory, vars) =>
     ipcRenderer.invoke(
-      'openscad:exportSTL',
+      'openscad:export',
       main,
+      format,
       overrides,
       projectDirectory,
       vars,
@@ -120,6 +139,7 @@ const api: ElectronAPI = {
       overrides,
       projectDirectory,
     ),
+  executeOpenSCAD: (request) => ipcRenderer.invoke('openscad:execute', request),
   onWatch: (handler) => {
     const listener = (_event: IpcRendererEvent, data: WatchEvent) =>
       handler(data)

@@ -179,7 +179,6 @@ class OpenSCADSetup {
       TEMP_DIR,
       TEMP_WASM,
       TEMP_NOTO,
-      TEMP_LIBERATION,
       TEMP_LIBS,
       RESOURCES_DIR,
       RESOURCES_LIBS_DIR,
@@ -437,7 +436,10 @@ class OpenSCADSetup {
     }
 
     // Clone Liberation fonts
-    if (!existsSync(TEMP_LIBERATION)) {
+    if (
+      !existsSync(TEMP_LIBERATION) ||
+      !existsSync(path.join(TEMP_LIBERATION, '.git'))
+    ) {
       await this.cloneRepo(
         fonts.liberationRepo,
         TEMP_LIBERATION,
