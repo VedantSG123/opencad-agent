@@ -17,6 +17,7 @@ import {
   type WatchEvent,
 } from '@/hooks/useFileSyncWS'
 import { useFileSyncWS } from '@/hooks/useFileSyncWS'
+import { toFsPath } from '@/lib/utils'
 import type { Project } from '@/types/project'
 
 import type { DialogState, EditorDialogs } from './useEditorDialogs'
@@ -162,17 +163,11 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
       !hasOpenedDefaultRef.current
     ) {
       hasOpenedDefaultRef.current = true
-      const rel =
-        project.file &&
-        project.directory &&
-        project.file.startsWith(project.directory)
-          ? project.file.slice(project.directory.length)
-          : null
-      const mainFileVirtualPath = rel
-        ? rel.startsWith('/')
-          ? rel
-          : `/${rel}`
-        : `/main${project.cad_kernel === 'replicad' ? '.js' : '.scad'}`
+      const mainFileVirtualPath =
+        project.file && project.directory
+          ? (toFsPath(project.directory, project.file) ??
+            `/main${project.cad_kernel === 'replicad' ? '.js' : '.scad'}`)
+          : `/main${project.cad_kernel === 'replicad' ? '.js' : '.scad'}`
 
       const exists = findFileInTree(treeData, mainFileVirtualPath)
       if (exists) {

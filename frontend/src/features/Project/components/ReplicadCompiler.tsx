@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { FSNotReadyError } from '@/hooks/useFileSyncWS'
 import { type KernelFilesState, useKernelFiles } from '@/hooks/useKernelFiles'
 import { useReplicad } from '@/hooks/useReplicad'
+import { toFsPath } from '@/lib/utils'
 
 import { useEditor } from './editor/context'
 
@@ -13,11 +14,7 @@ export function ReplicadCompiler() {
 
   const mainFilePath = React.useMemo(() => {
     if (!project?.file || !project.directory) return null
-    const rel = project.file.startsWith(project.directory)
-      ? project.file.slice(project.directory.length)
-      : null
-    if (!rel) return null
-    return rel.startsWith('/') ? rel : `/${rel}`
+    return toFsPath(project.directory, project.file)
   }, [project])
 
   const selectMainFileContent = React.useCallback(
