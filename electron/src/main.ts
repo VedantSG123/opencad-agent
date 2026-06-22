@@ -129,19 +129,25 @@ function startBackend(port: number) {
 }
 
 function createWindow(port: number) {
+  const isMac = process.platform === 'darwin'
+  const macTrafficLightPosition = { x: 14, y: 16 }
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    titleBarStyle: 'hidden',
-    ...(process.platform !== 'darwin'
+    titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
+    ...(isMac
       ? {
+          // Move native macOS traffic lights slightly downward.
+          trafficLightPosition: macTrafficLightPosition,
+        }
+      : {
           titleBarOverlay: {
             color: '#09090b',
             symbolColor: '#a1a1aa',
             height: 48,
           },
-        }
-      : {}),
+        }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -173,6 +179,13 @@ function createWindow(port: number) {
   mainWindow.on('closed', () => {
     mainWindow = null
   })
+
+  if (isMac) {
+    mainWindow.setWindowButtonPosition(macTrafficLightPosition)
+    mainWindow.once('ready-to-show', () => {
+      mainWindow?.setWindowButtonPosition(macTrafficLightPosition)
+    })
+  }
 }
 
 app.whenReady().then(async () => {

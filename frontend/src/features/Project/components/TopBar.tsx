@@ -38,7 +38,7 @@ export function TopBar({ project }: TopBarProps) {
     <header
       className={`flex items-center h-10 px-0 gap-3 shrink-0 select-none ${
         isElectron ? 'electron-drag' : ''
-      } ${isMac ? 'pl-[80px]' : ''} ${isWinOrLinux ? 'pr-[100px]' : ''}`}
+      } ${isMac ? 'pl-[80px] -mt-1' : ''} ${isWinOrLinux ? 'pr-[100px]' : ''}`}
     >
       <Button
         variant='ghost'

@@ -20,7 +20,7 @@ export function DashboardHeader({ onNewProject }: DashboardHeaderProps) {
     >
       <div
         className={`max-w-7xl mx-auto px-6 h-14 flex items-center justify-between ${
-          isMac ? 'pl-[80px]' : ''
+          isMac ? 'pl-[100px] -mt-1' : ''
         } ${isWinOrLinux ? 'pr-[140px]' : ''}`}
       >
         <div className='flex items-center gap-2.5'>
