@@ -8,7 +8,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
+import { cn, toFsPath } from '@/lib/utils'
 
 import { usePanelContext } from '../../context/PanelContext'
 import { useEditor } from './context'
@@ -51,7 +51,7 @@ export function FileTree() {
 
   const mainFileVirtualPath =
     project?.file && project.directory
-      ? project.file.slice(project.directory.length)
+      ? toFsPath(project.directory, project.file)
       : null
 
   const renderItem = useMainFileRenderItem(mainFileVirtualPath)
