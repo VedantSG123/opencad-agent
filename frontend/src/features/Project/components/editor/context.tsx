@@ -133,7 +133,7 @@ interface EditorProviderProps {
 }
 
 export function EditorProvider({ project, children }: EditorProviderProps) {
-  const fsync = useFileSyncWS(project.id)
+  const fsync = useFileSyncWS(project.id, project.directory)
   const { status, readFile, writeFile, readdirWithTypes, onWatch } = fsync
 
   const [sidebarOpen, setSidebarOpen] = useState(false)

@@ -1,0 +1,74 @@
+{
+  "name": "opencad-agent-desktop",
+  "version": "1.0.0",
+  "description": "OpenCAD Agent Desktop Application",
+  "homepage": "https://github.com/VedantSG123/opencad-agent",
+  "author": {
+    "name": "VedantSG123",
+    "email": "vedantghonge0@outlook.com"
+  },
+  "main": "dist/main.js",
+  "type": "module",
+  "scripts": {
+    "build:preload": "tsc -p tsconfig.preload.json",
+    "build:main": "tsc -p tsconfig.json",
+    "build": "bun scripts/setup-openscad.ts && bun run build:preload && bun run build:main",
+    "lint": "eslint .",
+    "start": "electron dist/main.js",
+    "dev": "bun scripts/setup-openscad.ts && bun run build:preload && bun run build:main && concurrently -k -n \"tsc,electron\" -c \"blue,green\" \"tsc -p tsconfig.json -w\" \"electron dist/main.js\"",
+    "package": "electron-builder"
+  },
+  "dependencies": {
+    "@zenfs/archives": "^1.3.6",
+    "@zenfs/core": "^2.5.7",
+    "chokidar": "^5.0.0",
+    "comctx": "^1.7.5",
+    "fflate": "^0.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "concurrently": "^8.2.2",
+    "electron": "^30.0.1",
+    "electron-builder": "^24.13.3",
+    "jiti": "^2.7.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.56.0"
+  },
+  "build": {
+    "appId": "com.opencad.agent",
+    "productName": "OpenCAD Agent",
+    "directories": {
+      "output": "dist-packaged"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend/dist/backend-api",
+        "to": "bin/backend-api"
+      },
+      {
+        "from": "../backend/src/db/migrations",
+        "to": "bin/migrations"
+      },
+      {
+        "from": "../frontend/dist",
+        "to": "frontend"
+      },
+      {
+        "from": "openscad-libs",
+        "to": "openscad-libs"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "maintainer": "Vedant <vedant@example.com>",
+      "category": "Development"
+    }
+  }
+}

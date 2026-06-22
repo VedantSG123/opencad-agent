@@ -2,6 +2,8 @@ import { Plane } from '@react-three/drei'
 import * as React from 'react'
 import * as THREE from 'three'
 
+import { useTheme } from '@/contexts/theme-context'
+
 interface InfiniteGridOptions {
   size1?: number
   size2?: number
@@ -88,7 +90,14 @@ export function InfiniteGridMaterial({
 }
 
 export function InfiniteGrid() {
-  const gridMaterial = React.useRef(InfiniteGridMaterial())
+  const { theme } = useTheme()
+  const gridMaterial = React.useMemo(
+    () =>
+      InfiniteGridMaterial({
+        color: theme === 'dark' ? '#888888' : '#dddddd',
+      }),
+    [theme],
+  )
 
-  return <Plane material={gridMaterial.current} />
+  return <Plane material={gridMaterial} />
 }

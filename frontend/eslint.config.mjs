@@ -9,11 +9,16 @@ import tseslint from 'typescript-eslint'
 export default [
   {
     // Ignore generated/vendor files that are not part of the TS project
-    ignores: ['src/kernels/openscad/library/openscad.js', 'libs/**'],
+    ignores: [
+      'src/kernels/openscad/library/openscad.js',
+      'libs/**',
+      'dist/**',
+      'dist-packaged/**',
+      'node_modules/**',
+    ],
   },
   {
     files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'],
-    ignores: ['**/node_modules/**', '**/dist/**'],
     languageOptions: {
       parserOptions: {
         projectService: true,

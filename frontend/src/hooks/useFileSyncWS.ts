@@ -1,15 +1,11 @@
-import { configureSingle, fs, Port } from '@zenfs/core'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
-import { getBaseWsUrl } from '@/utils/getWsBaseUrl'
+import { joinPaths } from '@/lib/utils'
+
+import type { WatchEvent } from '../types/electron'
+export type { WatchEvent }
 
 export type FSEventType = 'change' | 'add' | 'unlink' | 'addDir' | 'unlinkDir'
-
-export interface WatchEvent {
-  event: 'fs:watch'
-  type: FSEventType
-  path: string
-}
 
 export interface FSEntry {
   name: string
@@ -36,98 +32,127 @@ export interface FileSyncWS {
   onWatch: (handler: (event: WatchEvent) => void) => () => void
 }
 
-export function useFileSyncWS(projectId: string): FileSyncWS {
-  const [status, setStatus] = useState<FileSyncStatus>('connecting')
-  const [error, setError] = useState<string | null>(null)
-  const watchHandlers = useRef<Set<(event: WatchEvent) => void>>(new Set())
+export function useFileSyncWS(
+  projectId: string,
+  projectDirectory: string,
+): FileSyncWS {
+  const [status, setStatus] = useState<FileSyncStatus>(
+    typeof window !== 'undefined' && window.electron ? 'connecting' : 'error',
+  )
+  const [error, setError] = useState<string | null>(
+    typeof window !== 'undefined' && window.electron
+      ? null
+      : 'Electron environment is not available',
+  )
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.electron) {
+      return
+    }
+
     let cancelled = false
-    const ws = new WebSocket(`${getBaseWsUrl()}/ws/sync?projectId=${projectId}`)
-
-    ws.addEventListener('open', () => {
-      configureSingle({ backend: Port, port: ws, disableAsyncCache: true })
-        .then(() => {
-          if (cancelled) return
-          setStatus('ready')
-        })
-        .catch((err: unknown) => {
-          if (cancelled) return
-          setError(err instanceof Error ? err.message : 'Failed to mount FS')
-          setStatus('error')
-        })
-    })
-
-    ws.addEventListener('message', (event) => {
-      if (typeof event.data !== 'string') return
-      try {
-        const msg = JSON.parse(event.data) as Record<string, unknown>
-        if (msg.event === 'fs:watch') {
-          const watchEvent = msg as unknown as WatchEvent
-          watchHandlers.current.forEach((h) => h(watchEvent))
-        }
-      } catch {
-        // binary zenfs RPC message, zenfs handles it
+    Promise.resolve().then(() => {
+      if (!cancelled) {
+        setStatus('connecting')
       }
     })
 
-    ws.addEventListener('error', () => {
-      if (cancelled) return
-      setError('WebSocket connection failed')
-      setStatus('error')
-    })
-
-    ws.addEventListener('close', () => {
-      if (cancelled) return
-      setStatus('closed')
-    })
+    window.electron
+      .watchDirectory(projectDirectory)
+      .then((res) => {
+        if (!res.success) {
+          throw new Error(res.error.message)
+        }
+        if (!cancelled) {
+          setStatus('ready')
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : 'Unknown error'
+          setError(msg)
+          setStatus('error')
+        }
+      })
 
     return () => {
       cancelled = true
-      ws.close()
     }
-  }, [projectId])
+  }, [projectId, projectDirectory])
+
+  const resolvePath = useCallback(
+    (virtualPath: string) => {
+      return joinPaths(projectDirectory, virtualPath)
+    },
+    [projectDirectory],
+  )
 
   const readFile = useCallback(
-    (path: string) => {
-      if (status !== 'ready') return Promise.reject(new FSNotReadyError())
-      return fs.promises.readFile(path, 'utf8')
+    async (path: string) => {
+      if (status !== 'ready') throw new FSNotReadyError()
+      if (!window.electron) {
+        throw new Error('Electron not available')
+      }
+      const res = await window.electron.readFile(resolvePath(path))
+      if (!res.success) {
+        throw new Error(res.error.message)
+      }
+      return res.data
     },
-    [status],
+    [status, resolvePath],
   )
 
   const writeFile = useCallback(
-    (path: string, content: string) => {
-      if (status !== 'ready') return Promise.reject(new FSNotReadyError())
-      const data = new TextEncoder().encode(content)
-      return fs.promises.writeFile(path, data)
+    async (path: string, content: string) => {
+      if (status !== 'ready') throw new FSNotReadyError()
+      if (!window.electron) {
+        throw new Error('Electron not available')
+      }
+      const res = await window.electron.writeFile(resolvePath(path), content)
+      if (!res.success) {
+        throw new Error(res.error.message)
+      }
     },
-    [status],
+    [status, resolvePath],
   )
 
   const readdir = useCallback(
-    (path: string) => {
-      if (status !== 'ready') return Promise.reject(new FSNotReadyError())
-      return fs.promises.readdir(path)
+    async (path: string) => {
+      if (status !== 'ready') throw new FSNotReadyError()
+      if (!window.electron) {
+        throw new Error('Electron not available')
+      }
+      const res = await window.electron.readdir(resolvePath(path))
+      if (!res.success) {
+        throw new Error(res.error.message)
+      }
+      return res.data
     },
-    [status],
+    [status, resolvePath],
   )
 
   const readdirWithTypes = useCallback(
-    (path: string) => {
-      if (status !== 'ready') return Promise.reject(new FSNotReadyError())
-      return fs.promises.readdir(path, { withFileTypes: true }) as Promise<
-        FSEntry[]
-      >
+    async (path: string): Promise<FSEntry[]> => {
+      if (status !== 'ready') throw new FSNotReadyError()
+      if (!window.electron) {
+        throw new Error('Electron not available')
+      }
+      const res = await window.electron.readdirWithTypes(resolvePath(path))
+      if (!res.success) {
+        throw new Error(res.error.message)
+      }
+      return res.data.map((e) => ({
+        name: e.name,
+        isDirectory: () => e.isDirectory,
+        isFile: () => e.isFile,
+      }))
     },
-    [status],
+    [status, resolvePath],
   )
 
   const onWatch = useCallback((handler: (event: WatchEvent) => void) => {
-    watchHandlers.current.add(handler)
-    return () => {
-      watchHandlers.current.delete(handler)
-    }
+    if (!window.electron) return () => {}
+    return window.electron.onWatch(handler)
   }, [])
 
   return {

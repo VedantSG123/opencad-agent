@@ -218,7 +218,7 @@ const SVGWindow: React.FC<SVGWindowProps> = ({
 
   return (
     <div
-      className='bg-background text-foreground h-full w-full'
+      className='bg-background text-foreground/80 h-full w-full'
       ref={canvasRef}
     >
       <SVGCanvas
@@ -282,7 +282,7 @@ export const ReplicadSVGViewer: React.FC<ReplicadSVGViewerProps> = ({
             shape={{
               paths: s.paths,
               strokeType: s.strokeType as StrokeType,
-              color: s.color || '#fff',
+              color: s.color || 'var(--foreground)',
             }}
           />
         ) : null,
@@ -303,29 +303,49 @@ export const ReplicadSVGViewer: React.FC<ReplicadSVGViewerProps> = ({
 export const OpenSCADSVGViewer: React.FC<OpenSCADSVGViewerProps> = ({
   blob,
 }) => {
-  const [data, setData] = React.useState<{
-    viewbox: SVGViewBox
-    inner: string
-  } | null>(null)
+  const [svgText, setSvgText] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     let cancelled = false
 
-    blob.text().then((svgText) => {
+    blob.text().then((text) => {
       if (cancelled) return
-      const parser = new DOMParser()
-      const doc = parser.parseFromString(svgText, 'image/svg+xml')
-      const svgEl = doc.documentElement
-      const viewboxAttr =
-        svgEl.getAttribute('viewBox') ?? svgEl.getAttribute('viewbox')
-      if (!viewboxAttr) return
-      setData({ viewbox: parseViewbox(viewboxAttr), inner: svgEl.innerHTML })
+      setSvgText(text)
     })
 
     return () => {
       cancelled = true
     }
   }, [blob])
+
+  const data = React.useMemo(() => {
+    if (!svgText) return null
+
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(svgText, 'image/svg+xml')
+    const svgEl = doc.documentElement
+    const viewboxAttr =
+      svgEl.getAttribute('viewBox') ?? svgEl.getAttribute('viewbox')
+    if (!viewboxAttr) return null
+
+    const elements = [svgEl, ...Array.from(svgEl.querySelectorAll('*'))]
+    for (const el of elements) {
+      if (el.hasAttribute('stroke') && el.getAttribute('stroke') !== 'none') {
+        el.setAttribute('stroke', 'var(--foreground)')
+      }
+      const style = el.getAttribute('style')
+      if (style && /stroke\s*:\s*(?!none)\S+/i.test(style)) {
+        if (el instanceof SVGElement) {
+          el.style.stroke = 'var(--foreground)'
+        }
+      }
+    }
+
+    return {
+      viewbox: parseViewbox(viewboxAttr),
+      inner: svgEl.innerHTML,
+    }
+  }, [svgText])
 
   if (!data) return null
 

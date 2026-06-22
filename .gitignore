@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+dist-packaged/
+
+# Log files
+*.log
+*.log.*
+
+# Local databases and SQLite
+*.sqlite
+*.sqlite-journal
+*.db
+*.db-journal
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Editor caches and workspace settings
+.eslintcache
+.parcel-cache
+.cache/
+.temp/
+.tmp/

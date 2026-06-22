@@ -22,9 +22,7 @@ export function CodeEditorPanel() {
       <ResizablePanelGroup orientation='vertical' className='flex-1'>
         <ResizablePanel defaultSize={80} minSize={30}>
           <div className='flex flex-1 h-full overflow-hidden'>
-            <div className='bg-card'>
-              <FileTree />
-            </div>
+            <FileTree />
             <FileContentView />
           </div>
         </ResizablePanel>

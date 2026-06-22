@@ -45,7 +45,7 @@ export function FileContentView() {
 
   return (
     <div
-      className={`flex-1 relative overflow-hidden ${isTransparent ? 'bg-transparent' : 'bg-background'}`}
+      className={`flex-1 relative overflow-hidden ${isTransparent ? 'bg-background/40' : 'bg-background'}`}
     >
       <MonacoEditor
         path={activeTab}

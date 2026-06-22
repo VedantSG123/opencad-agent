@@ -6,8 +6,10 @@ import type {
   UpdateProjectPayload,
 } from '@/types/project'
 
+import { getBaseApiUrl } from '../utils/getApiBaseUrl'
+
 const api = axios.create({
-  baseURL: 'http://localhost:3000/api',
+  baseURL: getBaseApiUrl(),
 })
 
 export const projectsApi = {

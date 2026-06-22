@@ -8,8 +8,6 @@ import { comlink } from 'vite-plugin-comlink'
 import topLevelAwait from 'vite-plugin-top-level-await'
 import wasm from 'vite-plugin-wasm'
 
-import { openscadPlugin } from './plugins/openscad-plugin'
-
 // Reads the replicad .d.ts at build time and exposes it as a virtual module.
 // Needed because replicad's package.json `exports` field blocks deep imports.
 function replicadTypesPlugin(): Plugin {
@@ -33,9 +31,9 @@ function replicadTypesPlugin(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [
     replicadTypesPlugin(),
-    openscadPlugin(),
     react({
       babel: {
         plugins: [['babel-plugin-react-compiler']],
@@ -50,5 +48,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  build: {
+    target: 'es2022',
   },
 })

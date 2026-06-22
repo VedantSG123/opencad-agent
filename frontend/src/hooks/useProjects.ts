@@ -1,29 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { toast } from 'sonner'
 
 import axiosInstance from '@/lib/axios'
-import type { CadKernel, Project } from '@/types/project'
-
-// ─── API payload types ────────────────────────────────────────────────────────
-
-interface CreateProjectPayload {
-  name: string
-  cad_kernel: CadKernel
-  directory: string
-  action: 'create' | 'open'
-}
-
-interface UpdateProjectPayload {
-  name?: string
-  file?: string | null
-}
+import type {
+  CreateProjectPayload,
+  Project,
+  UpdateProjectPayload,
+} from '@/types/project'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const PROJECTS_KEY = ['projects'] as const
 
-function extractErrorMessage(error: unknown, fallback: string): string {
+export function extractErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const msg = (error.response?.data?.message as string) || ''
@@ -43,23 +32,25 @@ export function useProjects() {
   })
 }
 
-export function useCreateProject() {
+export function useInvalidateProjects() {
   const queryClient = useQueryClient()
+  return {
+    invalidateProjects: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: PROJECTS_KEY,
+      })
+    },
+  }
+}
+
+export function useCreateProject() {
   return useMutation({
     mutationFn: (payload: CreateProjectPayload) =>
       axiosInstance.post<Project>('/projects', payload).then((r) => r.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PROJECTS_KEY })
-      toast.success('Project created successfully')
-    },
-    onError: (error) => {
-      toast.error(extractErrorMessage(error, 'Failed to create project'))
-    },
   })
 }
 
 export function useRenameProject() {
-  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
       id,
@@ -71,45 +62,21 @@ export function useRenameProject() {
       axiosInstance
         .patch<Project>(`/projects/${id}`, payload)
         .then((r) => r.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PROJECTS_KEY })
-      toast.success('Project renamed')
-    },
-    onError: (error) => {
-      toast.error(extractErrorMessage(error, 'Failed to rename project'))
-    },
   })
 }
 
 export function useSetProjectFile() {
-  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, file }: { id: string; file: string }) =>
       axiosInstance
         .patch<Project>(`/projects/${id}`, { file })
         .then((r) => r.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PROJECTS_KEY })
-    },
-    onError: (error) => {
-      toast.error(extractErrorMessage(error, 'Failed to set main file'))
-    },
   })
 }
 
 export function useDeleteProject() {
-  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) =>
       axiosInstance.delete(`/projects/${id}`).then(() => undefined),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PROJECTS_KEY })
-      toast.success('Project deleted')
-    },
-    onError: (error) => {
-      toast.error(extractErrorMessage(error, 'Failed to delete project'))
-    },
   })
 }
-
-export type { CreateProjectPayload, UpdateProjectPayload }

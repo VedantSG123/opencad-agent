@@ -7,7 +7,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from '@/components/ui/resizable'
-import { OpenSCADProvider } from '@/hooks/useOpenSCAD'
+import { NodeOpenSCADProvider } from '@/hooks/useNodeOpenSCAD'
 import { useProjects } from '@/hooks/useProjects'
 import { cn } from '@/lib/utils'
 import type { Project } from '@/types/project'
@@ -163,7 +163,11 @@ export function ProjectPage() {
 
   return (
     <PanelProvider>
-      {isOpenSCAD ? <OpenSCADProvider>{content}</OpenSCADProvider> : content}
+      {isOpenSCAD ? (
+        <NodeOpenSCADProvider>{content}</NodeOpenSCADProvider>
+      ) : (
+        content
+      )}
     </PanelProvider>
   )
 }

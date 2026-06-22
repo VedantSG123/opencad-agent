@@ -280,7 +280,7 @@ function exportToFile(
           name: shape.name,
           color: shape.color,
           alpha: shape.opacity,
-        } as ExportShapeConfig
+        }
       }
 
       return null

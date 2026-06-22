@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react'
 import replicadTypes from 'virtual:replicad-types'
 
 import { useTheme } from '@/contexts/theme-context'
-import { type EditorMarker, useOpenSCAD } from '@/hooks/useOpenSCAD'
+import { type EditorMarker, useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
 import type { CadKernel } from '@/types/project'
 
 import { usePanelContext } from '../../context/PanelContext'
@@ -25,18 +25,31 @@ window.MonacoEnvironment = {
   },
 }
 
+monaco.editor.defineTheme('custom-vs-dark', {
+  base: 'vs-dark',
+  inherit: true,
+  rules: [],
+  colors: { 'editor.background': '#1e1e1e' },
+})
+monaco.editor.defineTheme('custom-vs', {
+  base: 'vs',
+  inherit: true,
+  rules: [],
+  colors: { 'editor.background': '#e9e4d8' },
+})
+
 // Transparent theme variants — #RRGGBBAA, 66 alpha = ~66% opaque
-monaco.editor.defineTheme('vs-dark-transparent', {
+monaco.editor.defineTheme('custom-vs-dark-transparent', {
   base: 'vs-dark',
   inherit: true,
   rules: [],
   colors: { 'editor.background': '#1e1e1e66' },
 })
-monaco.editor.defineTheme('vs-transparent', {
+monaco.editor.defineTheme('custom-vs-transparent', {
   base: 'vs',
   inherit: true,
   rules: [],
-  colors: { 'editor.background': '#fffffe66' },
+  colors: { 'editor.background': '#e9e4d866' },
 })
 
 const EXT_TO_LANGUAGE: Record<string, string> = {
@@ -257,10 +270,12 @@ function MonacoEditorBase({
   useEffect(() => {
     if (isTransparent) {
       monaco.editor.setTheme(
-        theme === 'dark' ? 'vs-dark-transparent' : 'vs-transparent',
+        theme === 'dark'
+          ? 'custom-vs-dark-transparent'
+          : 'custom-vs-transparent',
       )
     } else {
-      monaco.editor.setTheme(theme === 'dark' ? 'vs-dark' : 'vs')
+      monaco.editor.setTheme(theme === 'dark' ? 'custom-vs-dark' : 'custom-vs')
     }
   }, [theme, isTransparent])
 
@@ -375,7 +390,7 @@ function MonacoEditorBase({
 }
 
 function MonacoEditorWithMarkers(props: MonacoEditorProps) {
-  const markers = useOpenSCAD((state) => state.markers)
+  const markers = useNodeOpenSCAD((state) => state.markers)
   return <MonacoEditorBase {...props} markers={markers} />
 }
 

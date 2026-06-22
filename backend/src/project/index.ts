@@ -1,5 +1,5 @@
 import { mkdir } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { CADKernels } from '../cad'
 import { upsertProject } from '../utils/dbUtils/projects'
@@ -17,7 +17,7 @@ export async function createProject({
   let resolvedFile: string | null = null
   if (action === 'create') {
     const filename = `main${CADKernels[cad_kernel].fileExtension}`
-    resolvedFile = `${directory}/${filename}`
+    resolvedFile = join(directory, filename)
     await createProjectFile(resolvedFile)
   }
 

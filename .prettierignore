@@ -1,0 +1,6 @@
+**/dist
+**/dist-packaged
+**/node_modules
+*.md
+*.yml
+bun.lock

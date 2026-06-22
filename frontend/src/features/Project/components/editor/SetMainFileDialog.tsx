@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -9,8 +10,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { KERNEL_INFO } from '@/constants/kernels'
-import { useSetProjectFile } from '@/hooks/useProjects'
-import { cn } from '@/lib/utils'
+import {
+  extractErrorMessage,
+  useInvalidateProjects,
+  useSetProjectFile,
+} from '@/hooks/useProjects'
+import { cn, joinPaths } from '@/lib/utils'
 
 import { useEditor } from './context'
 
@@ -21,7 +26,9 @@ interface SetMainFileDialogProps {
 
 export function SetMainFileDialog({ open, onClose }: SetMainFileDialogProps) {
   const { project, treeData } = useEditor()
-  const { mutate, isPending } = useSetProjectFile()
+  const { mutateAsync: setProjectFile } = useSetProjectFile()
+  const { invalidateProjects } = useInvalidateProjects()
+  const [isSaving, setIsSaving] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
 
   if (!project) return null
@@ -31,19 +38,22 @@ export function SetMainFileDialog({ open, onClose }: SetMainFileDialogProps) {
     (item) => !item.children && item.id.endsWith(ext),
   )
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (!project || !selected) return
     // Virtual path is e.g. "/main.js"; absolute = directory + virtual path
-    const absolutePath = project.directory + selected
-    mutate(
-      { id: project.id, file: absolutePath },
-      {
-        onSuccess: () => {
-          setSelected(null)
-          onClose()
-        },
-      },
-    )
+    const absolutePath = joinPaths(project.directory, selected)
+    setIsSaving(true)
+    try {
+      await setProjectFile({ id: project.id, file: absolutePath })
+      await invalidateProjects()
+      toast.success('Main file updated successfully')
+      setSelected(null)
+      onClose()
+    } catch (error) {
+      toast.error(extractErrorMessage(error, 'Failed to set main file'))
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   function handleOpenChange(isOpen: boolean) {
@@ -92,11 +102,11 @@ export function SetMainFileDialog({ open, onClose }: SetMainFileDialogProps) {
         )}
 
         <div className='flex justify-end gap-2 pt-1'>
-          <Button variant='outline' onClick={onClose} disabled={isPending}>
+          <Button variant='outline' onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={!selected || isPending}>
-            {isPending ? 'Saving…' : 'Set as Main File'}
+          <Button onClick={handleConfirm} disabled={!selected || isSaving}>
+            {isSaving ? 'Saving…' : 'Set as Main File'}
           </Button>
         </div>
       </DialogContent>

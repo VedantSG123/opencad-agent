@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useFileDialog } from '@/hooks/useFileDialog'
+import { joinPaths, normalizePath } from '@/lib/utils'
 import type { CadKernel } from '@/types/project'
 
 const KERNEL_EXTENSION: Record<CadKernel, string> = {
@@ -33,7 +34,7 @@ export function DetailsStep({
 
   function handleBrowseDirectory() {
     fileDialog.open('directory', (selectedPath) => {
-      onDirectoryChange(selectedPath)
+      onDirectoryChange(normalizePath(selectedPath))
       // Auto-fill name from directory name if empty
       if (!name) {
         const parts = selectedPath.replace(/\\/g, '/').split('/')
@@ -45,7 +46,7 @@ export function DetailsStep({
 
   const scriptPathPreview =
     !isOpen && directory && name && kernel
-      ? `${directory}/${name}/script${KERNEL_EXTENSION[kernel]}`
+      ? joinPaths(joinPaths(directory, name), `main${KERNEL_EXTENSION[kernel]}`)
       : ''
 
   return (

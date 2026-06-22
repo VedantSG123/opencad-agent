@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { toast } from 'sonner'
+
 import {
   Dialog,
   DialogContent,
@@ -5,8 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { CreateProjectPayload } from '@/hooks/useProjects'
-import { useCreateProject } from '@/hooks/useProjects'
+import {
+  extractErrorMessage,
+  useCreateProject,
+  useInvalidateProjects,
+} from '@/hooks/useProjects'
+import type { CreateProjectPayload } from '@/types/project'
 
 import { ProjectWizard } from './wizard'
 
@@ -19,10 +26,28 @@ export function NewProjectDialog({
   open,
   onOpenChange,
 }: NewProjectDialogProps) {
-  const { mutate, isPending } = useCreateProject()
+  const { mutateAsync: createProject } = useCreateProject()
+  const { invalidateProjects } = useInvalidateProjects()
+  const [isCreating, setIsCreating] = useState(false)
 
-  function handleComplete(payload: CreateProjectPayload) {
-    mutate(payload, { onSuccess: () => onOpenChange(false) })
+  async function handleComplete(payload: CreateProjectPayload) {
+    setIsCreating(true)
+    try {
+      const created = await createProject(payload)
+      await invalidateProjects()
+      if (window.electron) {
+        const res = await window.electron.addProjectRoot(created.directory)
+        if (!res.success) {
+          throw new Error(res.error.message)
+        }
+      }
+      toast.success('Project created successfully')
+      onOpenChange(false)
+    } catch (error) {
+      toast.error(extractErrorMessage(error, 'Failed to create project'))
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   return (
@@ -35,7 +60,7 @@ export function NewProjectDialog({
         <ProjectWizard
           onComplete={handleComplete}
           onCancel={() => onOpenChange(false)}
-          isLoading={isPending}
+          isLoading={isCreating}
         />
       </DialogContent>
     </Dialog>

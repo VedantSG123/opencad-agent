@@ -123,7 +123,8 @@ function createBaseInputShapesArray(
         if (!inputShape.shape) {
           return {
             shape: inputShape,
-          } as InputShape
+            name: undefined,
+          }
         }
 
         return inputShape as InputShape
@@ -266,7 +267,7 @@ export function getRenderOutput(
       if (isMeshShape(shape.shape)) {
         return getRenderMeshOutput({
           name: shape.name,
-          shape: shape.shape as AnyShape,
+          shape: shape.shape,
           color: shape.color,
           opacity: shape.opacity,
           labels: shape.labels,
@@ -329,7 +330,8 @@ export function isMeshShape(shape: unknown): shape is AnyShape {
     // Type check for MeshFunction - should return ShapeMesh
     (() => {
       try {
-        const meshFn = (shape as Record<string, unknown>).mesh as MeshFunction
+        const meshFn = (shape as unknown as Record<string, unknown>)
+          .mesh as MeshFunction
         return typeof meshFn === 'function'
       } catch {
         return false
@@ -338,7 +340,7 @@ export function isMeshShape(shape: unknown): shape is AnyShape {
     // Type check for MeshEdgesFunction - should return LineMesh
     (() => {
       try {
-        const meshEdgesFn = (shape as Record<string, unknown>)
+        const meshEdgesFn = (shape as unknown as Record<string, unknown>)
           .meshEdges as MeshEdgesFunction
         return typeof meshEdgesFn === 'function'
       } catch {

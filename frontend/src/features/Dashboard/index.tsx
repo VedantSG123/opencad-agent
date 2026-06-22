@@ -27,7 +27,6 @@ export function Dashboard() {
   return (
     <div className='min-h-screen flex flex-col bg-background'>
       <DashboardHeader onNewProject={() => setNewProjectOpen(true)} />
-
       <main className='flex-1 flex flex-col max-w-7xl w-full mx-auto px-6 py-8'>
         {isError && (
           <div className='flex flex-col items-center justify-center flex-1 gap-4 text-center'>

@@ -4,10 +4,11 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 
 import { OpenSCADSVGViewer } from '@/components/custom/SvgViewer'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
-import type { CompileResult } from '@/kernels/openscad/OpenSCADWrapper'
+import type { CompileResult } from '@/kernels/openscad/nodeOpenSCADApi'
 
 import { Canvas } from './Canvas'
 import { ErrorMesh } from './ErrorMesh'
+import { parseOffToGeometry } from './helpers/parseOff'
 import { Scene } from './Scene'
 
 function SceneLighting() {
@@ -36,24 +37,45 @@ export function OpenSCADViewer({
   )
 
   React.useEffect(() => {
+    let cancelled = false
     const blob = result?.blob
     if (!blob || hasError || result?.format === 'svg') {
-      setGeometry(null)
+      Promise.resolve().then(() => {
+        if (!cancelled) {
+          setGeometry((prev) => {
+            if (prev) prev.dispose()
+            return null
+          })
+        }
+      })
       return
     }
 
-    let cancelled = false
-
-    blob.arrayBuffer().then((buffer) => {
-      if (cancelled) return
-      const loader = new STLLoader()
-      const geo = loader.parse(buffer)
-      geo.computeVertexNormals()
-      setGeometry((prev) => {
-        prev?.dispose()
-        return geo
+    if (result.format === 'off') {
+      blob.text().then((text) => {
+        if (cancelled) return
+        try {
+          const geo = parseOffToGeometry(text)
+          setGeometry((prev) => {
+            prev?.dispose()
+            return geo
+          })
+        } catch (e) {
+          console.error('Error parsing OFF geometry:', e)
+        }
       })
-    })
+    } else {
+      blob.arrayBuffer().then((buffer) => {
+        if (cancelled) return
+        const loader = new STLLoader()
+        const geo = loader.parse(buffer)
+        geo.computeVertexNormals()
+        setGeometry((prev) => {
+          prev?.dispose()
+          return geo
+        })
+      })
+    }
 
     return () => {
       cancelled = true
@@ -93,7 +115,10 @@ export function OpenSCADViewer({
               {geometry ? (
                 <mesh geometry={geometry}>
                   <meshStandardMaterial
-                    color='#6ea8be'
+                    vertexColors={geometry.getAttribute('color') !== undefined}
+                    {...(geometry.getAttribute('color') === undefined
+                      ? { color: '#6ea8be' }
+                      : {})}
                     side={THREE.DoubleSide}
                     roughness={0.6}
                     metalness={0.1}

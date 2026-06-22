@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Route, Routes } from 'react-router'
 
+import PerfMonitor from './components/custom/PerfMonitor'
 import { Toaster } from './components/ui/sonner'
 import { TooltipProvider } from './components/ui/tooltip'
 import { ThemeProvider } from './contexts/theme-context'
@@ -17,6 +18,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
+          {import.meta.env.DEV && <PerfMonitor />}
           <Routes>
             <Route path='/' element={<Home />} />
             <Route path='/project/:id' element={<ProjectPage />} />

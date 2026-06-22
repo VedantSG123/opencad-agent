@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/immutability */
 import type { ThreeElements } from '@react-three/fiber'
 import { useThree } from '@react-three/fiber'
 import * as React from 'react'
