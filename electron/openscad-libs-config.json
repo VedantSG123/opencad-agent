@@ -1,8 +1,4 @@
 {
-  "wasmBuild": {
-    "url": "https://files.openscad.org/snapshots/OpenSCAD-2026.06.19-WebAssembly-web.zip",
-    "target": "libs/openscad-wasm"
-  },
   "libraries": [
     {
       "name": "BOSL2",

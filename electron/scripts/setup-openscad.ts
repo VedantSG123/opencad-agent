@@ -1,43 +1,32 @@
 /**
- * Implementation Inspiration from: https://github.com/openscad/openscad-playground/blob/main/webpack-libs-plugin.js
- *
  * Standalone setup script for Electron OpenSCAD resources.
  * Runs before `bun run build` and `bun run dev` in electron/package.json.
  *
  * What it does:
- *   1. Downloads & extracts Node WASM build → electron/src/lib/openscad/
- *   2. Downloads & extracts Node WASM build → electron/openscad-libs/
- *   3. Clones library repos, creates zips    → electron/openscad-libs/libraries/
- *   4. Downloads fonts, creates fonts.zip    → electron/openscad-libs/libraries/
- *   5. Copies config                         → electron/openscad-libs/
+ *   1. Detects host platform and downloads the corresponding native OpenSCAD snapshot binary.
+ *   2. Extracts and saves the native binary to electron/openscad-libs/bin/
+ *   3. Clones and copies libraries directly into electron/openscad-libs/libraries/
+ *   4. Copies config to electron/openscad-libs/
  */
 
 import { exec } from 'node:child_process'
-import { createWriteStream, existsSync } from 'node:fs'
+import { chmodSync, createWriteStream, existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import https from 'node:https'
+import { arch, platform } from 'node:os'
 import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { promisify } from 'node:util'
 
-import { unzipSync, zipSync } from 'fflate'
+import { unzipSync } from 'fflate'
 
 const execAsync = promisify(exec)
 
 // ---------------------------------------------------------------------------
-// Types
+// Types & Constants
 // ---------------------------------------------------------------------------
 
-interface FileEntry {
-  absolutePath: string
-  relativePath: string
-}
-
 interface LibsConfig {
-  wasmBuild: {
-    url: string
-    target: string
-  }
   libraries: Array<{
     name: string
     repo: string
@@ -47,47 +36,35 @@ interface LibsConfig {
     workingDir?: string
     symlinks?: Record<string, string>
   }>
-  fonts: {
-    notoFonts: string[]
-    notoBaseUrl: string
-    liberationRepo: string
-    liberationBranch: string
-  }
 }
 
-// ---------------------------------------------------------------------------
-// Directory Constants
-// ---------------------------------------------------------------------------
+const BINARY_URLS: Record<string, string> = {
+  macos: 'https://files.openscad.org/snapshots/OpenSCAD-2026.06.12.dmg',
+  linux:
+    'https://files.openscad.org/snapshots/OpenSCAD-2026.06.21-x86_64.AppImage',
+  windows:
+    'https://files.openscad.org/snapshots/OpenSCAD-2026.06.21-x86-64.zip',
+}
 
-/** Directory of this script (electron/scripts/) */
 const SCRIPT_DIR = import.meta.dirname
-
-/** Electron package root */
 const ELECTRON_ROOT_DIR = path.resolve(SCRIPT_DIR, '..')
 
-// ── Temp directory (downloads + git clones, cleaned up) ──────────────────
 const TEMP_DIR = path.join(ELECTRON_ROOT_DIR, 'temp')
-const TEMP_WASM = path.join(TEMP_DIR, 'wasm')
-const TEMP_NOTO = path.join(TEMP_DIR, 'noto')
-const TEMP_LIBERATION = path.join(TEMP_DIR, 'liberation')
 const TEMP_LIBS = path.join(TEMP_DIR, 'libs')
 
-// ── Output directories ───────────────────────────────────────────────────
-
-/** WASM files for development imports (dynamic import in Node worker) */
-const WASM_DEV_DIR = path.join(ELECTRON_ROOT_DIR, 'src', 'lib', 'openscad')
-
-/** Production-ready resources dir (included in electron-builder extraResources) */
 const RESOURCES_DIR = path.join(ELECTRON_ROOT_DIR, 'openscad-libs')
 const RESOURCES_LIBS_DIR = path.join(RESOURCES_DIR, 'libraries')
-
-// ── Config files ─────────────────────────────────────────────────────────
 
 const CONFIG_FILE = path.join(ELECTRON_ROOT_DIR, 'openscad-libs-config.json')
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+interface FileEntry {
+  absolutePath: string
+  relativePath: string
+}
 
 async function getFiles(dir: string, baseDir = dir): Promise<FileEntry[]> {
   const files: FileEntry[] = []
@@ -112,7 +89,6 @@ function matchesPattern(
   absoluteFilePath: string,
   fullSourceDir: string,
 ): boolean {
-  // Handle `../` prefix patterns (e.g. "../LICENSE")
   if (pattern.includes('..')) {
     const targetAbsPath = path.resolve(fullSourceDir, pattern)
     return absoluteFilePath === targetAbsPath
@@ -121,7 +97,6 @@ function matchesPattern(
   const normalizedRelPath = relPath.replace(/\\/g, '/')
   const filename = path.basename(normalizedRelPath)
 
-  // Globstar patterns (e.g. "**/*.scad", "**/tests/**")
   if (pattern.includes('**')) {
     if (pattern.startsWith('**/*.')) {
       const ext = pattern.slice(5)
@@ -134,7 +109,6 @@ function matchesPattern(
     return new RegExp('^' + regexPattern + '$').test(normalizedRelPath)
   }
 
-  // Simple glob (e.g. "*.scad", "demo/*.scad")
   if (pattern.includes('*')) {
     if (pattern.startsWith('*.')) {
       return normalizedRelPath.endsWith('.' + pattern.slice(2))
@@ -145,7 +119,6 @@ function matchesPattern(
     return new RegExp('^' + regexPattern + '$').test(normalizedRelPath)
   }
 
-  // Exact match: filename, relative path, or directory prefix
   if (filename === pattern) return true
   if (normalizedRelPath === pattern) return true
   if (normalizedRelPath.startsWith(pattern + '/')) return true
@@ -159,45 +132,64 @@ async function ensureDirs(dirs: string[]): Promise<void> {
   }
 }
 
+function detectPlatform(): 'macos' | 'linux' | 'windows' {
+  const os = platform()
+  const cpu = arch()
+
+  let p: 'macos' | 'linux' | 'windows'
+  if (os === 'darwin') {
+    p = 'macos'
+  } else if (os === 'linux') {
+    p = 'linux'
+  } else if (os === 'win32') {
+    p = 'windows'
+  } else {
+    throw new Error(`Unsupported platform: ${os}`)
+  }
+
+  if (cpu !== 'x64' && cpu !== 'arm64') {
+    throw new Error(`Unsupported architecture: ${cpu}`)
+  }
+
+  if ((p === 'linux' || p === 'windows') && cpu !== 'x64') {
+    throw new Error(`${p} ${cpu} is not supported; only x64 is supported`)
+  }
+
+  return p
+}
+
 // ---------------------------------------------------------------------------
-// OpenSCADSetup
+// Setup Class
 // ---------------------------------------------------------------------------
 
 class OpenSCADSetup {
   private config: LibsConfig | null = null
 
-  // ── Public API ───────────────────────────────────────────────────────
-
   async run(): Promise<void> {
-    console.log('[setup-openscad] Starting OpenSCAD resource setup...')
+    console.log('[setup-openscad] Starting OpenSCAD native resource setup...')
     console.log(`  Temp dir:        ${TEMP_DIR}`)
     console.log(`  Resources dir:   ${RESOURCES_DIR}`)
-    console.log(`  WASM dev dir:    ${WASM_DEV_DIR}`)
 
     await this.loadConfig()
+
+    const binDir = path.join(RESOURCES_DIR, 'bin')
     await ensureDirs([
       TEMP_DIR,
-      TEMP_WASM,
-      TEMP_NOTO,
       TEMP_LIBS,
       RESOURCES_DIR,
       RESOURCES_LIBS_DIR,
-      WASM_DEV_DIR,
+      binDir,
     ])
 
-    // Step 1: WASM
-    console.log('\n[setup-openscad] === WASM Build ===')
-    await this.buildWasm()
+    // Step 1: Download & Setup Native OpenSCAD Binary
+    console.log('\n[setup-openscad] === Native OpenSCAD Binary ===')
+    await this.setupNativeBinary(binDir)
 
-    // Step 2: Fonts
-    console.log('\n[setup-openscad] === Fonts ===')
-    await this.buildFonts()
-
-    // Step 3: Libraries
+    // Step 2: Libraries
     console.log('\n[setup-openscad] === Libraries ===')
     await this.buildAllLibraries()
 
-    // Step 4: Config
+    // Step 3: Config Copy
     await fs.copyFile(
       CONFIG_FILE,
       path.join(RESOURCES_DIR, 'openscad-libs-config.json'),
@@ -205,8 +197,6 @@ class OpenSCADSetup {
 
     console.log('\n[setup-openscad] ✅ OpenSCAD setup completed successfully!')
   }
-
-  // ── Config ──────────────────────────────────────────────────────────
 
   private async loadConfig(): Promise<void> {
     if (!existsSync(CONFIG_FILE)) {
@@ -220,8 +210,6 @@ class OpenSCADSetup {
     if (!this.config) throw new Error('Config not loaded')
     return this.config
   }
-
-  // ── Network ─────────────────────────────────────────────────────────
 
   private downloadFile(url: string, outputPath: string): Promise<void> {
     console.log(`[setup-openscad] Downloading ${url}`)
@@ -275,21 +263,109 @@ class OpenSCADSetup {
     await execAsync(`git ${args}`)
   }
 
-  // ── Zip ─────────────────────────────────────────────────────────────
+  // ── Native Binary Setup ───────────────────────────────────────────────
 
-  private async createZip(
+  private async setupNativeBinary(binDir: string): Promise<void> {
+    const p = detectPlatform()
+    const url = BINARY_URLS[p]
+    const isWin = p === 'windows'
+    const binaryDest = path.join(binDir, isWin ? 'openscad.exe' : 'openscad')
+
+    if (existsSync(binaryDest)) {
+      console.log(
+        `[setup-openscad] Native binary already present at ${binaryDest}`,
+      )
+      return
+    }
+
+    const ext = p === 'windows' ? '.zip' : p === 'macos' ? '.dmg' : '.AppImage'
+    const dlPath = path.join(TEMP_DIR, `openscad-download${ext}`)
+
+    // Download file
+    await this.downloadFile(url, dlPath)
+
+    if (p === 'windows') {
+      console.log('[setup-openscad] Extracting Windows Zip...')
+      const zipBuffer = await fs.readFile(dlPath)
+      const decompressed = unzipSync(new Uint8Array(zipBuffer))
+
+      let exePath: string | null = null
+      const tempExtractDir = path.join(TEMP_DIR, 'extracted-win')
+      await fs.mkdir(tempExtractDir, { recursive: true })
+
+      for (const [relPath, data] of Object.entries(decompressed)) {
+        const targetPath = path.join(tempExtractDir, relPath)
+        if (relPath.endsWith('/')) {
+          await fs.mkdir(targetPath, { recursive: true })
+        } else {
+          await fs.mkdir(path.dirname(targetPath), { recursive: true })
+          await fs.writeFile(targetPath, data)
+          const base = path.basename(relPath).toLowerCase()
+          if (base === 'openscad.exe') {
+            exePath = targetPath
+          }
+        }
+      }
+
+      if (!exePath) {
+        throw new Error('openscad.exe not found in Windows zip')
+      }
+      await fs.copyFile(exePath, binaryDest)
+      await fs.rm(tempExtractDir, { recursive: true, force: true })
+    } else if (p === 'macos') {
+      console.log('[setup-openscad] Mounting macOS DMG...')
+      const mountPoint = path.join(TEMP_DIR, 'mnt')
+      await fs.mkdir(mountPoint, { recursive: true })
+      await execAsync(
+        `hdiutil attach -nobrowse -mountpoint "${mountPoint}" "${dlPath}"`,
+      )
+
+      try {
+        const { stdout } = await execAsync(
+          `find "${mountPoint}" -name "openscad" -type f 2>/dev/null || true`,
+        )
+        const lines = stdout.trim().split('\n').filter(Boolean)
+        if (lines.length === 0) {
+          throw new Error('openscad binary not found inside macOS DMG mount')
+        }
+        const binaryInDMG = lines[0]
+        console.log(`[setup-openscad] Copying macOS binary from ${binaryInDMG}`)
+        await fs.copyFile(binaryInDMG, binaryDest)
+        chmodSync(binaryDest, 0o755)
+      } finally {
+        await execAsync(
+          `hdiutil detach "${mountPoint}" 2>/dev/null || true`,
+        ).catch(() => {})
+        await fs
+          .rm(mountPoint, { recursive: true, force: true })
+          .catch(() => {})
+      }
+    } else {
+      console.log('[setup-openscad] Preparing Linux AppImage...')
+      await fs.copyFile(dlPath, binaryDest)
+      chmodSync(binaryDest, 0o755)
+    }
+
+    // Clean download file
+    await fs.rm(dlPath, { force: true })
+    console.log(
+      `[setup-openscad] Native OpenSCAD binary prepared at ${binaryDest}`,
+    )
+  }
+
+  // ── Libraries Setup ──────────────────────────────────────────────────
+
+  private async copyLibraryFiles(
     sourceDir: string,
-    outputPath: string,
+    destDir: string,
     includes: string[] = [],
     excludes: string[] = [],
     workingDir = '.',
   ): Promise<void> {
-    await fs.mkdir(path.dirname(outputPath), { recursive: true })
+    await fs.mkdir(destDir, { recursive: true })
 
     const fullSourceDir = path.join(sourceDir, workingDir)
     const allFiles = await getFiles(sourceDir)
-
-    const zipFiles: Record<string, Uint8Array> = {}
     const actualIncludes = includes.length > 0 ? includes : ['**/*.scad']
 
     for (const file of allFiles) {
@@ -307,191 +383,24 @@ class OpenSCADSetup {
       )
       if (isExcluded) continue
 
-      const content = await fs.readFile(file.absolutePath)
-      const zipPath = relPath.startsWith('../')
-        ? path.basename(relPath)
-        : relPath
-      zipFiles[zipPath] = new Uint8Array(content)
-    }
-
-    const zipped = zipSync(zipFiles)
-    console.log(`[setup-openscad] Creating zip: ${outputPath}`)
-    await fs.writeFile(outputPath, zipped)
-  }
-
-  /** Extract a zip archive into a target directory using fflate */
-  private async extractZip(zipPath: string, targetDir: string): Promise<void> {
-    const zipBuffer = await fs.readFile(zipPath)
-    let decompressed!: Record<string, Uint8Array>
-    try {
-      decompressed = unzipSync(new Uint8Array(zipBuffer))
-    } catch {
-      console.warn('[setup-openscad] Zip is corrupt, re-downloading...')
-      await fs.rm(zipPath, { force: true })
-      throw new Error('Corrupt zip, please re-run setup')
-    }
-
-    console.log(`[setup-openscad] Extracting to ${targetDir}`)
-    for (const [relPath, data] of Object.entries(decompressed)) {
-      const targetPath = path.join(targetDir, relPath)
-      if (relPath.endsWith('/')) {
-        await fs.mkdir(targetPath, { recursive: true })
-      } else {
-        await fs.mkdir(path.dirname(targetPath), { recursive: true })
-        await fs.writeFile(targetPath, data)
-      }
-    }
-  }
-
-  // ── WASM ────────────────────────────────────────────────────────────
-
-  /**
-   * Node WASM build used by the Electron worker thread (Node.js context).
-   *
-   * Two outputs:
-   *   1. WASM_DEV_DIR   – imported at dev time (electron/src/lib/openscad/)
-   *   2. RESOURCES_DIR  – bundled during packaging (electron/openscad-libs/)
-   */
-  private async buildWasm(): Promise<void> {
-    const jsDestDev = path.join(WASM_DEV_DIR, 'openscad.js')
-    const wasmDestDev = path.join(WASM_DEV_DIR, 'openscad.wasm')
-    const jsDestProd = path.join(RESOURCES_DIR, 'openscad.js')
-    const wasmDestProd = path.join(RESOURCES_DIR, 'openscad.wasm')
-
-    // If both dev and prod wasm files already exist, skip
-    if (
-      existsSync(jsDestDev) &&
-      existsSync(wasmDestDev) &&
-      existsSync(jsDestProd) &&
-      existsSync(wasmDestProd)
-    ) {
-      console.log(
-        '[setup-openscad] WASM already present in both destinations, skipping',
+      const targetPath = path.join(
+        destDir,
+        relPath.startsWith('../') ? path.basename(relPath) : relPath,
       )
-      return
+      await fs.mkdir(path.dirname(targetPath), { recursive: true })
+      await fs.copyFile(file.absolutePath, targetPath)
     }
-
-    const { wasmBuild } = this.cfg
-    const wasmZip = path.join(TEMP_DIR, 'wasm-node.zip')
-
-    // Download & extract if not already cached in TEMP_WASM
-    if (!existsSync(path.join(TEMP_WASM, 'openscad.js'))) {
-      if (!existsSync(wasmZip)) {
-        await this.downloadFile(wasmBuild.url, wasmZip)
-      }
-
-      // Validate zip
-      try {
-        await this.extractZip(wasmZip, TEMP_WASM)
-      } catch {
-        console.log('[setup-openscad] Redownloading corrupt zip...')
-        await this.downloadFile(wasmBuild.url, wasmZip)
-        await this.extractZip(wasmZip, TEMP_WASM)
-      }
-    }
-
-    const srcJs = path.join(TEMP_WASM, 'openscad.js')
-    const srcWasm = path.join(TEMP_WASM, 'openscad.wasm')
-
-    // Validate extracted files exist
-    if (!existsSync(srcJs)) {
-      throw new Error(
-        `Expected openscad.js not found in extracted WASM at ${TEMP_WASM}`,
-      )
-    }
-
-    // Copy to dev dir
-    await fs.copyFile(srcJs, jsDestDev)
-    if (existsSync(srcWasm)) {
-      await fs.copyFile(srcWasm, wasmDestDev)
-    }
-    console.log(`[setup-openscad] WASM copied to ${WASM_DEV_DIR}`)
-
-    // Copy to resources dir (for runtime and packaging)
-    await fs.mkdir(RESOURCES_DIR, { recursive: true })
-    await fs.copyFile(srcJs, jsDestProd)
-    if (existsSync(srcWasm)) {
-      await fs.copyFile(srcWasm, wasmDestProd)
-    }
-    console.log(`[setup-openscad] WASM copied to ${RESOURCES_DIR}`)
   }
-
-  // ── Fonts ───────────────────────────────────────────────────────────
-
-  private async buildFonts(): Promise<void> {
-    const { fonts } = this.cfg
-    const fontsZip = path.join(RESOURCES_LIBS_DIR, 'fonts.zip')
-
-    if (existsSync(fontsZip)) {
-      console.log('[setup-openscad] Fonts zip already present, skipping')
-      return
-    }
-
-    // Download Noto fonts
-    for (const font of fonts.notoFonts) {
-      const fontPath = path.join(TEMP_NOTO, font)
-      if (!existsSync(fontPath)) {
-        await this.downloadFile(fonts.notoBaseUrl + font, fontPath)
-      }
-    }
-
-    // Clone Liberation fonts
-    if (
-      !existsSync(TEMP_LIBERATION) ||
-      !existsSync(path.join(TEMP_LIBERATION, '.git'))
-    ) {
-      await this.cloneRepo(
-        fonts.liberationRepo,
-        TEMP_LIBERATION,
-        fonts.liberationBranch,
-      )
-    }
-
-    // Package fonts.zip
-    console.log('[setup-openscad] Packaging fonts.zip...')
-    const zipFiles: Record<string, Uint8Array> = {}
-    const fontsConfContent = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
-<fontconfig>
-  <dir>/fonts</dir>
-  <cachedir>/cachedir</cachedir>
-</fontconfig>`
-    zipFiles['fonts.conf'] = new TextEncoder().encode(fontsConfContent)
-
-    const notoFiles = await fs.readdir(TEMP_NOTO)
-    for (const file of notoFiles) {
-      if (file.endsWith('.ttf')) {
-        zipFiles[file] = new Uint8Array(
-          await fs.readFile(path.join(TEMP_NOTO, file)),
-        )
-      }
-    }
-
-    const liberationFiles = await fs.readdir(TEMP_LIBERATION)
-    for (const file of liberationFiles) {
-      if (file.endsWith('.ttf') || file === 'LICENSE' || file === 'AUTHORS') {
-        zipFiles[file] = new Uint8Array(
-          await fs.readFile(path.join(TEMP_LIBERATION, file)),
-        )
-      }
-    }
-
-    const zipped = zipSync(zipFiles)
-    await fs.writeFile(fontsZip, zipped)
-    console.log('[setup-openscad] Fonts packaged successfully!')
-  }
-
-  // ── Libraries ───────────────────────────────────────────────────────
 
   private async buildLibrary(
     library: LibsConfig['libraries'][number],
   ): Promise<void> {
     const libDir = path.join(TEMP_LIBS, library.name)
-    const zipPath = path.join(RESOURCES_LIBS_DIR, `${library.name}.zip`)
+    const destDir = path.join(RESOURCES_LIBS_DIR, library.name)
 
-    if (existsSync(zipPath)) {
+    if (existsSync(destDir)) {
       console.log(
-        `[setup-openscad] ${library.name}.zip already exists, skipping`,
+        `[setup-openscad] Library ${library.name} already exists, skipping`,
       )
       return
     }
@@ -500,13 +409,30 @@ class OpenSCADSetup {
       await this.cloneRepo(library.repo, libDir, library.branch)
     }
 
-    await this.createZip(
+    await this.copyLibraryFiles(
       libDir,
-      zipPath,
+      destDir,
       library.zipIncludes ?? ['*.scad'],
       library.zipExcludes ?? [],
       library.workingDir ?? '.',
     )
+
+    // Setup symlinks/aliases in RESOURCES_LIBS_DIR
+    if (library.symlinks) {
+      for (const [alias, internalPath] of Object.entries(library.symlinks)) {
+        const aliasPath = path.join(RESOURCES_LIBS_DIR, alias)
+        const targetPath = path.join(destDir, internalPath)
+        if (!existsSync(aliasPath) && existsSync(targetPath)) {
+          try {
+            const relTarget = path.relative(path.dirname(aliasPath), targetPath)
+            await fs.symlink(relTarget, aliasPath)
+          } catch {
+            await fs.copyFile(targetPath, aliasPath)
+          }
+        }
+      }
+    }
+
     console.log(`[setup-openscad] Built ${library.name}`)
   }
 
@@ -522,6 +448,9 @@ class OpenSCADSetup {
 // ---------------------------------------------------------------------------
 
 new OpenSCADSetup().run().catch((err) => {
-  console.error('[setup-openscad] Failed to setup OpenSCAD resources:', err)
+  console.error(
+    '[setup-openscad] Failed to setup OpenSCAD native resources:',
+    err,
+  )
   process.exit(1)
 })
