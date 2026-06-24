@@ -423,11 +423,26 @@ class OpenSCADSetup {
         const aliasPath = path.join(RESOURCES_LIBS_DIR, alias)
         const targetPath = path.join(destDir, internalPath)
         if (!existsSync(aliasPath) && existsSync(targetPath)) {
+          const stats = await fs.stat(targetPath)
+          const isDir = stats.isDirectory()
           try {
-            const relTarget = path.relative(path.dirname(aliasPath), targetPath)
-            await fs.symlink(relTarget, aliasPath)
+            if (platform() === 'win32') {
+              if (isDir) {
+                // Junction requires absolute path on Windows
+                await fs.symlink(targetPath, aliasPath, 'junction')
+              } else {
+                await fs.symlink(targetPath, aliasPath, 'file')
+              }
+            } else {
+              const relTarget = path.relative(path.dirname(aliasPath), targetPath)
+              await fs.symlink(relTarget, aliasPath, isDir ? 'dir' : 'file')
+            }
           } catch {
-            await fs.copyFile(targetPath, aliasPath)
+            if (isDir) {
+              await fs.cp(targetPath, aliasPath, { recursive: true })
+            } else {
+              await fs.copyFile(targetPath, aliasPath)
+            }
           }
         }
       }
