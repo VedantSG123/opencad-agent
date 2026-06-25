@@ -37,7 +37,10 @@ export async function executeOpenSCAD(
   )
 
   const workerInstance = new Worker(workerPath, {
-    workerData: { openscadResourcesPath },
+    workerData: {
+      openscadResourcesPath,
+      userDataPath: app.getPath('userData'),
+    },
   })
 
   workerInstance.on('error', (err) => {

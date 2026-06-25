@@ -1,10 +1,7 @@
+import { spawn } from 'node:child_process'
+import * as fs from 'node:fs'
 import * as fsPromises from 'node:fs/promises'
 import * as path from 'node:path'
-
-import type { OpenSCAD } from '../../lib/openscad/openscad.js'
-import openscad from '../../lib/openscad/openscad.js'
-import { resolveProjectDependencies } from './dependencyScanner.js'
-import { LibraryLoader } from './libraryLoader.js'
 
 export interface ParameterOption {
   name: string
@@ -76,159 +73,97 @@ function formatValue(val: unknown): string {
   }
 }
 
+async function runOpenSCAD(
+  binaryPath: string,
+  args: string[],
+  env?: Record<string, string>,
+): Promise<{ stdout: string[]; stderr: string[]; exitCode: number }> {
+  return new Promise((resolve) => {
+    const stdout: string[] = []
+    const stderr: string[] = []
+    const proc = spawn(binaryPath, args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, ...env },
+    })
+
+    proc.stdout.on('data', (data: Buffer) => {
+      const lines = data.toString().split('\n').filter(Boolean)
+      stdout.push(...lines)
+    })
+
+    proc.stderr.on('data', (data: Buffer) => {
+      const lines = data.toString().split('\n').filter(Boolean)
+      stderr.push(...lines)
+    })
+
+    proc.on('close', (exitCode) => {
+      resolve({
+        stdout,
+        stderr,
+        exitCode: exitCode ?? -1,
+      })
+    })
+
+    proc.on('error', (err) => {
+      resolve({
+        stdout,
+        stderr: [...stderr, `Process error: ${err.message}`],
+        exitCode: -1,
+      })
+    })
+  })
+}
+
 export class OpenSCADWrapper {
-  private libraryLoader: LibraryLoader
   private openscadResourcesPath: string
+  private userDataPath: string
 
-  constructor(openscadResourcesPath: string) {
+  constructor(openscadResourcesPath: string, userDataPath: string) {
     this.openscadResourcesPath = openscadResourcesPath
-    this.libraryLoader = new LibraryLoader(openscadResourcesPath)
+    this.userDataPath = userDataPath
   }
 
-  private async createInstance(
-    stdout: string[],
-    stderr: string[],
-    main: { path: string; code: string },
-    projectDirectory?: string,
-    overrides?: Record<string, { content: string }>,
-  ): Promise<OpenSCAD> {
-    const wasmPath = path.join(this.openscadResourcesPath, 'openscad.wasm')
+  private async mirrorDirectory(
+    srcDir: string,
+    destDir: string,
+    overrides: Record<string, { content: string }>,
+  ): Promise<void> {
+    const walk = async (currentSrc: string, currentDest: string) => {
+      const entries = await fsPromises.readdir(currentSrc, {
+        withFileTypes: true,
+      })
+      for (const entry of entries) {
+        const srcPath = path.join(currentSrc, entry.name)
+        const destPath = path.join(currentDest, entry.name)
+        const relPath = path.relative(srcDir, srcPath)
+        const virtualPath = '/' + relPath.replace(/\\/g, '/')
 
-    const options = {
-      noInitialRun: true,
-      wasmBinary: await fsPromises.readFile(wasmPath),
-      locateFile: (p: string) => {
-        if (p === 'openscad.wasm') return wasmPath
-        return p
-      },
-      print: (text: string) => stdout.push(text),
-      printErr: (text: string) => stderr.push(text),
-    }
-
-    const instance = await openscad(options)
-    await this.setupFS(instance, main, projectDirectory, overrides)
-    await this.setupFonts(instance)
-    return instance
-  }
-
-  private async setupFS(
-    instance: OpenSCAD,
-    main: { path: string; code: string },
-    projectDirectory?: string,
-    overrides?: Record<string, { content: string }>,
-  ) {
-    const dependencyPaths = await resolveProjectDependencies(
-      main.code,
-      main.path,
-      async (p: string) => {
-        if (overrides && overrides[p]) return overrides[p].content
-        if (projectDirectory) {
+        if (entry.isDirectory()) {
+          await fsPromises.mkdir(destPath, { recursive: true })
+          await walk(srcPath, destPath)
+        } else if (entry.isFile()) {
+          // If the file is overridden, skip copying/symlinking here.
+          // It will be written in the main overrides block later.
+          if (overrides && overrides[virtualPath]) {
+            continue
+          }
           try {
-            const resolvedPath = path.join(projectDirectory, p)
-            return await fsPromises.readFile(resolvedPath, 'utf-8')
+            await fsPromises.symlink(srcPath, destPath)
           } catch {
-            // Not found
-          }
-        }
-        if (this.libraryLoader.isLibraryPath(p)) {
-          return await this.libraryLoader.readFileAsText(p)
-        }
-        return null
-      },
-    )
-
-    for (const depPath of dependencyPaths) {
-      const normalizedDepPath = depPath.startsWith('/')
-        ? depPath
-        : `/${depPath}`
-      const normalizedMainPath = main.path.startsWith('/')
-        ? main.path
-        : `/${main.path}`
-
-      // Skip the main file, it's handled by the caller
-      if (normalizedDepPath === normalizedMainPath) continue
-
-      let content: string | Uint8Array | null = null
-
-      // Priority: Overrides > project files > Bundled libraries
-      if (overrides && overrides[depPath]) {
-        content = overrides[depPath].content
-      } else if (projectDirectory) {
-        try {
-          const resolvedPath = path.join(projectDirectory, depPath)
-          content = await fsPromises.readFile(resolvedPath)
-        } catch {
-          /* not in project — fall through to libraries */
-        }
-      }
-
-      if (content === null) {
-        content = await this.libraryLoader.readFile(depPath)
-      }
-
-      if (content) {
-        this.mkdirForFile(instance, normalizedDepPath)
-        instance.FS.writeFile(normalizedDepPath, content)
-      }
-    }
-  }
-
-  private ensureDirectories(instance: OpenSCAD, dirs: string[]) {
-    for (const dir of dirs) {
-      try {
-        instance.FS.mkdir(dir)
-      } catch {
-        // already exists
-      }
-    }
-  }
-
-  private async setupFonts(instance: OpenSCAD) {
-    try {
-      await this.libraryLoader.ensureMounted('fonts')
-
-      // OpenSCAD expects these paths in Emscripten FS for font rendering,
-      // geometry caching, and fontconfig initialization
-      this.ensureDirectories(instance, [
-        '/fonts',
-        '/cachedir',
-        '/etc',
-        '/etc/fonts',
-      ])
-
-      const { fs: zenFs } = await import('@zenfs/core')
-      const files = await zenFs.promises.readdir('/libraries/fonts')
-      for (const file of files) {
-        const filePath = `/libraries/fonts/${file}`
-        const stat = await zenFs.promises.stat(filePath)
-        if (stat.isFile()) {
-          const content = await zenFs.promises.readFile(filePath)
-          instance.FS.writeFile(`/fonts/${file}`, content)
-          if (file === 'fonts.conf') {
-            instance.FS.writeFile(`/etc/fonts/fonts.conf`, content)
+            try {
+              await fsPromises.copyFile(srcPath, destPath)
+            } catch (err) {
+              console.error(
+                `Failed to copy fallback file: ${srcPath} -> ${destPath}`,
+                err,
+              )
+            }
           }
         }
       }
-    } catch (err) {
-      console.error(
-        '[OpenSCADWrapper] Failed to setup fonts in Emscripten FS:',
-        err,
-      )
     }
-  }
-
-  private mkdirForFile(instance: OpenSCAD, filePath: string): void {
-    const parts = filePath.split('/').filter(Boolean)
-    parts.pop()
-    let current = ''
-    for (const part of parts) {
-      current += '/' + part
-      try {
-        instance.FS.mkdir(current)
-      } catch {
-        // already exists
-      }
-    }
+    await fsPromises.mkdir(destDir, { recursive: true })
+    await walk(srcDir, destDir)
   }
 
   async execute(request: {
@@ -240,175 +175,270 @@ export class OpenSCADWrapper {
     format?: string
   }): Promise<CompileResult> {
     const { action, main, overrides, projectDirectory, vars, format } = request
-    const stdout: string[] = []
-    const stderr: string[] = []
 
-    const instance = await this.createInstance(
-      stdout,
-      stderr,
-      main,
-      projectDirectory,
-      overrides,
+    // Resolve native OpenSCAD binary path
+    const ext = process.platform === 'win32' ? '.exe' : ''
+    const binaryPath = path.join(
+      this.openscadResourcesPath,
+      'bin',
+      `openscad${ext}`,
     )
 
-    const targetPath = main.path.startsWith('/') ? main.path : `/${main.path}`
-    this.mkdirForFile(instance, targetPath)
-    instance.FS.writeFile(targetPath, main.code)
+    if (!fs.existsSync(binaryPath)) {
+      return {
+        blob: null,
+        format: null,
+        stdout: [],
+        stderr: [
+          `OpenSCAD native binary not found at: ${binaryPath}. Please run setup.`,
+        ],
+        error: true,
+      }
+    }
 
+    // Resolve libraries directory path
+    const libsDir = path.join(this.openscadResourcesPath, 'libraries')
+    const fontsDir = path.join(this.openscadResourcesPath, 'fonts')
+    const spawnEnv: Record<string, string> = {
+      OPENSCADPATH: libsDir,
+    }
+
+    if (fs.existsSync(fontsDir)) {
+      spawnEnv.OPENSCAD_FONT_PATH = fontsDir
+    }
+
+    // Mirror folder resolution (if overrides exist, or if we have no projectDirectory)
+    let runDir: string
+    let mainFilePath: string
+    let isTemp = false
+
+    const hasOverrides = overrides && Object.keys(overrides).length > 0
+
+    if (hasOverrides || !projectDirectory) {
+      isTemp = true
+      runDir = path.join(
+        this.userDataPath,
+        'temp',
+        `run-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      )
+      await fsPromises.mkdir(runDir, { recursive: true })
+
+      if (projectDirectory) {
+        await this.mirrorDirectory(projectDirectory, runDir, overrides || {})
+      }
+
+      // Write overrides (deleting any existing file/symlink first)
+      if (overrides) {
+        for (const [vPath, entry] of Object.entries(overrides)) {
+          const rel = vPath.startsWith('/') ? vPath.slice(1) : vPath
+          const dest = path.join(runDir, rel)
+          await fsPromises.mkdir(path.dirname(dest), { recursive: true })
+          try {
+            await fsPromises.unlink(dest)
+          } catch {
+            // ignore
+          }
+          await fsPromises.writeFile(dest, entry.content, 'utf8')
+        }
+      }
+
+      // Ensure main file code is written/overwritten
+      const mainRel = main.path.startsWith('/') ? main.path.slice(1) : main.path
+      mainFilePath = path.join(runDir, mainRel)
+      await fsPromises.mkdir(path.dirname(mainFilePath), { recursive: true })
+      try {
+        await fsPromises.unlink(mainFilePath)
+      } catch {
+        // ignore
+      }
+      await fsPromises.writeFile(mainFilePath, main.code, 'utf8')
+    } else {
+      runDir = projectDirectory
+      const mainRel = main.path.startsWith('/') ? main.path.slice(1) : main.path
+      mainFilePath = path.join(projectDirectory, mainRel)
+    }
+
+    // Set variable arguments
     const varArgs = vars
       ? Object.entries(vars).map(([k, v]) => `-D${k}=${formatValue(v)}`)
       : []
 
-    if (action === 'checkSyntax') {
-      const outPath = '/out.json'
-      const args = ['-o', outPath, '--export-format=param', targetPath]
-      try {
-        instance.callMain(args)
-      } catch (err: unknown) {
-        const errMsg = err instanceof Error ? err.message : String(err)
-        stderr.push(errMsg)
+    try {
+      if (action === 'checkSyntax') {
+        const outPath = path.join(runDir, 'out.json')
+        const args = [
+          '-o',
+          outPath,
+          '--export-format=param',
+          ...varArgs,
+          mainFilePath,
+        ]
+
+        const { stdout, stderr, exitCode } = await runOpenSCAD(
+          binaryPath,
+          args,
+          spawnEnv,
+        )
+        const error =
+          exitCode !== 0 || stderr.some((line) => line.includes('ERROR:'))
+
+        let parameterSet: ParameterSet | undefined = undefined
+        try {
+          if (fs.existsSync(outPath)) {
+            const content = await fsPromises.readFile(outPath, 'utf8')
+            parameterSet = JSON.parse(content) as ParameterSet
+          }
+        } catch (err) {
+          console.error(
+            '[OpenSCADWrapper] Failed to parse parameters JSON:',
+            err,
+          )
+        }
+
+        return {
+          blob: null,
+          format: null,
+          stdout,
+          stderr,
+          error,
+          parameterSet,
+        }
+      }
+
+      if (action === 'compile') {
+        const outPath = path.join(runDir, 'out.off')
+        const args = [
+          '-o',
+          outPath,
+          '--export-format=off',
+          '--backend=manifold',
+          '--enable=lazy-union',
+          ...varArgs,
+          mainFilePath,
+        ]
+
+        const { stdout, stderr, exitCode } = await runOpenSCAD(
+          binaryPath,
+          args,
+          spawnEnv,
+        )
+        const error =
+          exitCode !== 0 || stderr.some((line) => line.includes('ERROR:'))
+
+        // Check if output file was created and read it
+        if (!error && fs.existsSync(outPath)) {
+          const blob = await fsPromises.readFile(outPath)
+          return {
+            blob: new Uint8Array(blob),
+            format: 'off',
+            stdout,
+            stderr,
+            error: false,
+          }
+        }
+
+        // Retry compiling as SVG if it failed due to a 2D only layout
+        if (
+          stderr.some((line) =>
+            line.includes('Current top level object is not a 3D object.'),
+          )
+        ) {
+          const svgOutPath = path.join(runDir, 'out.svg')
+          const svgArgs = [
+            '-o',
+            svgOutPath,
+            '--export-format=svg',
+            ...varArgs,
+            mainFilePath,
+          ]
+
+          const svgRes = await runOpenSCAD(binaryPath, svgArgs, spawnEnv)
+          const svgError =
+            svgRes.exitCode !== 0 ||
+            svgRes.stderr.some((line) => line.includes('ERROR:'))
+
+          stdout.push(...svgRes.stdout)
+          stderr.push(...svgRes.stderr)
+
+          if (!svgError && fs.existsSync(svgOutPath)) {
+            const blob = await fsPromises.readFile(svgOutPath)
+            return {
+              blob: new Uint8Array(blob),
+              format: 'svg',
+              stdout,
+              stderr,
+              error: false,
+            }
+          }
+        }
+
         return {
           blob: null,
           format: null,
           stdout,
           stderr,
           error: true,
-          parameterSet: undefined,
         }
       }
 
-      const error = stderr.some((line) => line.includes('ERROR:'))
-      let parameterSet: ParameterSet | undefined = undefined
-      try {
-        instance.FS.stat(outPath)
-        const output = instance.FS.readFile(outPath, { encoding: 'binary' })
-        const decoded = new TextDecoder().decode(output)
-        parameterSet = JSON.parse(decoded) as ParameterSet
-      } catch {
-        // Ignored or failed
-      }
+      if (action === 'export') {
+        const exportFormat = format || 'binstl'
+        const normalizedFormat = exportFormat.toLowerCase()
+        const openSCADFormat =
+          normalizedFormat === 'stl' ? 'binstl' : normalizedFormat
+        const fileExt = normalizedFormat === 'binstl' ? 'stl' : normalizedFormat
+        const outPath = path.join(runDir, `out.${fileExt}`)
 
-      return {
-        blob: null,
-        format: null,
-        stdout,
-        stderr,
-        error,
-        parameterSet,
-      }
-    }
-
-    if (action === 'compile') {
-      const outPath = '/out.off'
-      const args = [
-        '-o',
-        outPath,
-        '--export-format=off',
-        '--backend=manifold',
-        '--enable=lazy-union',
-        ...varArgs,
-        targetPath,
-      ]
-
-      try {
-        instance.callMain(args)
-      } catch (err: unknown) {
-        const errMsg = err instanceof Error ? err.message : String(err)
-        stderr.push(errMsg)
-        return { blob: null, format: null, stdout, stderr, error: true }
-      }
-
-      try {
-        instance.FS.stat(outPath)
-        const output = instance.FS.readFile(outPath, { encoding: 'binary' })
-        return {
-          blob: output.slice(),
-          format: 'off',
-          stdout,
-          stderr,
-          error: false,
-        }
-      } catch (err: unknown) {
-        if (
-          stderr.some((line) =>
-            line.includes('Current top level object is not a 3D object.'),
-          )
-        ) {
-          // Retry compiling as SVG on the existing instance (libs/fonts are already loaded)
-          try {
-            instance.callMain([
-              '-o',
-              '/out.svg',
-              '--export-format=svg',
-              ...varArgs,
-              targetPath,
-            ])
-            instance.FS.stat('/out.svg')
-            const output = instance.FS.readFile('/out.svg', {
-              encoding: 'binary',
-            })
-            return {
-              blob: output.slice(),
-              format: 'svg',
-              stdout,
-              stderr,
-              error: false,
-            }
-          } catch (svgErr: unknown) {
-            const svgErrMsg =
-              svgErr instanceof Error ? svgErr.message : String(svgErr)
-            stderr.push(svgErrMsg)
-            return { blob: null, format: null, stdout, stderr, error: true }
-          }
-        }
-        const errMsg = err instanceof Error ? err.message : String(err)
-        stderr.push(errMsg)
-        return { blob: null, format: null, stdout, stderr, error: true }
-      }
-    }
-
-    if (action === 'export') {
-      const exportFormat = format || 'binstl'
-      const normalizedFormat = exportFormat.toLowerCase()
-      const openSCADFormat =
-        normalizedFormat === 'stl' ? 'binstl' : normalizedFormat
-      const fileExt = normalizedFormat === 'binstl' ? 'stl' : normalizedFormat
-
-      const outPath = `/out.${fileExt}`
-
-      try {
-        instance.callMain([
+        const args = [
           '-o',
           outPath,
           `--export-format=${openSCADFormat}`,
           '--backend=manifold',
           '--enable=lazy-union',
           ...varArgs,
-          targetPath,
-        ])
-      } catch (err: unknown) {
-        const errMsg = err instanceof Error ? err.message : String(err)
-        stderr.push(errMsg)
-        return { blob: null, format: null, stdout, stderr, error: true }
-      }
+          mainFilePath,
+        ]
 
-      try {
-        instance.FS.stat(outPath)
-        const output = instance.FS.readFile(outPath, { encoding: 'binary' })
+        const { stdout, stderr, exitCode } = await runOpenSCAD(
+          binaryPath,
+          args,
+          spawnEnv,
+        )
+        const error =
+          exitCode !== 0 || stderr.some((line) => line.includes('ERROR:'))
+
+        if (!error && fs.existsSync(outPath)) {
+          const blob = await fsPromises.readFile(outPath)
+          return {
+            blob: new Uint8Array(blob),
+            format: fileExt,
+            stdout,
+            stderr,
+            error: false,
+          }
+        }
+
         return {
-          blob: output.slice(),
-          format: fileExt,
+          blob: null,
+          format: null,
           stdout,
           stderr,
-          error: false,
+          error: true,
         }
-      } catch (err: unknown) {
-        const errMsg = err instanceof Error ? err.message : String(err)
-        stderr.push(errMsg)
-        return { blob: null, format: null, stdout, stderr, error: true }
+      }
+
+      throw new Error(`Unknown action: ${action as string}`)
+    } finally {
+      if (isTemp) {
+        await fsPromises
+          .rm(runDir, { recursive: true, force: true })
+          .catch((err) => {
+            console.error(
+              '[OpenSCADWrapper] Failed to clean up temp run folder:',
+              err,
+            )
+          })
       }
     }
-
-    throw new Error(`Unknown action: ${action as string}`)
   }
 }

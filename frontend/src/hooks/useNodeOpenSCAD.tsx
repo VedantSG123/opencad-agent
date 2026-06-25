@@ -54,6 +54,15 @@ export function classifyOpenScadLog(text: string, timestamp: number): LogEntry {
   return { type: 'log', text, timestamp }
 }
 
+function areValuesEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false
+    return a.every((val, i) => val === b[i])
+  }
+  return false
+}
+
 type NodeOpenSCADState = {
   result: CompileResult | null
   error: Error | null
@@ -190,12 +199,20 @@ export function createNodeOpenSCADStore() {
           const nextParameterSet = result.parameterSet || null
           if (nextParameterSet && nextParameterSet.parameters) {
             const currentVars = get().vars
+            const currentParams = get().parameterSet?.parameters || []
             const nextVars: Record<string, unknown> = {}
             for (const param of nextParameterSet.parameters) {
-              nextVars[param.name] =
-                param.name in currentVars
-                  ? currentVars[param.name]
-                  : param.initial
+              const oldParam = currentParams.find((p) => p.name === param.name)
+              const initialChanged =
+                !oldParam || !areValuesEqual(param.initial, oldParam.initial)
+              if (initialChanged) {
+                nextVars[param.name] = param.initial
+              } else {
+                nextVars[param.name] =
+                  param.name in currentVars
+                    ? currentVars[param.name]
+                    : param.initial
+              }
             }
             set({
               logs,

@@ -9,11 +9,12 @@ if (!parentPort) {
   throw new Error('This file must be run as a worker thread.')
 }
 
-const { openscadResourcesPath } = workerData as {
+const { openscadResourcesPath, userDataPath } = workerData as {
   openscadResourcesPath: string
+  userDataPath: string
 }
 
-const wrapper = new OpenSCADWrapper(openscadResourcesPath)
+const wrapper = new OpenSCADWrapper(openscadResourcesPath, userDataPath)
 
 const service = {
   execute(request: {
