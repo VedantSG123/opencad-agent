@@ -36,6 +36,12 @@ interface LibsConfig {
     workingDir?: string
     symlinks?: Record<string, string>
   }>
+  fonts: {
+    notoFonts: string[]
+    notoBaseUrl: string
+    liberationRepo: string
+    liberationBranch: string
+  }
 }
 
 const BINARY_URLS: Record<string, string> = {
@@ -54,6 +60,7 @@ const TEMP_LIBS = path.join(TEMP_DIR, 'libs')
 
 const RESOURCES_DIR = path.join(ELECTRON_ROOT_DIR, 'openscad-libs')
 const RESOURCES_LIBS_DIR = path.join(RESOURCES_DIR, 'libraries')
+const RESOURCES_FONTS_DIR = path.join(RESOURCES_DIR, 'fonts')
 
 const CONFIG_FILE = path.join(ELECTRON_ROOT_DIR, 'openscad-libs-config.json')
 
@@ -178,6 +185,7 @@ class OpenSCADSetup {
       TEMP_LIBS,
       RESOURCES_DIR,
       RESOURCES_LIBS_DIR,
+      RESOURCES_FONTS_DIR,
       binDir,
     ])
 
@@ -189,7 +197,11 @@ class OpenSCADSetup {
     console.log('\n[setup-openscad] === Libraries ===')
     await this.buildAllLibraries()
 
-    // Step 3: Config Copy
+    // Step 3: Fonts
+    console.log('\n[setup-openscad] === Fonts ===')
+    await this.setupFonts()
+
+    // Step 4: Config Copy
     await fs.copyFile(
       CONFIG_FILE,
       path.join(RESOURCES_DIR, 'openscad-libs-config.json'),
@@ -289,29 +301,23 @@ class OpenSCADSetup {
       const zipBuffer = await fs.readFile(dlPath)
       const decompressed = unzipSync(new Uint8Array(zipBuffer))
 
-      let exePath: string | null = null
-      const tempExtractDir = path.join(TEMP_DIR, 'extracted-win')
-      await fs.mkdir(tempExtractDir, { recursive: true })
-
       for (const [relPath, data] of Object.entries(decompressed)) {
-        const targetPath = path.join(tempExtractDir, relPath)
+        const parts = relPath.split('/')
+        if (parts.length <= 1) {
+          // This is the top-level directory itself, e.g. "OpenSCAD-2026.06.21-x86-64/"
+          continue
+        }
+        // Remove the top-level directory
+        const strippedRelPath = parts.slice(1).join('/')
+        const targetPath = path.join(binDir, strippedRelPath)
+
         if (relPath.endsWith('/')) {
           await fs.mkdir(targetPath, { recursive: true })
         } else {
           await fs.mkdir(path.dirname(targetPath), { recursive: true })
           await fs.writeFile(targetPath, data)
-          const base = path.basename(relPath).toLowerCase()
-          if (base === 'openscad.exe') {
-            exePath = targetPath
-          }
         }
       }
-
-      if (!exePath) {
-        throw new Error('openscad.exe not found in Windows zip')
-      }
-      await fs.copyFile(exePath, binaryDest)
-      await fs.rm(tempExtractDir, { recursive: true, force: true })
     } else if (p === 'macos') {
       console.log('[setup-openscad] Mounting macOS DMG...')
       const mountPoint = path.join(TEMP_DIR, 'mnt')
@@ -457,6 +463,44 @@ class OpenSCADSetup {
   private async buildAllLibraries(): Promise<void> {
     for (const library of this.cfg.libraries) {
       await this.buildLibrary(library)
+    }
+  }
+
+  private async setupFonts(): Promise<void> {
+    const notoBaseUrl = this.cfg.fonts.notoBaseUrl
+    for (const font of this.cfg.fonts.notoFonts) {
+      const fontUrl = `${notoBaseUrl}${font}`
+      const fontDest = path.join(RESOURCES_FONTS_DIR, font)
+      if (existsSync(fontDest)) {
+        continue
+      }
+      try {
+        await this.downloadFile(fontUrl, fontDest)
+        console.log(`[setup-openscad] Downloaded font ${font}`)
+      } catch (err) {
+        console.error(`[setup-openscad] Failed to download font ${font}:`, err)
+        throw err
+      }
+    }
+
+    const libFontsTempDir = path.join(TEMP_DIR, 'liberation-fonts')
+    if (!existsSync(libFontsTempDir)) {
+      await this.cloneRepo(
+        this.cfg.fonts.liberationRepo,
+        libFontsTempDir,
+        this.cfg.fonts.liberationBranch,
+      )
+    }
+
+    const allFiles = await getFiles(libFontsTempDir)
+    for (const file of allFiles) {
+      if (file.relativePath.toLowerCase().endsWith('.ttf')) {
+        const dest = path.join(RESOURCES_FONTS_DIR, path.basename(file.relativePath))
+        if (!existsSync(dest)) {
+          await fs.copyFile(file.absolutePath, dest)
+          console.log(`[setup-openscad] Copied Liberation font ${path.basename(dest)}`)
+        }
+      }
     }
   }
 }

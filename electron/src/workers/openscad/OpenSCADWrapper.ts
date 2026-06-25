@@ -198,8 +198,13 @@ export class OpenSCADWrapper {
 
     // Resolve libraries directory path
     const libsDir = path.join(this.openscadResourcesPath, 'libraries')
+    const fontsDir = path.join(this.openscadResourcesPath, 'fonts')
     const spawnEnv: Record<string, string> = {
       OPENSCADPATH: libsDir,
+    }
+
+    if (fs.existsSync(fontsDir)) {
+      spawnEnv.OPENSCAD_FONT_PATH = fontsDir
     }
 
     // Mirror folder resolution (if overrides exist, or if we have no projectDirectory)
