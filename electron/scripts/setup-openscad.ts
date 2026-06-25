@@ -434,7 +434,10 @@ class OpenSCADSetup {
                 await fs.symlink(targetPath, aliasPath, 'file')
               }
             } else {
-              const relTarget = path.relative(path.dirname(aliasPath), targetPath)
+              const relTarget = path.relative(
+                path.dirname(aliasPath),
+                targetPath,
+              )
               await fs.symlink(relTarget, aliasPath, isDir ? 'dir' : 'file')
             }
           } catch {
