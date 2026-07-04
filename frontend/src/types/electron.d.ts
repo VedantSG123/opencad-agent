@@ -51,6 +51,7 @@ export interface ElectronAPI {
   writeFile: (filePath: string, content: string) => Promise<Result<void>>
   mkdir: (dirPath: string) => Promise<Result<void>>
   delete: (filePath: string) => Promise<Result<void>>
+  rename: (oldPath: string, newPath: string) => Promise<Result<void>>
   readdir: (dirPath: string) => Promise<Result<string[]>>
   readdirWithTypes: (dirPath: string) => Promise<Result<FSEntryPlain[]>>
   watchDirectory: (dirPath: string) => Promise<Result<void>>

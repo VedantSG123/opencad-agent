@@ -29,6 +29,7 @@ export interface FileSyncWS {
   writeFile: (path: string, content: string) => Promise<void>
   mkdir: (path: string) => Promise<void>
   deleteFile: (path: string) => Promise<void>
+  rename: (oldPath: string, newPath: string) => Promise<void>
   readdir: (path: string) => Promise<string[]>
   readdirWithTypes: (path: string) => Promise<FSEntry[]>
   onWatch: (handler: (event: WatchEvent) => void) => () => void
@@ -146,6 +147,23 @@ export function useFileSyncWS(
     [status, resolvePath],
   )
 
+  const rename = useCallback(
+    async (oldPath: string, newPath: string) => {
+      if (status !== 'ready') throw new FSNotReadyError()
+      if (!window.electron) {
+        throw new Error('Electron not available')
+      }
+      const res = await window.electron.rename(
+        resolvePath(oldPath),
+        resolvePath(newPath),
+      )
+      if (!res.success) {
+        throw new Error(res.error.message)
+      }
+    },
+    [status, resolvePath],
+  )
+
   const readdir = useCallback(
     async (path: string) => {
       if (status !== 'ready') throw new FSNotReadyError()
@@ -192,6 +210,7 @@ export function useFileSyncWS(
     writeFile,
     mkdir,
     deleteFile,
+    rename,
     readdir,
     readdirWithTypes,
     onWatch,

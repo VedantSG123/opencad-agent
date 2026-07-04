@@ -36,6 +36,7 @@ export interface ElectronAPI {
   writeFile: (filePath: string, content: string) => Promise<Result<void>>
   mkdir: (dirPath: string) => Promise<Result<void>>
   delete: (filePath: string) => Promise<Result<void>>
+  rename: (oldPath: string, newPath: string) => Promise<Result<void>>
   readdir: (dirPath: string) => Promise<Result<string[]>>
   readdirWithTypes: (dirPath: string) => Promise<Result<FSEntryPlain[]>>
   watchDirectory: (dirPath: string) => Promise<Result<void>>
@@ -122,6 +123,8 @@ const api: ElectronAPI = {
     ipcRenderer.invoke('fs:write', filePath, content),
   mkdir: (dirPath) => ipcRenderer.invoke('fs:mkdir', dirPath),
   delete: (filePath) => ipcRenderer.invoke('fs:delete', filePath),
+  rename: (oldPath, newPath) =>
+    ipcRenderer.invoke('fs:rename', oldPath, newPath),
   readdir: (dirPath) => ipcRenderer.invoke('fs:readdir', dirPath),
   readdirWithTypes: (dirPath) =>
     ipcRenderer.invoke('fs:readdirWithTypes', dirPath),

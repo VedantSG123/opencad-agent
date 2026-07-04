@@ -1,5 +1,6 @@
 import {
   Crown,
+  Edit2,
   File,
   FilePlus,
   Folder,
@@ -27,6 +28,19 @@ function getParentDirectory(filePath: string | null): string {
   const lastSlash = filePath.lastIndexOf('/')
   if (lastSlash <= 0) return '/'
   return filePath.substring(0, lastSlash)
+}
+
+function dirExistsInTree(items: TreeDataItem[], targetPath: string): boolean {
+  if (targetPath === '/') return true
+  for (const item of items) {
+    if (item.id === targetPath && item.children) {
+      return true
+    }
+    if (item.children) {
+      if (dirExistsInTree(item.children, targetPath)) return true
+    }
+  }
+  return false
 }
 
 function insertPlaceholder(
@@ -75,6 +89,9 @@ function useMainFileRenderItem(
     targetId: string,
     isFolder: boolean,
   ) => void,
+  renamingId: string | null,
+  onRenameCommit: (name: string) => void,
+  onRenameCancel: () => void,
 ) {
   return useCallback(
     ({ item, isLeaf, isOpen }: TreeRenderItemParams) => {
@@ -90,20 +107,24 @@ function useMainFileRenderItem(
             )}
             <input
               autoFocus
+              ref={(el) => {
+                if (el) {
+                  setTimeout(() => el.focus(), 50)
+                }
+              }}
               className='text-sm bg-background border border-primary px-1 py-0.5 rounded outline-none w-full min-w-0 h-6'
               defaultValue=''
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   const target = e.currentTarget
+                  const val = target.value.trim()
+                  if (!val) {
+                    toast.error('Name cannot be empty')
+                    return
+                  }
                   if (target.dataset.processed) return
                   target.dataset.processed = 'true'
-
-                  const val = target.value.trim()
-                  if (val) {
-                    onCommit(val)
-                  } else {
-                    onCancel()
-                  }
+                  onCommit(val)
                 } else if (e.key === 'Escape') {
                   const target = e.currentTarget
                   if (target.dataset.processed) return
@@ -113,14 +134,80 @@ function useMainFileRenderItem(
               }}
               onBlur={(e) => {
                 const target = e.currentTarget
+                const val = target.value.trim()
                 if (target.dataset.processed) return
                 target.dataset.processed = 'true'
 
-                const val = target.value.trim()
                 if (val) {
                   onCommit(val)
                 } else {
                   onCancel()
+                }
+              }}
+            />
+          </div>
+        )
+      }
+
+      if (item.id === renamingId) {
+        const Icon = item.icon ?? null
+        return (
+          <div
+            className='flex items-center w-full min-w-0 pr-2'
+            onClick={(e) => e.stopPropagation()}
+          >
+            {Icon && (
+              <Icon className='h-4 w-4 shrink-0 mr-2 text-muted-foreground' />
+            )}
+            <input
+              autoFocus
+              ref={(el) => {
+                if (el) {
+                  setTimeout(() => {
+                    el.focus()
+                    const lastDot = item.name.lastIndexOf('.')
+                    if (lastDot > 0 && isLeaf) {
+                      el.setSelectionRange(0, lastDot)
+                    } else {
+                      el.select()
+                    }
+                  }, 50)
+                }
+              }}
+              className='text-sm bg-background border border-primary px-1 py-0.5 rounded outline-none w-full min-w-0 h-6'
+              defaultValue={item.name}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const target = e.currentTarget
+                  const val = target.value.trim()
+                  if (!val) {
+                    toast.error('Name cannot be empty')
+                    return
+                  }
+                  if (val === item.name) {
+                    onRenameCancel()
+                    return
+                  }
+                  if (target.dataset.processed) return
+                  target.dataset.processed = 'true'
+                  onRenameCommit(val)
+                } else if (e.key === 'Escape') {
+                  const target = e.currentTarget
+                  if (target.dataset.processed) return
+                  target.dataset.processed = 'true'
+                  onRenameCancel()
+                }
+              }}
+              onBlur={(e) => {
+                const target = e.currentTarget
+                const val = target.value.trim()
+                if (target.dataset.processed) return
+                target.dataset.processed = 'true'
+
+                if (val && val !== item.name) {
+                  onRenameCommit(val)
+                } else {
+                  onRenameCancel()
                 }
               }}
             />
@@ -162,7 +249,15 @@ function useMainFileRenderItem(
         </div>
       )
     },
-    [mainFileVirtualPath, onCommit, onCancel, onContextMenu],
+    [
+      mainFileVirtualPath,
+      onCommit,
+      onCancel,
+      onContextMenu,
+      renamingId,
+      onRenameCommit,
+      onRenameCancel,
+    ],
   )
 }
 
@@ -180,12 +275,16 @@ export function FileTree() {
     createFile,
     createDirectory,
     deleteFile,
+    renameFile,
   } = useEditor()
 
   const [creatingItem, setCreatingItem] = useState<{
     parentId: string
     type: 'file' | 'folder'
   } | null>(null)
+
+  const [expandedIds, setExpandedIds] = useState<string[]>([])
+  const [renamingId, setRenamingId] = useState<string | null>(null)
 
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -248,6 +347,36 @@ export function FileTree() {
     [creatingItem, createFile, createDirectory],
   )
 
+  const handleRenameCancel = useCallback(() => {
+    setRenamingId(null)
+  }, [])
+
+  const handleRenameCommit = useCallback(
+    async (newName: string) => {
+      if (!renamingId) {
+        setRenamingId(null)
+        return
+      }
+
+      const lastSlash = renamingId.lastIndexOf('/')
+      const parentDir =
+        lastSlash <= 0 ? '/' : renamingId.substring(0, lastSlash)
+      const newPath =
+        parentDir === '/' ? `/${newName}` : `${parentDir}/${newName}`
+
+      try {
+        await renameFile(renamingId, newPath)
+        toast.success(`Renamed to ${newName}`)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Unknown error'
+        toast.error(`Failed to rename: ${msg}`)
+      } finally {
+        setRenamingId(null)
+      }
+    },
+    [renamingId, renameFile],
+  )
+
   const handleDelete = useCallback(
     async (path: string) => {
       const fileName = path.split('/').pop() ?? 'item'
@@ -269,10 +398,22 @@ export function FileTree() {
 
   const startCreation = useCallback(
     (type: 'file' | 'folder', parentId?: string) => {
-      const resolvedParentId = parentId ?? getParentDirectory(activeTab)
+      let resolvedParentId = parentId ?? getParentDirectory(activeTab)
+      if (
+        resolvedParentId !== '/' &&
+        !dirExistsInTree(rawTreeData, resolvedParentId)
+      ) {
+        resolvedParentId = '/'
+      }
       setCreatingItem({ parentId: resolvedParentId, type })
+      if (resolvedParentId && resolvedParentId !== '/') {
+        setExpandedIds((prev) => {
+          if (prev.includes(resolvedParentId)) return prev
+          return [...prev, resolvedParentId]
+        })
+      }
     },
-    [activeTab],
+    [activeTab, rawTreeData],
   )
 
   const treeData = useMemo(() => {
@@ -299,6 +440,9 @@ export function FileTree() {
     handleCommit,
     handleCancel,
     handleContextMenu,
+    renamingId,
+    handleRenameCommit,
+    handleRenameCancel,
   )
 
   const isTransparent = isFocusMode && focusedPanel === 'editor'
@@ -349,6 +493,7 @@ export function FileTree() {
               data={treeData}
               onSelectChange={(item) => item && openFile(item)}
               renderItem={renderItem}
+              expandedItemIds={expandedIds}
             />
           ) : fsStatus === 'connecting' ? (
             <p className='px-3 py-2 text-xs text-muted-foreground'>
@@ -393,6 +538,24 @@ export function FileTree() {
               <div className='my-1 h-px bg-muted' />
             </>
           )}
+          <button
+            onClick={() => {
+              if (isMainFile) return
+              setContextMenu(null)
+              setRenamingId(contextMenu.targetId)
+            }}
+            disabled={isMainFile}
+            className={cn(
+              'relative flex w-full select-none items-center rounded-md px-2.5 py-1.5 text-xs outline-none transition-colors gap-2 cursor-pointer',
+              isMainFile
+                ? 'text-muted-foreground opacity-50 cursor-not-allowed'
+                : 'hover:bg-accent hover:text-accent-foreground',
+            )}
+          >
+            <Edit2 className='h-3.5 w-3.5 text-muted-foreground' />
+            <span>Rename</span>
+          </button>
+          <div className='my-1 h-px bg-muted' />
           <button
             onClick={() => {
               if (isMainFile) return

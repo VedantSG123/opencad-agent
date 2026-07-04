@@ -111,6 +111,7 @@ interface EditorContextValue extends EditorDialogs {
   createFile: (path: string, content?: string) => Promise<void>
   createDirectory: (path: string) => Promise<void>
   deleteFile: (path: string) => Promise<void>
+  renameFile: (oldPath: string, newPath: string) => Promise<void>
   // Dirty tracking
   dirtyTabs: Set<string>
   setTabDirty: (path: string, dirty: boolean) => void
@@ -346,6 +347,32 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
     [fsync],
   )
 
+  const renameFile = useCallback(
+    async (oldPath: string, newPath: string) => {
+      await fsync.rename(oldPath, newPath)
+      setOpenTabs((prev) => {
+        const next = prev.map((t) => {
+          if (t === oldPath) {
+            return newPath
+          }
+          if (t.startsWith(oldPath + '/')) {
+            return newPath + t.substring(oldPath.length)
+          }
+          return t
+        })
+        setActiveTab((current) => {
+          if (current === oldPath) return newPath
+          if (current && current.startsWith(oldPath + '/')) {
+            return newPath + current.substring(oldPath.length)
+          }
+          return current
+        })
+        return next
+      })
+    },
+    [fsync],
+  )
+
   // ── Dialog management ─────────────────────────────────────────────────────────
 
   const dialogs = useEditorDialogs({
@@ -376,6 +403,7 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
         createFile,
         createDirectory,
         deleteFile,
+        renameFile,
         dirtyTabs,
         setTabDirty,
         registerEditorAPI,

@@ -50,6 +50,7 @@ type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   defaultLeafIcon?: React.ComponentType<{ className?: string }>
   onDocumentDrag?: (sourceItem: TreeDataItem, targetItem: TreeDataItem) => void
   renderItem?: (params: TreeRenderItemParams) => React.ReactNode
+  expandedItemIds?: string[]
 }
 
 const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
@@ -64,6 +65,7 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
       className,
       onDocumentDrag,
       renderItem,
+      expandedItemIds: propExpandedItemIds,
       ...props
     },
     ref,
@@ -101,34 +103,40 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
     )
 
     const expandedItemIds = React.useMemo(() => {
-      if (!initialSelectedItemId) {
-        return [] as string[]
-      }
-
       const ids: string[] = []
 
-      function walkTreeItems(
-        items: TreeDataItem[] | TreeDataItem,
-        targetId: string,
-      ) {
-        if (Array.isArray(items)) {
-          for (let i = 0; i < items.length; i++) {
-            ids.push(items[i].id)
-            if (walkTreeItems(items[i], targetId) && !expandAll) {
-              return true
+      if (initialSelectedItemId) {
+        function walkTreeItems(
+          items: TreeDataItem[] | TreeDataItem,
+          targetId: string,
+        ) {
+          if (Array.isArray(items)) {
+            for (let i = 0; i < items.length; i++) {
+              ids.push(items[i].id)
+              if (walkTreeItems(items[i], targetId) && !expandAll) {
+                return true
+              }
+              if (!expandAll) ids.pop()
             }
-            if (!expandAll) ids.pop()
+          } else if (!expandAll && items.id === targetId) {
+            return true
+          } else if (items.children) {
+            return walkTreeItems(items.children, targetId)
           }
-        } else if (!expandAll && items.id === targetId) {
-          return true
-        } else if (items.children) {
-          return walkTreeItems(items.children, targetId)
+        }
+        walkTreeItems(data, initialSelectedItemId)
+      }
+
+      if (propExpandedItemIds) {
+        for (const id of propExpandedItemIds) {
+          if (!ids.includes(id)) {
+            ids.push(id)
+          }
         }
       }
 
-      walkTreeItems(data, initialSelectedItemId)
       return ids
-    }, [data, expandAll, initialSelectedItemId])
+    }, [data, expandAll, initialSelectedItemId, propExpandedItemIds])
 
     return (
       <div className={cn('overflow-hidden relative p-2', className)}>
@@ -270,6 +278,13 @@ const TreeNode = ({
   const hasChildren = !!item.children?.length
   const isSelected = selectedItemId === item.id
   const isOpen = value.includes(item.id)
+
+  React.useEffect(() => {
+    if (expandedItemIds.includes(item.id)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setValue((prev) => (prev.includes(item.id) ? prev : [...prev, item.id]))
+    }
+  }, [expandedItemIds, item.id])
 
   const onDragStart = (e: React.DragEvent) => {
     if (!item.draggable) {

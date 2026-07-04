@@ -28,6 +28,7 @@ function OpenSCADViewportInner() {
 
   const mainFilePath = React.useMemo(() => {
     if (!project?.file || !project.directory) return null
+    if (!project.file.toLowerCase().endsWith('.scad')) return null
     return toFsPath(project.directory, project.file)
   }, [project])
 

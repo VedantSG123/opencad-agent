@@ -68,4 +68,15 @@ export function registerFsIpc(ipcMain: IpcMain) {
       await fs.promises.rm(validated, { recursive: true, force: true })
     }),
   )
+
+  ipcMain.handle(
+    'fs:rename',
+    createHandler(async (oldPath: string, newPath: string) => {
+      validateString(oldPath, 'oldPath')
+      validateString(newPath, 'newPath')
+      const validatedOld = validatePath(oldPath)
+      const validatedNew = validatePath(newPath)
+      await fs.promises.rename(validatedOld, validatedNew)
+    }),
+  )
 }
