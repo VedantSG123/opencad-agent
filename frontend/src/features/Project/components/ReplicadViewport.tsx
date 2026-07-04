@@ -12,6 +12,7 @@ export function ReplicadViewport() {
   const shapes = useReplicad((state) => state.shapes)
   const hasError = !!useReplicad((state) => state.error)
   const workerReady = useReplicad((state) => state.workerReady)
+  const isCompiling = useReplicad((state) => state.isCompiling)
   const defaultParams = useReplicad((state) => state.defaultParams)
   const build = useReplicad((state) => state.build)
   const [resetView, setResetView] = React.useState<(() => void) | null>(null)
@@ -51,6 +52,12 @@ export function ReplicadViewport() {
         >
           Reset View
         </button>
+      )}
+      {isCompiling && (
+        <div className='absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs text-muted-foreground animate-in fade-in duration-200'>
+          <div className='h-2 w-2 bg-blue-500 rounded-full animate-pulse' />
+          Compiling...
+        </div>
       )}
       {/* Viewport Ribbon Bar */}
       {workerReady && hasParams && (
