@@ -54,6 +54,7 @@ export interface ElectronAPI {
   rename: (oldPath: string, newPath: string) => Promise<Result<void>>
   readdir: (dirPath: string) => Promise<Result<string[]>>
   readdirWithTypes: (dirPath: string) => Promise<Result<FSEntryPlain[]>>
+  exists: (filePath: string) => Promise<Result<boolean>>
   watchDirectory: (dirPath: string) => Promise<Result<void>>
   onWatch: (handler: (event: WatchEvent) => void) => () => void
   refreshProjectRoots: () => Promise<Result<{ count: number }>>

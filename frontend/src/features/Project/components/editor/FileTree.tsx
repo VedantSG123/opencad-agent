@@ -23,6 +23,19 @@ import { cn, toFsPath } from '@/lib/utils'
 import { usePanelContext } from '../../context/PanelContext'
 import { useEditor } from './context'
 
+const INVALID_NAME_RE = /[/\\?%*:|"<>]/
+const RESERVED_NAMES = new Set(['', '.', '..'])
+
+function isValidFileName(name: string): string | null {
+  if (!name.trim()) return 'Name cannot be empty'
+  if (INVALID_NAME_RE.test(name))
+    return 'Name contains invalid characters (/ \\ ? % * : | " < >)'
+  if (RESERVED_NAMES.has(name)) return `"${name}" is a reserved name`
+  if (name.trim().endsWith('.') || name.trim().endsWith(' '))
+    return 'Name cannot end with a period or space'
+  return null
+}
+
 function getParentDirectory(filePath: string | null): string {
   if (!filePath) return '/'
   const lastSlash = filePath.lastIndexOf('/')
@@ -38,6 +51,17 @@ function dirExistsInTree(items: TreeDataItem[], targetPath: string): boolean {
     }
     if (item.children) {
       if (dirExistsInTree(item.children, targetPath)) return true
+    }
+  }
+  return false
+}
+
+function isDirInTree(items: TreeDataItem[], targetPath: string): boolean {
+  for (const item of items) {
+    if (item.id === targetPath) return !!item.children
+    if (item.children) {
+      const found = isDirInTree(item.children, targetPath)
+      if (found !== undefined) return found
     }
   }
   return false
@@ -118,8 +142,9 @@ function useMainFileRenderItem(
                 if (e.key === 'Enter') {
                   const target = e.currentTarget
                   const val = target.value.trim()
-                  if (!val) {
-                    toast.error('Name cannot be empty')
+                  const error = isValidFileName(val)
+                  if (error) {
+                    toast.error(error)
                     return
                   }
                   if (target.dataset.processed) return
@@ -138,7 +163,8 @@ function useMainFileRenderItem(
                 if (target.dataset.processed) return
                 target.dataset.processed = 'true'
 
-                if (val) {
+                const error = isValidFileName(val)
+                if (val && !error) {
                   onCommit(val)
                 } else {
                   onCancel()
@@ -180,8 +206,9 @@ function useMainFileRenderItem(
                 if (e.key === 'Enter') {
                   const target = e.currentTarget
                   const val = target.value.trim()
-                  if (!val) {
-                    toast.error('Name cannot be empty')
+                  const error = isValidFileName(val)
+                  if (error) {
+                    toast.error(error)
                     return
                   }
                   if (val === item.name) {
@@ -204,7 +231,8 @@ function useMainFileRenderItem(
                 if (target.dataset.processed) return
                 target.dataset.processed = 'true'
 
-                if (val && val !== item.name) {
+                const error = isValidFileName(val)
+                if (val && !error && val !== item.name) {
                   onRenameCommit(val)
                 } else {
                   onRenameCancel()
@@ -242,9 +270,16 @@ function useMainFileRenderItem(
                 <TooltipContent>Main entry file</TooltipContent>
               </Tooltip>
             )}
-            <span className={cn('text-sm truncate', isLeaf && 'grow')}>
-              {item.name}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={cn('text-sm truncate', isLeaf && 'grow')}>
+                  {item.name}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <span className='font-mono text-xs'>{item.id}</span>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
       )
@@ -305,13 +340,23 @@ export function FileTree() {
     [],
   )
 
+  // Dismiss context menu on click, contextmenu, scroll, Escape key, and window blur
   useEffect(() => {
     const handleClose = () => setContextMenu(null)
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContextMenu(null)
+    }
     window.addEventListener('click', handleClose)
     window.addEventListener('contextmenu', handleClose)
+    window.addEventListener('scroll', handleClose, true)
+    window.addEventListener('keydown', handleEscape)
+    window.addEventListener('blur', handleClose)
     return () => {
       window.removeEventListener('click', handleClose)
       window.removeEventListener('contextmenu', handleClose)
+      window.removeEventListener('scroll', handleClose, true)
+      window.removeEventListener('keydown', handleEscape)
+      window.removeEventListener('blur', handleClose)
     }
   }, [])
 
@@ -380,9 +425,11 @@ export function FileTree() {
   const handleDelete = useCallback(
     async (path: string) => {
       const fileName = path.split('/').pop() ?? 'item'
-      const confirmed = window.confirm(
-        `Are you sure you want to delete "${fileName}"? This action cannot be undone.`,
-      )
+      const isDir = isDirInTree(rawTreeData, path)
+      const message = isDir
+        ? `Are you sure you want to delete the folder "${fileName}" and all its contents? This action cannot be undone.`
+        : `Are you sure you want to delete "${fileName}"? This action cannot be undone.`
+      const confirmed = window.confirm(message)
       if (!confirmed) return
 
       try {
@@ -393,7 +440,35 @@ export function FileTree() {
         toast.error(`Failed to delete: ${msg}`)
       }
     },
-    [deleteFile],
+    [deleteFile, rawTreeData],
+  )
+
+  // Drag-and-drop rename support (move files between folders)
+  const handleDocumentDrag = useCallback(
+    async (sourceItem: TreeDataItem, targetItem: TreeDataItem) => {
+      if (sourceItem.children !== undefined) return // Don't move folders yet
+      const sourcePath = sourceItem.id
+
+      // If dropped on a folder, move into it; otherwise, place in same directory
+      const targetDir =
+        targetItem.children !== undefined
+          ? targetItem.id
+          : getParentDirectory(targetItem.id)
+      const fileName = sourcePath.split('/').pop() ?? ''
+      const newPath =
+        targetDir === '/' ? `/${fileName}` : `${targetDir}/${fileName}`
+
+      if (newPath === sourcePath) return
+
+      try {
+        await renameFile(sourcePath, newPath)
+        toast.success(`Moved "${fileName}"`)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Unknown error'
+        toast.error(`Failed to move: ${msg}`)
+      }
+    },
+    [renameFile],
   )
 
   const startCreation = useCallback(
@@ -489,12 +564,36 @@ export function FileTree() {
         </div>
         <div className='flex-1 overflow-auto'>
           {fsStatus === 'ready' ? (
-            <TreeView
-              data={treeData}
-              onSelectChange={(item) => item && openFile(item)}
-              renderItem={renderItem}
-              expandedItemIds={expandedIds}
-            />
+            rawTreeData.length === 0 ? (
+              <div className='flex flex-col items-center justify-center h-full px-4 py-8 text-center'>
+                <Folder className='h-8 w-8 text-muted-foreground/40 mb-2' />
+                <p className='text-xs text-muted-foreground mb-3'>
+                  No files yet
+                </p>
+                <div className='flex gap-2'>
+                  <button
+                    onClick={() => startCreation('file')}
+                    className='text-xs px-2.5 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer'
+                  >
+                    New File
+                  </button>
+                  <button
+                    onClick={() => startCreation('folder')}
+                    className='text-xs px-2.5 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer'
+                  >
+                    New Folder
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <TreeView
+                data={treeData}
+                onSelectChange={(item) => item && openFile(item)}
+                renderItem={renderItem}
+                expandedItemIds={expandedIds}
+                onDocumentDrag={handleDocumentDrag}
+              />
+            )
           ) : fsStatus === 'connecting' ? (
             <p className='px-3 py-2 text-xs text-muted-foreground'>
               Connecting…
