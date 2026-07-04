@@ -50,4 +50,22 @@ export function registerFsIpc(ipcMain: IpcMain) {
       }))
     }),
   )
+
+  ipcMain.handle(
+    'fs:mkdir',
+    createHandler(async (dirPath: string) => {
+      validateString(dirPath, 'dirPath')
+      const validated = validatePath(dirPath)
+      await fs.promises.mkdir(validated, { recursive: true })
+    }),
+  )
+
+  ipcMain.handle(
+    'fs:delete',
+    createHandler(async (filePath: string) => {
+      validateString(filePath, 'filePath')
+      const validated = validatePath(filePath)
+      await fs.promises.rm(validated, { recursive: true, force: true })
+    }),
+  )
 }

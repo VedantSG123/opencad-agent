@@ -1,3 +1,4 @@
+import { isBinary } from 'istextorbinary'
 import { File, Folder, FolderOpen } from 'lucide-react'
 import {
   createContext,
@@ -104,8 +105,12 @@ interface EditorContextValue extends EditorDialogs {
   openFile: (item: TreeDataItem) => void
   // File content
   fileContent: string | null
+  isBinaryFile: boolean
   isLoadingContent: boolean
   saveFile: (path: string, content: string) => Promise<void>
+  createFile: (path: string, content?: string) => Promise<void>
+  createDirectory: (path: string) => Promise<void>
+  deleteFile: (path: string) => Promise<void>
   // Dirty tracking
   dirtyTabs: Set<string>
   setTabDirty: (path: string, dirty: boolean) => void
@@ -135,7 +140,8 @@ interface EditorProviderProps {
 
 export function EditorProvider({ project, children }: EditorProviderProps) {
   const fsync = useFileSyncWS(project.id, project.directory)
-  const { status, readFile, writeFile, readdirWithTypes, onWatch } = fsync
+  const { status, readFile, writeFile, mkdir, readdirWithTypes, onWatch } =
+    fsync
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [treeVersion, setTreeVersion] = useState(0)
@@ -143,6 +149,7 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
   const [openTabs, setOpenTabs] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<string | null>(null)
   const [fileContent, setFileContent] = useState<string | null>(null)
+  const [isBinaryFile, setIsBinaryFile] = useState<boolean>(false)
   const [fileVersion, setFileVersion] = useState(0)
   const [loadedInfo, setLoadedInfo] = useState<{
     tab: string | null
@@ -248,10 +255,17 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
     if (!activeTab || status !== 'ready') return
     const currentVersion = fileVersion
     let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsBinaryFile(false)
     readFile(activeTab)
       .then((content) => {
         if (cancelled) return
-        setFileContent(content)
+
+        const buffer = new TextEncoder().encode(content.slice(0, 8192))
+        const binary = isBinary(activeTab, buffer)
+
+        setIsBinaryFile(binary)
+        setFileContent(binary ? null : content)
         setLoadedInfo({ tab: activeTab, version: currentVersion })
       })
       .catch((err: unknown) => {
@@ -301,6 +315,37 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
     editorAPIRef.current = api
   }, [])
 
+  const createFile = useCallback(
+    async (path: string, content = '') => {
+      await writeFile(path, content)
+    },
+    [writeFile],
+  )
+
+  const createDirectory = useCallback(
+    async (path: string) => {
+      await mkdir(path)
+    },
+    [mkdir],
+  )
+
+  const deleteFile = useCallback(
+    async (path: string) => {
+      await fsync.deleteFile(path)
+      setOpenTabs((prev) => {
+        const next = prev.filter((t) => t !== path && !t.startsWith(path + '/'))
+        setActiveTab((current) => {
+          if (current === path || (current && current.startsWith(path + '/'))) {
+            return next[next.length - 1] ?? null
+          }
+          return current
+        })
+        return next
+      })
+    },
+    [fsync],
+  )
+
   // ── Dialog management ─────────────────────────────────────────────────────────
 
   const dialogs = useEditorDialogs({
@@ -325,8 +370,12 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
         setActiveTab,
         openFile,
         fileContent,
+        isBinaryFile,
         isLoadingContent,
         saveFile: writeFile,
+        createFile,
+        createDirectory,
+        deleteFile,
         dirtyTabs,
         setTabDirty,
         registerEditorAPI,
