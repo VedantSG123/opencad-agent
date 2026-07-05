@@ -2,6 +2,7 @@ import { SlidersHorizontal } from 'lucide-react'
 import * as React from 'react'
 
 import { OpenSCADViewer } from '@/components-3d/cad-viewer/OpenSCADViewer'
+import type { StageHandle } from '@/components-3d/helpers/Stage'
 import { type KernelFilesState, useKernelFiles } from '@/hooks/useKernelFiles'
 import { useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
 import { cn, toFsPath } from '@/lib/utils'
@@ -18,8 +19,7 @@ function OpenSCADViewportInner() {
   const vars = useNodeOpenSCAD((state) => state.vars)
   const setVars = useNodeOpenSCAD((state) => state.setVars)
   const compile = useNodeOpenSCAD((state) => state.compile)
-
-  const [resetView, setResetView] = React.useState<(() => void) | null>(null)
+  const stageRef = React.useRef<StageHandle>(null)
   const [showParams, setShowParams] = React.useState(true)
 
   const hasError = Boolean(error)
@@ -96,19 +96,19 @@ function OpenSCADViewportInner() {
 
   return (
     <div className='relative h-full w-full'>
-      <OpenSCADViewer
-        result={result}
-        hasError={hasError}
-        onResetView={setResetView}
-      />
-      {resetView && (
-        <button
-          onClick={resetView}
-          className='absolute z-10 bottom-4 left-4 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors'
-        >
-          Reset View
-        </button>
-      )}
+      <OpenSCADViewer result={result} hasError={hasError} stageRef={stageRef} />
+
+      <button
+        onClick={() => {
+          if (stageRef.current && stageRef.current.reset) {
+            stageRef.current.reset()
+          }
+        }}
+        className='absolute z-10 bottom-4 left-4 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors'
+      >
+        Reset View
+      </button>
+
       {isCompiling && (
         <div className='absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs text-muted-foreground animate-in fade-in duration-200'>
           <div className='h-2 w-2 bg-blue-500 rounded-full animate-pulse' />

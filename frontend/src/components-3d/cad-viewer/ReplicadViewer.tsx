@@ -4,6 +4,7 @@ import { ReplicadSVGViewer } from '@/components/custom/SvgViewer'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import type { MeshRenderOutput, SvgRenderOutput } from '@/types'
 
+import type { StageHandle } from '../helpers/Stage'
 import { ReplicadCombinedMesh } from '../replicad-mesh/ReplicadCombinedMesh'
 import { Canvas } from './Canvas'
 import { ErrorMesh } from './ErrorMesh'
@@ -31,7 +32,7 @@ export const CadViewer: React.FC<CadViewerProps> = ({
   shapes,
   hasError = false,
   selectionMode = 'all',
-  onResetView,
+  stageRef,
 }) => {
   const [selectedFace, selectFace] = useSelection(selectionMode, [
     'all',
@@ -59,7 +60,7 @@ export const CadViewer: React.FC<CadViewerProps> = ({
         orthographic
         onCreated={(state) => (state.gl.localClippingEnabled = true)}
       >
-        <Scene onRef={onResetView}>
+        <Scene stageRef={stageRef} enableDamping>
           {hasError ? (
             <ErrorMesh />
           ) : (
@@ -93,5 +94,5 @@ type CadViewerProps = {
   shapes: (MeshRenderOutput | SvgRenderOutput)[]
   hasError?: boolean
   selectionMode?: 'all' | 'faces' | 'edges'
-  onResetView?: (reset: () => void) => void
+  stageRef?: React.Ref<StageHandle>
 }

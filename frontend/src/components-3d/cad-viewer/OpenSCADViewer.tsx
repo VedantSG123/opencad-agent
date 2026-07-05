@@ -6,6 +6,7 @@ import { OpenSCADSVGViewer } from '@/components/custom/SvgViewer'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import type { CompileResult } from '@/kernels/openscad/nodeOpenSCADApi'
 
+import type { StageHandle } from '../helpers/Stage'
 import { Canvas } from './Canvas'
 import { ErrorMesh } from './ErrorMesh'
 import { parseOffToGeometry } from './helpers/parseOff'
@@ -25,12 +26,13 @@ type OpenSCADViewerProps = {
   result: CompileResult | null
   hasError?: boolean
   onResetView?: (reset: () => void) => void
+  stageRef?: React.Ref<StageHandle>
 }
 
 export function OpenSCADViewer({
   result,
   hasError = false,
-  onResetView,
+  stageRef,
 }: OpenSCADViewerProps) {
   const [geometry, setGeometry] = React.useState<THREE.BufferGeometry | null>(
     null,
@@ -106,7 +108,7 @@ export function OpenSCADViewer({
         orthographic
         onCreated={(state) => (state.gl.localClippingEnabled = true)}
       >
-        <Scene onRef={onResetView}>
+        <Scene stageRef={stageRef} enableDamping>
           {hasError ? (
             <ErrorMesh />
           ) : (

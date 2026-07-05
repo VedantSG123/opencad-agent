@@ -9,14 +9,8 @@ export const Scene: React.FC<SceneProps> = ({
   hideGizmo = false,
   enableDamping = false,
   center,
-  onRef,
+  stageRef,
 }) => {
-  const stageRef = React.useRef<StageHandle>(null)
-
-  React.useEffect(() => {
-    onRef?.(stageRef.current?.reset ?? (() => {}))
-  }, [onRef])
-
   return (
     <>
       <Controls hideGizmo={hideGizmo} enableDamping={enableDamping} />
@@ -33,5 +27,5 @@ type SceneProps = {
   enableDamping?: boolean
   center?: boolean
   children: React.ReactNode
-  onRef?: (reset: () => void) => void
+  stageRef?: React.Ref<StageHandle>
 }
