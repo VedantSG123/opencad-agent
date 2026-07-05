@@ -384,9 +384,25 @@ export class OpenSCADWrapper {
       if (action === 'export') {
         const exportFormat = format || 'binstl'
         const normalizedFormat = exportFormat.toLowerCase()
-        const openSCADFormat =
-          normalizedFormat === 'stl' ? 'binstl' : normalizedFormat
-        const fileExt = normalizedFormat === 'binstl' ? 'stl' : normalizedFormat
+
+        let openSCADFormat = normalizedFormat
+        let fileExt = normalizedFormat
+
+        if (
+          normalizedFormat === 'binstl' ||
+          normalizedFormat === 'stl-binary' ||
+          normalizedFormat === 'stl'
+        ) {
+          openSCADFormat = 'binstl'
+          fileExt = 'stl'
+        } else if (
+          normalizedFormat === 'asciistl' ||
+          normalizedFormat === 'stl-ascii'
+        ) {
+          openSCADFormat = 'asciistl'
+          fileExt = 'stl'
+        }
+
         const outPath = path.join(runDir, `out.${fileExt}`)
 
         const args = [

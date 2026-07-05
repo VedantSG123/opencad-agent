@@ -1,10 +1,8 @@
-import { zipSync } from 'fflate'
 import {
   AlertTriangle,
   CheckCircle2,
   Download,
   Loader2,
-  Settings,
   Terminal,
 } from 'lucide-react'
 import * as React from 'react'
@@ -19,23 +17,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { getBuilderApi } from '@/kernels/replicad/builderApi'
+import { classifyOpenScadLog, useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
+import type { CompileResult } from '@/kernels/openscad/nodeOpenSCADApi'
 import { cn } from '@/lib/utils'
-import type {
-  ExportFileTypes,
-  MeshRenderOutput,
-  SvgRenderOutput,
-} from '@/types'
 import type { Project } from '@/types/project'
 
-interface ReplicadExportDialogProps {
+interface OpenSCADExportDialogProps {
   isOpen: boolean
   onClose: () => void
   project: Project
-  shapes?: (MeshRenderOutput | SvgRenderOutput)[] | null
+  result: CompileResult | null
+  mainFilePath: string | null
+  mainFileContent: string | undefined
 }
 
 type ExportStatus = 'idle' | 'exporting' | 'success' | 'error'
@@ -46,122 +40,89 @@ interface LogLine {
   timestamp: number
 }
 
-export function ReplicadExportDialog({
+export function OpenSCADExportDialog({
   isOpen,
   onClose,
   project,
-  shapes,
-}: ReplicadExportDialogProps) {
-  const isSvgOnly = React.useMemo(() => {
-    return !!(shapes?.length && shapes.every((s) => s.format === 'svg'))
-  }, [shapes])
+  result,
+  mainFilePath,
+  mainFileContent,
+}: OpenSCADExportDialogProps) {
+  const is2DDrawing = React.useMemo(() => {
+    return result?.format === 'svg'
+  }, [result])
 
-  const [format, setFormat] = React.useState<ExportFileTypes | 'svg'>(
-    isSvgOnly ? 'svg' : 'stl-binary',
+  const [format, setFormat] = React.useState<string>(
+    is2DDrawing ? 'svg' : 'binstl',
   )
   const [status, setStatus] = React.useState<ExportStatus>('idle')
   const [errorMessage, setErrorMessage] = React.useState<string>('')
   const [logs, setLogs] = React.useState<LogLine[]>([])
-  const [exportedFiles, setExportedFiles] = React.useState<
-    Array<{ blob: Blob; name: string }>
-  >([])
+  const [exportedBlob, setExportedBlob] = React.useState<Blob | null>(null)
 
-  // Advanced configurations for STL/mesh models
-  const [showAdvanced, setShowAdvanced] = React.useState(false)
-  const [tolerance, setTolerance] = React.useState<number>(0.01)
-  const [angularTolerance, setAngularTolerance] = React.useState<number>(30)
+  const store = useNodeOpenSCAD((state) => state)
 
   const handleStartExport = async () => {
+    if (!mainFilePath || !mainFileContent) {
+      toast.error('No source file active to export.')
+      return
+    }
+
     setStatus('exporting')
     setErrorMessage('')
     setLogs([])
+    setExportedBlob(null)
 
     try {
-      if (format === 'svg') {
-        // Wait 300ms for a smooth visual loading transition
-        await new Promise((resolve) => setTimeout(resolve, 300))
-
-        if (!shapes || shapes.length === 0) {
-          throw new Error('No drawings found to export.')
-        }
-
-        const svgShapes = shapes.filter(
-          (s): s is SvgRenderOutput => s.format === 'svg',
-        )
-        if (svgShapes.length === 0) {
-          throw new Error('No SVG drawings found in project.')
-        }
-
-        // Parse and merge viewboxes
-        const parseViewbox = (viewboxString: string) => {
-          const [xStart, yStart, width, height] = viewboxString
-            .split(/[\s,]+/)
-            .map((v) => parseFloat(v))
-          return { xStart, yStart, width, height }
-        }
-
-        const parsed = svgShapes.map((s) => parseViewbox(s.viewbox))
-        const minX = Math.min(...parsed.map((v) => v.xStart))
-        const minY = Math.min(...parsed.map((v) => v.yStart))
-        const maxX = Math.max(...parsed.map((v) => v.xStart + v.width))
-        const maxY = Math.max(...parsed.map((v) => v.yStart + v.height))
-        const mergedViewbox = {
-          xStart: minX,
-          yStart: minY,
-          width: maxX - minX,
-          height: maxY - minY,
-        }
-
-        const viewboxStr = `${mergedViewbox.xStart} ${mergedViewbox.yStart} ${mergedViewbox.width} ${mergedViewbox.height}`
-
-        let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewboxStr}">\n`
-        svgShapes.forEach((s) => {
-          const pathData = Array.isArray(s.paths)
-            ? s.paths.flat(Infinity).join(' ')
-            : String(s.paths)
-          let strokeDash = ''
-          if (s.strokeType === 'dots') strokeDash = ' stroke-dasharray="1, 2"'
-          else if (s.strokeType === 'dashes')
-            strokeDash = ' stroke-dasharray="5, 5"'
-
-          const color = s.color || '#ffffff'
-          svgContent += `  <path d="${pathData}" stroke="${color}" fill="none"${strokeDash} vector-effect="non-scaling-stroke" />\n`
-        })
-        svgContent += `</svg>`
-
-        const blob = new Blob([svgContent], { type: 'image/svg+xml' })
-        setExportedFiles([{ blob, name: project.name || 'drawing' }])
-        setStatus('success')
-        toast.success('Export completed successfully!')
-        return
-      }
-
-      const builderApi = getBuilderApi()
-      const isStl = format.startsWith('stl')
-
-      const result = await builderApi.exportToFile(
+      const exportRes = await store.export(
+        { path: mainFilePath, code: mainFileContent },
         format,
-        'default_shapes',
-        isStl
-          ? {
-              tolerance: Number(tolerance) || 0.01,
-              angularTolerance: Number(angularTolerance) || 30,
-            }
-          : undefined,
+        project.directory,
       )
 
-      if (result.logs) {
-        setLogs(result.logs)
+      const exportLogs: LogLine[] = []
+      const now = Date.now()
+      let index = 0
+
+      if (exportRes?.stdout) {
+        exportRes.stdout.forEach((text) => {
+          text
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .forEach((line) => {
+              exportLogs.push({
+                type: 'log',
+                text: line,
+                timestamp: now + index++,
+              })
+            })
+        })
       }
 
-      if (result.error) {
+      if (exportRes?.stderr) {
+        exportRes.stderr.forEach((text) => {
+          text
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .forEach((line) => {
+              exportLogs.push(classifyOpenScadLog(line, now + index++))
+            })
+        })
+      }
+
+      setLogs(exportLogs)
+
+      if (!exportRes || exportRes.error) {
         setStatus('error')
         setErrorMessage(
-          result.message || 'An unknown error occurred during export.',
+          exportRes?.stderr.join('\n') ||
+            'An unknown error occurred during OpenSCAD export.',
         )
         toast.error('Export failed')
       } else {
-        setExportedFiles(result.files)
+        setExportedBlob(exportRes.blob)
         setStatus('success')
         toast.success('Export completed successfully!')
       }
@@ -173,124 +134,104 @@ export function ReplicadExportDialog({
     }
   }
 
-  const handleSaveToDevice = async () => {
-    if (exportedFiles.length === 0) return
+  const handleSaveToDevice = () => {
+    if (!exportedBlob) return
 
     try {
-      const isStl = format.startsWith('stl')
-      const isSvg = format === 'svg'
-      const extension = isSvg ? 'svg' : isStl ? 'stl' : 'step'
+      const isStl = format === 'binstl' || format === 'asciistl'
+      const fileExt = isStl ? 'stl' : format.toLowerCase()
       const baseProjectName = project.name.replace(/[^a-zA-Z0-9-_]/g, '_')
+      const filename = `${baseProjectName || 'model'}.${fileExt}`
 
-      if (exportedFiles.length === 1) {
-        // Save single file
-        const file = exportedFiles[0]
-        const blob = file.blob
-        const filename = `${baseProjectName || file.name || 'model'}.${extension}`
-
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = filename
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-        toast.success(`Saved ${filename}`)
-      } else {
-        // Zip package multiple files
-        toast.info('Zipping files...')
-        const zipData: Record<string, Uint8Array> = {}
-
-        for (let i = 0; i < exportedFiles.length; i++) {
-          const file = exportedFiles[i]
-          const arrayBuffer = await file.blob.arrayBuffer()
-          const safeName = (file.name || `shape_${i + 1}`).replace(
-            /[^a-zA-Z0-9-_]/g,
-            '_',
-          )
-          const filename = `${safeName}.${extension}`
-          zipData[filename] = new Uint8Array(arrayBuffer)
-        }
-
-        const zippedBytes = zipSync(zipData)
-        const zipBlob = new Blob([zippedBytes], { type: 'application/zip' })
-        const zipFilename = `${baseProjectName || 'model'}_export.zip`
-
-        const url = URL.createObjectURL(zipBlob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = zipFilename
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-        toast.success(`Saved archive ${zipFilename}`)
-      }
+      const url = URL.createObjectURL(exportedBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success(`Saved ${filename}`)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      toast.error(`Failed to save files: ${msg}`)
+      toast.error(`Failed to save file: ${msg}`)
     }
   }
 
-  const formatCards: {
-    id: ExportFileTypes | 'svg'
-    label: string
-    ext: string
-    description: string
-  }[] = isSvgOnly
+  const formatCards = is2DDrawing
     ? [
         {
           id: 'svg',
           label: 'SVG Drawing',
           ext: '.svg',
-          description:
-            'Scalable Vector Graphics 2D format. Perfect for 2D sketches and drawings.',
+          description: 'Scalable Vector Graphics 2D vector drawing.',
+        },
+        {
+          id: 'dxf',
+          label: 'DXF Drawing',
+          ext: '.dxf',
+          description: 'AutoCAD DXF format, widely used in CNC/laser cutting.',
+        },
+        {
+          id: 'pdf',
+          label: 'PDF Document',
+          ext: '.pdf',
+          description: 'Portable Document Format vector drawing.',
         },
       ]
     : [
         {
-          id: 'stl-binary',
+          id: 'binstl',
           label: 'STL (binary)',
           ext: '.stl',
           description:
             'Standard 3D mesh (compact binary format). Recommended for most uses.',
         },
         {
-          id: 'stl',
+          id: 'asciistl',
           label: 'STL (ascii)',
           ext: '.stl',
           description:
             'Standard 3D mesh (human-readable ASCII format). Larger than binary STL.',
         },
         {
-          id: 'step',
-          label: 'STEP',
-          ext: '.step',
-          description:
-            'Standard CAD exchange format using boundary representation (B-Rep).',
+          id: '3mf',
+          label: '3MF',
+          ext: '.3mf',
+          description: 'Modern 3D manufacturing format with rich metadata.',
         },
         {
-          id: 'step-assembly',
-          label: 'STEP (assembly)',
-          ext: '.step',
+          id: 'amf',
+          label: 'AMF',
+          ext: '.amf',
           description:
-            'STEP assembly preserving part hierarchy, names, and colors.',
+            'Additive manufacturing XML format preserving color & materials.',
+        },
+        {
+          id: 'off',
+          label: 'OFF',
+          ext: '.off',
+          description: 'Object File Format, simple mesh representation.',
+        },
+        {
+          id: 'csg',
+          label: 'CSG',
+          ext: '.csg',
+          description:
+            'Constructive Solid Geometry syntax tree representation.',
         },
       ]
-
-  const isStlFormat = format.startsWith('stl')
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className='sm:max-w-xl max-h-[85vh] overflow-y-auto border border-border bg-background shadow-2xl rounded-xl transition-all duration-300'>
         <DialogHeader>
           <DialogTitle className='text-xl font-bold bg-linear-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent'>
-            Export CAD Model
+            Export OpenSCAD Model
           </DialogTitle>
           <DialogDescription>
-            Export the current Replicad viewport models into standard CAD and
-            mesh formats.
+            Export the current OpenSCAD viewport designs into standard CAD,
+            mesh, and vector formats.
           </DialogDescription>
         </DialogHeader>
 
@@ -305,7 +246,7 @@ export function ReplicadExportDialog({
                     key={card.id}
                     onClick={() => setFormat(card.id)}
                     className={cn(
-                      'flex flex-col items-start text-left p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer outline-hidden select-none',
+                      'flex flex-col items-start text-left p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer outline-hidden select-none hover:scale-[1.01]',
                       isActive
                         ? 'border-blue-500 bg-blue-500/5 dark:bg-blue-500/10 text-foreground ring-2 ring-blue-500/20'
                         : 'border-border/60 hover:border-muted-foreground/30 text-muted-foreground hover:text-foreground bg-accent/20',
@@ -326,70 +267,6 @@ export function ReplicadExportDialog({
                 )
               })}
             </div>
-
-            {/* Advanced Settings for STL tolerance */}
-            {isStlFormat && (
-              <div className='pt-3'>
-                <button
-                  type='button'
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                  className='flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none'
-                >
-                  <Settings className='h-3.5 w-3.5' />
-                  <span>Advanced Mesh Parameters</span>
-                </button>
-
-                {showAdvanced && (
-                  <div className='grid grid-cols-2 gap-4 mt-3 p-3 rounded-lg bg-accent/30 border border-border/40 animate-in fade-in slide-in-from-top-1 duration-200'>
-                    <div className='flex flex-col gap-1.5'>
-                      <Label
-                        htmlFor='tolerance'
-                        className='text-xs font-medium'
-                      >
-                        Linear Tolerance
-                      </Label>
-                      <Input
-                        id='tolerance'
-                        type='number'
-                        step='0.001'
-                        min='0.001'
-                        value={tolerance}
-                        onChange={(e) =>
-                          setTolerance(parseFloat(e.target.value))
-                        }
-                        className='h-8 text-xs'
-                      />
-                      <span className='text-[10px] text-muted-foreground'>
-                        Lower is finer/higher triangles (default 0.01)
-                      </span>
-                    </div>
-                    <div className='flex flex-col gap-1.5'>
-                      <Label
-                        htmlFor='angularTolerance'
-                        className='text-xs font-medium'
-                      >
-                        Angular Tolerance
-                      </Label>
-                      <Input
-                        id='angularTolerance'
-                        type='number'
-                        step='1'
-                        min='1'
-                        max='90'
-                        value={angularTolerance}
-                        onChange={(e) =>
-                          setAngularTolerance(parseInt(e.target.value))
-                        }
-                        className='h-8 text-xs'
-                      />
-                      <span className='text-[10px] text-muted-foreground'>
-                        Max angle deflection in degrees (default 30)
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
 
@@ -402,9 +279,11 @@ export function ReplicadExportDialog({
                 Compiling CAD geometries...
               </div>
               <div className='text-xs text-muted-foreground mt-1'>
-                Using Replicad and OpenCascade kernel to format shapes into{' '}
+                Spawning OpenSCAD native compiler worker to format model into{' '}
                 <span className='font-mono font-bold text-foreground'>
-                  {format}
+                  {format === 'binstl' || format === 'asciistl'
+                    ? 'stl'
+                    : format}
                 </span>
               </div>
             </div>
@@ -423,13 +302,11 @@ export function ReplicadExportDialog({
                 Export Complete!
               </div>
               <div className='text-xs text-muted-foreground mt-1'>
-                Successfully compiled{' '}
-                <span className='font-semibold text-foreground'>
-                  {exportedFiles.length}
-                </span>{' '}
-                shape(s) into{' '}
+                Successfully compiled design into{' '}
                 <span className='font-mono font-bold text-foreground'>
-                  {format}
+                  {format === 'binstl' || format === 'asciistl'
+                    ? 'stl'
+                    : format}
                 </span>
                 .
               </div>
