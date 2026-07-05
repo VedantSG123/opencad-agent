@@ -1,4 +1,4 @@
-import { SlidersHorizontal } from 'lucide-react'
+import { Download, SlidersHorizontal } from 'lucide-react'
 import * as React from 'react'
 
 import { CadViewer } from '@/components-3d/cad-viewer/ReplicadViewer'
@@ -6,10 +6,13 @@ import type { StageHandle } from '@/components-3d/helpers/Stage'
 import { useReplicad } from '@/hooks/useReplicad'
 import { cn } from '@/lib/utils'
 
+import { useEditor } from './editor/context'
 import { ReplicadParametersPanel } from './editor/ReplicadParametersPanel'
 import { ReplicadCompiler } from './ReplicadCompiler'
+import { ReplicadExportDialog } from './ReplicadExportDialog'
 
 export function ReplicadViewport() {
+  const { project } = useEditor()
   const shapes = useReplicad((state) => state.shapes)
   const hasError = !!useReplicad((state) => state.error)
   const workerReady = useReplicad((state) => state.workerReady)
@@ -18,6 +21,7 @@ export function ReplicadViewport() {
   const build = useReplicad((state) => state.build)
   const stageRef = React.useRef<StageHandle>(null)
   const [showParams, setShowParams] = React.useState(true)
+  const [isExportOpen, setIsExportOpen] = React.useState(false)
 
   const hasParams = React.useMemo(() => {
     return defaultParams ? Object.keys(defaultParams).length > 0 : false
@@ -65,19 +69,30 @@ export function ReplicadViewport() {
         </div>
       )}
       {/* Viewport Ribbon Bar */}
-      {workerReady && hasParams && (
+      {workerReady && (
         <div className='absolute top-2 left-2 right-2 z-20 flex justify-end gap-2 pointer-events-none'>
+          {hasParams && (
+            <button
+              onClick={() => setShowParams((prev) => !prev)}
+              className={cn(
+                'pointer-events-auto bg-background/80 backdrop-blur-sm p-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs transition-colors hover:text-foreground',
+                showParams
+                  ? 'text-foreground border-blue-500/50 bg-blue-500/10'
+                  : 'text-muted-foreground',
+              )}
+              title='Toggle parameters panel'
+            >
+              <SlidersHorizontal className='h-3.5 w-3.5' />
+            </button>
+          )}
+
           <button
-            onClick={() => setShowParams((prev) => !prev)}
-            className={cn(
-              'pointer-events-auto bg-background/80 backdrop-blur-sm p-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs transition-colors hover:text-foreground',
-              showParams
-                ? 'text-foreground border-blue-500/50 bg-blue-500/10'
-                : 'text-muted-foreground',
-            )}
-            title='Toggle parameters panel'
+            onClick={() => setIsExportOpen(true)}
+            className='pointer-events-auto bg-background/80 backdrop-blur-sm px-2.5 py-1.5 rounded-md border shadow-sm flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-blue-500/50 hover:bg-blue-500/5 transition-all duration-200 cursor-pointer'
+            title='Export CAD model'
           >
-            <SlidersHorizontal className='h-3.5 w-3.5' />
+            <Download className='h-3.5 w-3.5' />
+            <span>Export</span>
           </button>
         </div>
       )}
@@ -90,6 +105,16 @@ export function ReplicadViewport() {
             onApply={build}
           />
         </div>
+      )}
+
+      {/* Export Dialog */}
+      {isExportOpen && (
+        <ReplicadExportDialog
+          isOpen={isExportOpen}
+          onClose={() => setIsExportOpen(false)}
+          project={project}
+          shapes={shapes}
+        />
       )}
     </div>
   )
