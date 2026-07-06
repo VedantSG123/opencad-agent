@@ -41,7 +41,27 @@ interface CadWorkerService {
     fileType?: ExportFileTypes,
     memoKey?: string,
     config?: ExportConfiguration,
-  ): Promise<Array<{ blob: Blob; name: string }>>
+  ): Promise<
+    | {
+        error: true
+        message: string
+        stack?: string
+        logs: Array<{
+          type: 'log' | 'info' | 'warn' | 'error'
+          text: string
+          timestamp: number
+        }>
+      }
+    | {
+        error: false
+        files: Array<{ blob: Blob; name: string }>
+        logs: Array<{
+          type: 'log' | 'info' | 'warn' | 'error'
+          text: string
+          timestamp: number
+        }>
+      }
+  >
   getFaceInfo(
     subShapeIndex: number,
     faceIndex: number,

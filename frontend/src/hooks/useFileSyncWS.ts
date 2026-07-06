@@ -27,8 +27,12 @@ export interface FileSyncWS {
   error: string | null
   readFile: (path: string) => Promise<string>
   writeFile: (path: string, content: string) => Promise<void>
+  mkdir: (path: string) => Promise<void>
+  deleteFile: (path: string) => Promise<void>
+  rename: (oldPath: string, newPath: string) => Promise<void>
   readdir: (path: string) => Promise<string[]>
   readdirWithTypes: (path: string) => Promise<FSEntry[]>
+  exists: (path: string) => Promise<boolean>
   onWatch: (handler: (event: WatchEvent) => void) => () => void
 }
 
@@ -116,6 +120,51 @@ export function useFileSyncWS(
     [status, resolvePath],
   )
 
+  const mkdir = useCallback(
+    async (path: string) => {
+      if (status !== 'ready') throw new FSNotReadyError()
+      if (!window.electron) {
+        throw new Error('Electron not available')
+      }
+      const res = await window.electron.mkdir(resolvePath(path))
+      if (!res.success) {
+        throw new Error(res.error.message)
+      }
+    },
+    [status, resolvePath],
+  )
+
+  const deleteFile = useCallback(
+    async (path: string) => {
+      if (status !== 'ready') throw new FSNotReadyError()
+      if (!window.electron) {
+        throw new Error('Electron not available')
+      }
+      const res = await window.electron.delete(resolvePath(path))
+      if (!res.success) {
+        throw new Error(res.error.message)
+      }
+    },
+    [status, resolvePath],
+  )
+
+  const rename = useCallback(
+    async (oldPath: string, newPath: string) => {
+      if (status !== 'ready') throw new FSNotReadyError()
+      if (!window.electron) {
+        throw new Error('Electron not available')
+      }
+      const res = await window.electron.rename(
+        resolvePath(oldPath),
+        resolvePath(newPath),
+      )
+      if (!res.success) {
+        throw new Error(res.error.message)
+      }
+    },
+    [status, resolvePath],
+  )
+
   const readdir = useCallback(
     async (path: string) => {
       if (status !== 'ready') throw new FSNotReadyError()
@@ -150,6 +199,21 @@ export function useFileSyncWS(
     [status, resolvePath],
   )
 
+  const exists = useCallback(
+    async (path: string) => {
+      if (status !== 'ready') throw new FSNotReadyError()
+      if (!window.electron) {
+        throw new Error('Electron not available')
+      }
+      const res = await window.electron.exists(resolvePath(path))
+      if (!res.success) {
+        throw new Error(res.error.message)
+      }
+      return res.data
+    },
+    [status, resolvePath],
+  )
+
   const onWatch = useCallback((handler: (event: WatchEvent) => void) => {
     if (!window.electron) return () => {}
     return window.electron.onWatch(handler)
@@ -160,8 +224,12 @@ export function useFileSyncWS(
     error,
     readFile,
     writeFile,
+    mkdir,
+    deleteFile,
+    rename,
     readdir,
     readdirWithTypes,
+    exists,
     onWatch,
   }
 }

@@ -13,6 +13,7 @@ export function OpenSCADCompiler() {
 
   const mainFilePath = React.useMemo(() => {
     if (!project?.file || !project.directory) return null
+    if (!project.file.toLowerCase().endsWith('.scad')) return null
     return toFsPath(project.directory, project.file)
   }, [project])
 
@@ -56,7 +57,14 @@ export function OpenSCADCompiler() {
 
   const mainFileContent = editorContent ?? fsContent
 
-  const files = useKernelFiles((state) => state.files)
+  const scadFilesSerialized = useKernelFiles(
+    React.useCallback((state: KernelFilesState) => {
+      return Object.entries(state.files)
+        .filter(([path]) => path.toLowerCase().endsWith('.scad'))
+        .map(([path, file]) => `${path}:${file.content}`)
+        .join('\n')
+    }, []),
+  )
   const compile = useNodeOpenSCAD((state) => state.compile)
   const checkSyntax = useNodeOpenSCAD((state) => state.checkSyntax)
 
@@ -91,7 +99,7 @@ export function OpenSCADCompiler() {
       if (renderTimerRef.current) clearTimeout(renderTimerRef.current)
     }
   }, [
-    files,
+    scadFilesSerialized,
     mainFilePath,
     mainFileContent,
     project.directory,

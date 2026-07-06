@@ -48,8 +48,6 @@ export function RibbonBar() {
       ? toFsPath(project.directory, project.file)
       : null
 
-  console.log({ mainFileVirtualPath })
-
   return (
     <div className='flex items-center gap-1 border-b px-1 h-10 shrink-0'>
       <Button
@@ -86,7 +84,6 @@ export function RibbonBar() {
 
       <div className='flex items-center gap-0.5 overflow-x-auto flex-1 min-w-0 scrollbar-none'>
         {openTabs.map((path) => {
-          console.log('rendering tab', { path, mainFileVirtualPath })
           const isDirty = dirtyTabs.has(path)
           const isMain = path === mainFileVirtualPath
           return (

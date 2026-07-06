@@ -1,7 +1,8 @@
-import { SlidersHorizontal } from 'lucide-react'
+import { Download, SlidersHorizontal } from 'lucide-react'
 import * as React from 'react'
 
 import { OpenSCADViewer } from '@/components-3d/cad-viewer/OpenSCADViewer'
+import type { StageHandle } from '@/components-3d/helpers/Stage'
 import { type KernelFilesState, useKernelFiles } from '@/hooks/useKernelFiles'
 import { useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
 import { cn, toFsPath } from '@/lib/utils'
@@ -9,6 +10,7 @@ import { cn, toFsPath } from '@/lib/utils'
 import { useEditor } from './editor/context'
 import { OpenSCADParametersPanel } from './editor/OpenSCADParametersPanel'
 import { OpenSCADCompiler } from './OpenSCADCompiler'
+import { OpenSCADExportDialog } from './OpenSCADExportDialog'
 
 function OpenSCADViewportInner() {
   const result = useNodeOpenSCAD((state) => state.result)
@@ -18,9 +20,9 @@ function OpenSCADViewportInner() {
   const vars = useNodeOpenSCAD((state) => state.vars)
   const setVars = useNodeOpenSCAD((state) => state.setVars)
   const compile = useNodeOpenSCAD((state) => state.compile)
-
-  const [resetView, setResetView] = React.useState<(() => void) | null>(null)
+  const stageRef = React.useRef<StageHandle>(null)
   const [showParams, setShowParams] = React.useState(true)
+  const [isExportOpen, setIsExportOpen] = React.useState(false)
 
   const hasError = Boolean(error)
 
@@ -28,6 +30,7 @@ function OpenSCADViewportInner() {
 
   const mainFilePath = React.useMemo(() => {
     if (!project?.file || !project.directory) return null
+    if (!project.file.toLowerCase().endsWith('.scad')) return null
     return toFsPath(project.directory, project.file)
   }, [project])
 
@@ -95,19 +98,19 @@ function OpenSCADViewportInner() {
 
   return (
     <div className='relative h-full w-full'>
-      <OpenSCADViewer
-        result={result}
-        hasError={hasError}
-        onResetView={setResetView}
-      />
-      {resetView && (
-        <button
-          onClick={resetView}
-          className='absolute z-10 bottom-4 left-4 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors'
-        >
-          Reset View
-        </button>
-      )}
+      <OpenSCADViewer result={result} hasError={hasError} stageRef={stageRef} />
+
+      <button
+        onClick={() => {
+          if (stageRef.current && stageRef.current.reset) {
+            stageRef.current.reset()
+          }
+        }}
+        className='absolute z-10 bottom-4 left-4 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors'
+      >
+        Reset View
+      </button>
+
       {isCompiling && (
         <div className='absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs text-muted-foreground animate-in fade-in duration-200'>
           <div className='h-2 w-2 bg-blue-500 rounded-full animate-pulse' />
@@ -116,19 +119,30 @@ function OpenSCADViewportInner() {
       )}
 
       {/* Viewport Ribbon Bar */}
-      {hasParams && (
+      {result && (
         <div className='absolute top-2 left-2 right-2 z-20 flex justify-end gap-2 pointer-events-none'>
+          {hasParams && (
+            <button
+              onClick={() => setShowParams((prev) => !prev)}
+              className={cn(
+                'pointer-events-auto bg-background/80 backdrop-blur-sm p-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs transition-colors hover:text-foreground',
+                showParams
+                  ? 'text-foreground border-blue-500/50 bg-blue-500/10'
+                  : 'text-muted-foreground',
+              )}
+              title='Toggle parameters panel'
+            >
+              <SlidersHorizontal className='h-3.5 w-3.5' />
+            </button>
+          )}
+
           <button
-            onClick={() => setShowParams((prev) => !prev)}
-            className={cn(
-              'pointer-events-auto bg-background/80 backdrop-blur-sm p-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs transition-colors hover:text-foreground',
-              showParams
-                ? 'text-foreground border-blue-500/50 bg-blue-500/10'
-                : 'text-muted-foreground',
-            )}
-            title='Toggle parameters panel'
+            onClick={() => setIsExportOpen(true)}
+            className='pointer-events-auto bg-background/80 backdrop-blur-sm px-2.5 py-1.5 rounded-md border shadow-sm flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-blue-500/50 hover:bg-blue-500/5 transition-all duration-200 cursor-pointer'
+            title='Export OpenSCAD model'
           >
-            <SlidersHorizontal className='h-3.5 w-3.5' />
+            <Download className='h-3.5 w-3.5' />
+            <span>Export</span>
           </button>
         </div>
       )}
@@ -142,6 +156,18 @@ function OpenSCADViewportInner() {
             onApply={handleApply}
           />
         </div>
+      )}
+
+      {/* Export Dialog */}
+      {isExportOpen && (
+        <OpenSCADExportDialog
+          isOpen={isExportOpen}
+          onClose={() => setIsExportOpen(false)}
+          project={project}
+          result={result}
+          mainFilePath={mainFilePath}
+          mainFileContent={mainFileContent}
+        />
       )}
     </div>
   )

@@ -15,6 +15,7 @@ type ReplicadState = {
   shapes: (MeshRenderOutput | SvgRenderOutput)[] | null
   error: Error | null
   workerReady: boolean
+  isCompiling: boolean
   logs: LogEntry[]
   defaultParams: Record<string, unknown> | null
 }
@@ -84,6 +85,7 @@ export const useReplicad = create<ReplicadState & ReplicadActions>(
         return
       }
 
+      set({ isCompiling: true })
       try {
         const result = await builderApi.buildFromCode(code, params)
 
@@ -120,6 +122,8 @@ export const useReplicad = create<ReplicadState & ReplicadActions>(
           logs: [errorLog],
           defaultParams: null,
         })
+      } finally {
+        set({ isCompiling: false })
       }
     }
 
@@ -128,6 +132,7 @@ export const useReplicad = create<ReplicadState & ReplicadActions>(
     return {
       code: DEFAULT_SCRIPT.trim(),
       workerReady: false,
+      isCompiling: false,
       shapes: null,
       error: null,
       logs: [],

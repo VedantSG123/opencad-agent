@@ -263,45 +263,76 @@ async function buildFromCode(code: string, params?: Record<string, unknown>) {
   }
 }
 
-function exportToFile(
+async function exportToFile(
   fileType: ExportFileTypes = 'stl',
   memoKey: string = DEFAULT_MEMO_KEY,
   config?: ExportConfiguration,
 ) {
-  if (!SHAPE_MEMO[memoKey]) {
-    throw new Error(`No shapes found in memo with key: ${memoKey}`)
-  }
+  await init()
 
-  const filteredShapesForExport = SHAPE_MEMO[memoKey]
-    .map((shape) => {
-      if (isMeshShape(shape.shape)) {
-        return {
-          shape: shape.shape,
-          name: shape.name,
-          color: shape.color,
-          alpha: shape.opacity,
-        }
-      }
+  startCapturingLogs()
+  let errorResult = null
+  let resultFiles: Array<{ blob: Blob; name: string }> = []
 
-      return null
-    })
-    .filter(Boolean) as ExportShapeConfig[]
-
-  if (fileType === 'step-assembly') {
-    return [
-      {
-        blob: replicad.exportSTEP(filteredShapesForExport),
-        name: memoKey,
-      },
-    ]
-  }
-
-  return filteredShapesForExport.map((shapeConfig) => {
-    return {
-      blob: buildBlob(shapeConfig.shape, fileType, config),
-      name: memoKey,
+  try {
+    if (!SHAPE_MEMO[memoKey]) {
+      throw new Error(`No shapes found in memo with key: ${memoKey}`)
     }
-  })
+
+    const filteredShapesForExport = SHAPE_MEMO[memoKey]
+      .map((shape) => {
+        if (isMeshShape(shape.shape)) {
+          return {
+            shape: shape.shape,
+            name: shape.name,
+            color: shape.color,
+            alpha: shape.opacity,
+          }
+        }
+
+        return null
+      })
+      .filter(Boolean) as ExportShapeConfig[]
+
+    if (filteredShapesForExport.length === 0) {
+      throw new Error('No 3D shapes found to export.')
+    }
+
+    if (fileType === 'step-assembly') {
+      resultFiles = [
+        {
+          blob: replicad.exportSTEP(filteredShapesForExport),
+          name: memoKey,
+        },
+      ]
+    } else {
+      resultFiles = filteredShapesForExport.map((shapeConfig) => {
+        return {
+          blob: buildBlob(shapeConfig.shape, fileType, config),
+          name: shapeConfig.name || memoKey,
+        }
+      })
+    }
+  } catch (e) {
+    errorResult = formatException(OC, e)
+  }
+
+  const logs = stopCapturingLogs()
+
+  if (errorResult) {
+    return {
+      error: true as const,
+      message: errorResult.message,
+      stack: errorResult.stack,
+      logs,
+    }
+  }
+
+  return {
+    error: false as const,
+    files: resultFiles,
+    logs,
+  }
 }
 
 function getFaceInfo(

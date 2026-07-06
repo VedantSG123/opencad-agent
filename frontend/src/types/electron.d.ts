@@ -49,8 +49,12 @@ export interface ElectronAPI {
   }) => Promise<Result<{ canceled: boolean; filePaths: string[] }>>
   readFile: (filePath: string) => Promise<Result<string>>
   writeFile: (filePath: string, content: string) => Promise<Result<void>>
+  mkdir: (dirPath: string) => Promise<Result<void>>
+  delete: (filePath: string) => Promise<Result<void>>
+  rename: (oldPath: string, newPath: string) => Promise<Result<void>>
   readdir: (dirPath: string) => Promise<Result<string[]>>
   readdirWithTypes: (dirPath: string) => Promise<Result<FSEntryPlain[]>>
+  exists: (filePath: string) => Promise<Result<boolean>>
   watchDirectory: (dirPath: string) => Promise<Result<void>>
   onWatch: (handler: (event: WatchEvent) => void) => () => void
   refreshProjectRoots: () => Promise<Result<{ count: number }>>

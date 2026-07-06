@@ -34,8 +34,12 @@ export interface ElectronAPI {
   }) => Promise<Result<{ canceled: boolean; filePaths: string[] }>>
   readFile: (filePath: string) => Promise<Result<string>>
   writeFile: (filePath: string, content: string) => Promise<Result<void>>
+  mkdir: (dirPath: string) => Promise<Result<void>>
+  delete: (filePath: string) => Promise<Result<void>>
+  rename: (oldPath: string, newPath: string) => Promise<Result<void>>
   readdir: (dirPath: string) => Promise<Result<string[]>>
   readdirWithTypes: (dirPath: string) => Promise<Result<FSEntryPlain[]>>
+  exists: (filePath: string) => Promise<Result<boolean>>
   watchDirectory: (dirPath: string) => Promise<Result<void>>
   onWatch: (handler: (event: WatchEvent) => void) => () => void
   refreshProjectRoots: () => Promise<Result<{ count: number }>>
@@ -118,9 +122,14 @@ const api: ElectronAPI = {
   readFile: (filePath) => ipcRenderer.invoke('fs:read', filePath),
   writeFile: (filePath, content) =>
     ipcRenderer.invoke('fs:write', filePath, content),
+  mkdir: (dirPath) => ipcRenderer.invoke('fs:mkdir', dirPath),
+  delete: (filePath) => ipcRenderer.invoke('fs:delete', filePath),
+  rename: (oldPath, newPath) =>
+    ipcRenderer.invoke('fs:rename', oldPath, newPath),
   readdir: (dirPath) => ipcRenderer.invoke('fs:readdir', dirPath),
   readdirWithTypes: (dirPath) =>
     ipcRenderer.invoke('fs:readdirWithTypes', dirPath),
+  exists: (filePath) => ipcRenderer.invoke('fs:exists', filePath),
   watchDirectory: (dirPath) => ipcRenderer.invoke('workspace:watch', dirPath),
   refreshProjectRoots: () => ipcRenderer.invoke('projects:refresh-roots'),
   addProjectRoot: (directory) =>

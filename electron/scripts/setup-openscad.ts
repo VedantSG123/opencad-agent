@@ -495,10 +495,15 @@ class OpenSCADSetup {
     const allFiles = await getFiles(libFontsTempDir)
     for (const file of allFiles) {
       if (file.relativePath.toLowerCase().endsWith('.ttf')) {
-        const dest = path.join(RESOURCES_FONTS_DIR, path.basename(file.relativePath))
+        const dest = path.join(
+          RESOURCES_FONTS_DIR,
+          path.basename(file.relativePath),
+        )
         if (!existsSync(dest)) {
           await fs.copyFile(file.absolutePath, dest)
-          console.log(`[setup-openscad] Copied Liberation font ${path.basename(dest)}`)
+          console.log(
+            `[setup-openscad] Copied Liberation font ${path.basename(dest)}`,
+          )
         }
       }
     }
