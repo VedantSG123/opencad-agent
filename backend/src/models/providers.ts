@@ -1,8 +1,5 @@
 import { all as getAllAuth } from './auth'
-import type {
-  Model as ModelsDevModel,
-  Provider as ModelsDevProvider,
-} from './modelsDev'
+import type { ModelsDevModel, ModelsDevProvider } from './modelsDev'
 import { getModelsDev } from './modelsDev'
 import { loadProviderWithOAuth } from './oauth'
 import type { Model, Provider } from './schemas'
@@ -29,7 +26,7 @@ function transformModelsDevModel(
       output: model.limit.output,
     },
     capabilities: {
-      temperature: model.temperature,
+      temperature: model.temperature !== undefined ? model.temperature : false,
       reasoning: model.reasoning,
       attachment: model.attachment,
       toolcall: model.tool_call,
