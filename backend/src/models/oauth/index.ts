@@ -5,45 +5,40 @@ import {
   githubCopilotOAuthProvider,
   loadCopilotProviderWithAuth,
 } from './github-copilot'
+import { loadOpenaiProviderWithAuth, openaiOAuthProvider } from './openai'
+import type {
+  OAuthFlowState,
+  OAuthProvider,
+  OAuthProviderInfo,
+} from './types.js'
+import { loadXaiProviderWithAuth, xaiOAuthProvider } from './xai'
+
+export type {
+  Authorization,
+  CallbackResult,
+  OAuthFlowState,
+  OAuthFlowStatus,
+  OAuthProvider,
+  OAuthProviderInfo,
+} from './types'
 
 export const OAUTH_SUPPORTED_PROVIDERS = [
   'github-copilot',
+  'openai',
+  'xai',
 ] as const satisfies SupportedProviderIds[]
 
 /** Union type of provider IDs that support OAuth */
 export type OAuthSupportedProviderIds =
   (typeof OAUTH_SUPPORTED_PROVIDERS)[number]
 
-// `method: "auto"` → UI should immediately call the callback endpoint and poll
-// `method: "manual"` → UI waits for the user to action the callback themselves
-export interface Authorization {
-  url: string
-  instructions: string
-  method: 'auto' | 'manual'
-  deviceCode: string
-  intervalSeconds: number
-}
-
-export type CallbackResult =
-  | { type: 'success'; accessToken: string }
-  | { type: 'failed'; error: string }
-
-export interface OAuthProviderInfo {
-  id: SupportedProviderIds
-  title: string
-  description: string
-}
-
-export interface OAuthProvider extends OAuthProviderInfo {
-  authorize(): Promise<Authorization>
-  callback(deviceCode: string, intervalSeconds: number): Promise<CallbackResult>
-}
-
 export const oauthProviderRegistry: Record<
   OAuthSupportedProviderIds,
   OAuthProvider
 > = {
   'github-copilot': githubCopilotOAuthProvider,
+  openai: openaiOAuthProvider,
+  xai: xaiOAuthProvider,
 }
 
 export function listOAuthProviders(): OAuthProviderInfo[] {
@@ -62,15 +57,6 @@ export function findOAuthProvider(providerId: string): OAuthProvider | null {
   return oauthProviderRegistry[providerId as OAuthSupportedProviderIds] ?? null
 }
 
-export type OAuthFlowStatus = 'pending' | 'completed' | 'failed'
-
-export interface OAuthFlowState {
-  status: OAuthFlowStatus
-  deviceCode: string
-  intervalSeconds: number
-  startedAt: string
-}
-
 export const oauthPendingState = new Map<
   OAuthSupportedProviderIds,
   OAuthFlowState
@@ -87,6 +73,10 @@ export function loadProviderWithOAuth(
   switch (provider.id) {
     case 'github-copilot':
       return loadCopilotProviderWithAuth(auth, provider)
+    case 'openai':
+      return loadOpenaiProviderWithAuth(auth, provider)
+    case 'xai':
+      return loadXaiProviderWithAuth(auth, provider)
     default:
       return provider
   }

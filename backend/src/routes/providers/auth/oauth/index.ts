@@ -95,9 +95,10 @@ export const oauthRoutes = new Elysia({ prefix: '/oauth' })
       if (result.type === 'success') {
         await setAuth(providerId, {
           type: 'oauth',
-          refresh: result.accessToken,
           access: result.accessToken,
-          expires: 0,
+          refresh: result.refreshToken || result.accessToken,
+          expires: result.expires || 0,
+          ...(result.accountId && { accountId: result.accountId }),
         })
 
         oauthPendingState.set(providerId as OAuthSupportedProviderIds, {

@@ -28,6 +28,8 @@ export interface ElectronAPI {
   platform: string
   updateTheme: (theme: 'dark' | 'light') => void
   pingBackend: () => Promise<Result<string>>
+  storeCredential: (providerId: string, auth: unknown) => Promise<Result<void>>
+  isEncryptionAvailable: () => Promise<Result<boolean>>
   openFileDialog: (options: {
     mode: 'file' | 'directory'
     extension?: string
@@ -175,6 +177,10 @@ const api: ElectronAPI = {
       ipcRenderer.removeListener('perf-metrics', listener)
     }
   },
+  storeCredential: (providerId, auth) =>
+    ipcRenderer.invoke('credentials:store', providerId, auth),
+  isEncryptionAvailable: () =>
+    ipcRenderer.invoke('credentials:is-encryption-available'),
 }
 
 contextBridge.exposeInMainWorld('electron', api)

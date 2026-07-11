@@ -177,3 +177,7 @@ export async function getProviderCache(): Promise<ProviderCache> {
   }
   return providerCache
 }
+
+export function invalidateProviderCache() {
+  providerCache = null
+}

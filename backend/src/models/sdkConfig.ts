@@ -1,6 +1,8 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
+import { createXai } from '@ai-sdk/xai'
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { createGitHubCopilotOpenAICompatible } from '@opeoginni/github-copilot-openai-compatible'
 import z from 'zod'
 
@@ -9,6 +11,8 @@ export const SUPPORTED_PROVIDERS = [
   'openai',
   'anthropic',
   'github-copilot',
+  'xai',
+  'openrouter',
 ] as const
 
 const SupportedProviderIdsSchema = z.enum(SUPPORTED_PROVIDERS)
@@ -34,6 +38,12 @@ export const SDKConfig: Record<SupportedProviderIds, SDKConfigValue> = {
   'github-copilot': {
     providerId: 'github-copilot',
   },
+  xai: {
+    providerId: 'xai',
+  },
+  openrouter: {
+    providerId: 'openrouter',
+  },
 }
 
 export const providerSdkFunctionMap = {
@@ -42,4 +52,6 @@ export const providerSdkFunctionMap = {
   '@ai-sdk/anthropic': createAnthropic,
   '@opeoginni/github-copilot-openai-compatible':
     createGitHubCopilotOpenAICompatible,
+  '@ai-sdk/xai': createXai,
+  '@openrouter/ai-sdk-provider': createOpenRouter,
 }

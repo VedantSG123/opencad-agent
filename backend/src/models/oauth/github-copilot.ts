@@ -1,6 +1,6 @@
 import type { Auth } from '../auth'
 import type { Provider } from '../schemas'
-import type { Authorization, CallbackResult, OAuthProvider } from './index'
+import type { Authorization, CallbackResult, OAuthProvider } from './types'
 
 const GITHUB_CLIENT_ID = 'Ov23lisygXuv7pJM7aVr'
 const DEVICE_CODE_URL = 'https://github.com/login/device/code'
