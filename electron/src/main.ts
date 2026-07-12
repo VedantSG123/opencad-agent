@@ -3,9 +3,8 @@
 import { fileURLToPath } from 'node:url'
 
 import { spawn } from 'child_process'
-import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, safeStorage } from 'electron'
 import * as fs from 'fs'
-import * as net from 'net'
 import * as path from 'path'
 
 import { registerBackendIpc } from './ipc/backend.js'
@@ -13,6 +12,14 @@ import { registerDialogIpc } from './ipc/dialog.js'
 import { registerFsIpc } from './ipc/fs.js'
 import { registerOpenSCADIpc } from './ipc/openscad.js'
 import { registerWorkspaceIpc } from './ipc/workspace.js'
+import { createHandler } from './utils/ipc-utils.js'
+import { findFreePort } from './utils/network.js'
+import {
+  startVaultServer,
+  stopVaultServer,
+  storeCredentialInVault,
+  type VaultAuth,
+} from './utils/vault.js'
 import { stopWatcher } from './utils/watcher.js'
 import { loadAllowedWorkspaceRoots } from './utils/workspace.js'
 
@@ -37,28 +44,6 @@ if (!gotTheLock) {
 let mainWindow: BrowserWindow | null = null
 let backendProcess: ReturnType<typeof spawn> | null = null
 let backendPort = 3000
-
-async function findFreePort(startPort: number = 3000): Promise<number> {
-  let port = startPort
-  while (true) {
-    const isFree = await new Promise<boolean>((resolve) => {
-      const server = net.createServer()
-      server.once('error', () => {
-        resolve(false)
-      })
-      server.once('listening', () => {
-        server.close(() => {
-          resolve(true)
-        })
-      })
-      server.listen(port, '127.0.0.1')
-    })
-    if (isFree) {
-      return port
-    }
-    port++
-  }
-}
 
 async function waitForBackend(
   port: number,
@@ -90,7 +75,7 @@ function getBackendDir() {
   return backendDir
 }
 
-function startBackend(port: number) {
+function startBackend(port: number, vaultPort: number, vaultSecret: string) {
   let binPath: string
   let args: string[]
   let cwdPath: string
@@ -116,6 +101,9 @@ function startBackend(port: number) {
       ...process.env,
       NODE_ENV: app.isPackaged ? 'production' : 'development',
       PORT: String(port),
+      ELECTRON_INTERNAL_PORT: String(vaultPort),
+      ELECTRON_SECRET: vaultSecret,
+      OPENCAD_ELECTRON_MODE: 'true',
     },
   })
 
@@ -190,8 +178,9 @@ function createWindow(port: number) {
 
 app.whenReady().then(async () => {
   try {
+    const { port: vaultPort, secret: vaultSecret } = await startVaultServer()
     backendPort = await findFreePort(3000)
-    startBackend(backendPort)
+    startBackend(backendPort, vaultPort, vaultSecret)
     await waitForBackend(backendPort, 5000)
     await loadAllowedWorkspaceRoots(`http://127.0.0.1:${backendPort}`)
     createWindow(backendPort)
@@ -201,6 +190,21 @@ app.whenReady().then(async () => {
     registerFsIpc(ipcMain)
     registerWorkspaceIpc(ipcMain, backendPort)
     registerOpenSCADIpc(ipcMain)
+
+    // Secure credentials IPC handlers for frontend
+    ipcMain.handle(
+      'credentials:store',
+      createHandler((_event, providerId: string, auth: VaultAuth) => {
+        storeCredentialInVault(providerId, auth)
+      }),
+    )
+
+    ipcMain.handle(
+      'credentials:is-encryption-available',
+      createHandler(() => {
+        return safeStorage.isEncryptionAvailable()
+      }),
+    )
 
     ipcMain.on('theme:change', (_event, theme: 'dark' | 'light') => {
       if (
@@ -267,6 +271,7 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   stopWatcher().catch(() => {})
+  stopVaultServer()
   if (backendProcess) {
     console.log('Killing backend process tree...')
     if (backendProcess.pid && process.platform !== 'win32') {
