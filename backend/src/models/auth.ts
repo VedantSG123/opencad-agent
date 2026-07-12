@@ -24,7 +24,13 @@ const AUTH_FILE = `${DATA_DIR}/auth.json`
 
 const INTERNAL_PORT = process.env.ELECTRON_INTERNAL_PORT
 const SECRET = process.env.ELECTRON_SECRET
-const isElectronMode = !!(INTERNAL_PORT && SECRET)
+const isElectronMode = process.env.OPENCAD_ELECTRON_MODE === 'true'
+
+if (isElectronMode && (!INTERNAL_PORT || !SECRET)) {
+  throw new Error(
+    'Elysia backend was started in Electron mode, but ELECTRON_INTERNAL_PORT or ELECTRON_SECRET is missing.',
+  )
+}
 
 async function fetchFromElectron(
   path: string,

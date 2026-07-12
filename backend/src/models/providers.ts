@@ -181,3 +181,52 @@ export async function getProviderCache(): Promise<ProviderCache> {
 export function invalidateProviderCache() {
   providerCache = null
 }
+
+export async function getAvailableProviders(): Promise<
+  Record<string, Provider>
+> {
+  const modelsDev = await getModelsDev()
+  return Object.fromEntries(
+    Object.entries(modelsDev)
+      .filter(([providerId]) =>
+        (SUPPORTED_PROVIDERS as readonly string[]).includes(providerId),
+      )
+      .map(([providerId, provider]) => [
+        providerId,
+        transformModelsDevProvider(provider),
+      ]),
+  )
+}
+
+export async function getAuthenticatedStatus(): Promise<
+  Record<string, { authenticated: boolean; method?: 'api_key' | 'oauth' }>
+> {
+  const allAuth = await getAllAuth()
+  const cache = await getProviderCache()
+
+  const status: Record<
+    string,
+    { authenticated: boolean; method?: 'api_key' | 'oauth' }
+  > = {}
+
+  for (const providerId of SUPPORTED_PROVIDERS) {
+    const auth = allAuth[providerId]
+    if (auth) {
+      status[providerId] = {
+        authenticated: true,
+        method: auth.type,
+      }
+    } else if (cache.providers[providerId]) {
+      status[providerId] = {
+        authenticated: true,
+        method: 'api_key',
+      }
+    } else {
+      status[providerId] = {
+        authenticated: false,
+      }
+    }
+  }
+
+  return status
+}

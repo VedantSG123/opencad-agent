@@ -103,6 +103,7 @@ function startBackend(port: number, vaultPort: number, vaultSecret: string) {
       PORT: String(port),
       ELECTRON_INTERNAL_PORT: String(vaultPort),
       ELECTRON_SECRET: vaultSecret,
+      OPENCAD_ELECTRON_MODE: 'true',
     },
   })
 
