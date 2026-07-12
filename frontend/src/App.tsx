@@ -5,8 +5,8 @@ import PerfMonitor from './components/custom/PerfMonitor'
 import { Toaster } from './components/ui/sonner'
 import { TooltipProvider } from './components/ui/tooltip'
 import { ThemeProvider } from './contexts/theme-context'
+import Dashboard, { DashboardView, ProjectsView } from './features/Dashboard'
 import CadTest from './pages/CadTest'
-import Home from './pages/Home'
 import NotFound from './pages/NotFound'
 import OpenSCADTest from './pages/OpenSCADTest'
 import ProjectPage from './pages/ProjectPage'
@@ -20,7 +20,10 @@ export default function App() {
         <TooltipProvider>
           {import.meta.env.DEV && <PerfMonitor />}
           <Routes>
-            <Route path='/' element={<Home />} />
+            <Route element={<Dashboard />}>
+              <Route path='/' element={<DashboardView />} />
+              <Route path='/projects' element={<ProjectsView />} />
+            </Route>
             <Route path='/project/:id' element={<ProjectPage />} />
             <Route path='/cad-test' element={<CadTest />} />
             <Route path='/openscad-test' element={<OpenSCADTest />} />

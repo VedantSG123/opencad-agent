@@ -8,7 +8,7 @@ import {
   ResizablePanelGroup,
 } from '@/components/ui/resizable'
 import { NodeOpenSCADProvider } from '@/hooks/useNodeOpenSCAD'
-import { useProjects } from '@/hooks/useProjects'
+import { useProjects, useUpdateProjectAccess } from '@/hooks/useProjects'
 import { cn } from '@/lib/utils'
 import type { Project } from '@/types/project'
 
@@ -119,6 +119,8 @@ function ProjectLayout({ project }: { project: Project }) {
 export function ProjectPage() {
   const { id } = useParams<{ id: string }>()
   const { data: projects, isLoading, isError } = useProjects()
+  const mutateAccess = useUpdateProjectAccess()
+  const lastOpenedRef = useRef<string | null>(null)
 
   const project = useMemo(() => {
     if (!projects || !id) {
@@ -127,6 +129,13 @@ export function ProjectPage() {
 
     return projects.find((p) => p.id === id) || null
   }, [projects, id])
+
+  useEffect(() => {
+    if (project && lastOpenedRef.current !== project.id) {
+      lastOpenedRef.current = project.id
+      mutateAccess.mutate(project.id)
+    }
+  }, [project, mutateAccess])
 
   useEffect(() => {
     if (isError) {

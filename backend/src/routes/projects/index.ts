@@ -23,6 +23,7 @@ const createProjectBody = t.Object({
 const updateProjectBody = t.Object({
   name: t.Optional(t.String({ minLength: 1 })),
   file: t.Optional(t.Union([t.String({ minLength: 1 }), t.Null()])),
+  last_accessed_at: t.Optional(t.String()),
 })
 
 export const projectsRoutes = new Elysia({ prefix: '/projects' })
@@ -71,6 +72,14 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
         ...existing,
         ...(body.name !== undefined ? { name: body.name } : {}),
         ...('file' in body ? { file: body.file ?? null } : {}),
+        ...(body.last_accessed_at !== undefined
+          ? {
+              time: {
+                ...existing.time,
+                accessed: body.last_accessed_at,
+              },
+            }
+          : {}),
       })
     },
     { params: projectIdParam, body: updateProjectBody },

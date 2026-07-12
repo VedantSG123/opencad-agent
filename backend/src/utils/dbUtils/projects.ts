@@ -9,6 +9,7 @@ type ProjectRow = {
   file: string | null
   created_at: string
   updated_at: string
+  last_accessed_at: string | null
 }
 
 function rowToProject(row: ProjectRow): Project {
@@ -21,25 +22,28 @@ function rowToProject(row: ProjectRow): Project {
     time: {
       created: row.created_at,
       updated: row.updated_at,
+      accessed: row.last_accessed_at,
     },
   }
 }
 
 export function upsertProject(project: Project): Project {
   db.query(
-    `INSERT INTO projects (id, name, cad_kernel, directory, file)
-     VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO projects (id, name, cad_kernel, directory, file, last_accessed_at)
+     VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        name = excluded.name,
        cad_kernel = excluded.cad_kernel,
        directory = excluded.directory,
-       file = excluded.file`,
+       file = excluded.file,
+       last_accessed_at = excluded.last_accessed_at`,
   ).run(
     project.id,
     project.name,
     project.cad_kernel,
     project.directory,
     project.file,
+    project.time.accessed,
   )
   return getProjectById(project.id)!
 }
@@ -47,7 +51,7 @@ export function upsertProject(project: Project): Project {
 export function getProjectById(id: string): Project | null {
   const row = db
     .query(
-      `SELECT id, name, cad_kernel, directory, file, created_at, updated_at FROM projects WHERE id = ?`,
+      `SELECT id, name, cad_kernel, directory, file, created_at, updated_at, last_accessed_at FROM projects WHERE id = ?`,
     )
     .get(id) as ProjectRow | null
   return row ? rowToProject(row) : null
@@ -56,7 +60,7 @@ export function getProjectById(id: string): Project | null {
 export function getAllProjects(): Project[] {
   const rows = db
     .query(
-      `SELECT id, name, cad_kernel, directory, file, created_at, updated_at FROM projects ORDER BY created_at ASC`,
+      `SELECT id, name, cad_kernel, directory, file, created_at, updated_at, last_accessed_at FROM projects ORDER BY created_at ASC`,
     )
     .all() as ProjectRow[]
   return rows.map(rowToProject)

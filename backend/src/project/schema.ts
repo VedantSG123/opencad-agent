@@ -11,6 +11,7 @@ export const ProjectSchema = z.object({
   time: z.object({
     created: z.string(),
     updated: z.string(),
+    accessed: z.string().nullable(),
   }),
 })
 

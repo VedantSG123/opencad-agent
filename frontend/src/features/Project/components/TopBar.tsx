@@ -43,7 +43,7 @@ export function TopBar({ project }: TopBarProps) {
       <Button
         variant='ghost'
         size='icon'
-        onClick={() => navigate('/')}
+        onClick={() => navigate(-1)}
         className='electron-no-drag shrink-0'
       >
         <ArrowLeft className='h-4 w-4' />

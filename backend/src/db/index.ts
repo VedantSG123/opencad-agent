@@ -4,3 +4,4 @@ import { DB_PATH } from '../utils/directories'
 
 export const db = new Database(DB_PATH)
 db.run('PRAGMA foreign_keys = ON;')
+console.log(db.query('SELECT sqlite_version()').get())

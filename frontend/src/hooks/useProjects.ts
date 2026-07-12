@@ -80,3 +80,20 @@ export function useDeleteProject() {
       axiosInstance.delete(`/projects/${id}`).then(() => undefined),
   })
 }
+
+export function useUpdateProjectAccess() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      axiosInstance
+        .patch<Project>(`/projects/${id}`, {
+          last_accessed_at: new Date().toISOString(),
+        })
+        .then((r) => r.data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: PROJECTS_KEY,
+      })
+    },
+  })
+}

@@ -9,6 +9,7 @@ export interface Project {
   time: {
     created: string
     updated: string
+    accessed: string | null
   }
 }
 
@@ -22,4 +23,5 @@ export interface CreateProjectPayload {
 export interface UpdateProjectPayload {
   name?: string
   file?: string | null
+  last_accessed_at?: string
 }
