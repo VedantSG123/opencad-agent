@@ -17,8 +17,8 @@ export function StepIndicator({ step }: { step: number }) {
               <div
                 className={cn(
                   'w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-all',
-                  isDone && 'bg-primary border-primary text-primary-foreground',
-                  isActive && 'border-primary text-primary bg-background',
+                  isDone && 'bg-accent border-accent text-accent-foreground',
+                  isActive && 'border-accent text-accent bg-background',
                   !isDone &&
                     !isActive &&
                     'border-foreground/40 text-foreground/40 bg-background',
@@ -29,9 +29,7 @@ export function StepIndicator({ step }: { step: number }) {
               <span
                 className={cn(
                   'text-xs whitespace-nowrap',
-                  isActive
-                    ? 'text-foreground font-medium'
-                    : 'text-muted-foreground',
+                  isActive ? 'text-foreground font-medium' : 'text-default-500',
                 )}
               >
                 {label}
@@ -41,7 +39,7 @@ export function StepIndicator({ step }: { step: number }) {
               <div
                 className={cn(
                   'h-px w-14 mx-2 mb-5 transition-colors',
-                  isDone ? 'bg-primary' : 'bg-foreground/40',
+                  isDone ? 'bg-accent' : 'bg-foreground/40',
                 )}
               />
             )}

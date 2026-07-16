@@ -1,20 +1,9 @@
-import { AlertCircle, Plus, RefreshCw, Search, X } from 'lucide-react'
+import { Button, Input, ListBox, Select, Skeleton } from '@heroui/react'
+import { AlertCircle, Plus, RefreshCw, Search } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
-import { KERNEL_INFO } from '@/constants/kernels'
 import { useProjects } from '@/hooks/useProjects'
-import { cn } from '@/lib/utils'
 import type { Project } from '@/types/project'
 
 import { DeleteDialog } from './DeleteDialog'
@@ -73,14 +62,14 @@ export function ProjectsView() {
     <div className='max-w-7xl w-full mx-auto px-6 py-6 flex-1 flex flex-col'>
       {isError && (
         <div className='flex flex-col items-center justify-center flex-1 gap-4 text-center select-none'>
-          <AlertCircle className='w-10 h-10 text-destructive' />
+          <AlertCircle className='w-10 h-10 text-danger' />
           <div>
             <p className='font-semibold text-lg'>Failed to load projects</p>
-            <p className='text-muted-foreground text-sm mt-1'>
+            <p className='text-default-500 text-sm mt-1'>
               Check that the backend server is running on port 3000
             </p>
           </div>
-          <Button variant='outline' onClick={() => refetch()}>
+          <Button variant='outline' onPress={() => refetch()}>
             <RefreshCw className='mr-2 h-4 w-4' />
             Retry
           </Button>
@@ -91,14 +80,14 @@ export function ProjectsView() {
         <div className='space-y-6'>
           <div className='flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center'>
             <div className='flex flex-1 gap-3 w-full max-w-md'>
-              <Skeleton className='h-9 flex-1' />
-              <Skeleton className='h-9 w-45' />
+              <Skeleton className='h-9 flex-1 rounded-lg' />
+              <Skeleton className='h-9 w-45 rounded-lg' />
             </div>
-            <Skeleton className='h-9 w-32' />
+            <Skeleton className='h-9 w-32 rounded-lg' />
           </div>
           <div className='space-y-1.5'>
-            <Skeleton className='h-7 w-28' />
-            <Skeleton className='h-4 w-16' />
+            <Skeleton className='h-7 w-28 rounded-lg' />
+            <Skeleton className='h-4 w-16 rounded-lg' />
           </div>
           <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'>
             {Array.from({ length: 4 }).map((_, i) => (
@@ -116,97 +105,77 @@ export function ProjectsView() {
           <div className='flex flex-col md:flex-row gap-4 justify-between items-start xl:items-center'>
             <div className='flex flex-col xl:flex-row gap-3 w-full'>
               {/* Search */}
-              <div className='relative'>
-                <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground select-none' />
+              <div className='relative w-full xl:w-80'>
                 <Input
-                  type='search'
+                  aria-label='Search projects'
                   placeholder='Search by project name...'
-                  className='pl-9 h-9 w-full xl:w-80 bg-background border-border/80 focus-visible:ring-primary/50'
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  className='w-full pl-9'
                 />
+                <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-default-400 pointer-events-none' />
               </div>
 
               {/* Kernel Filter Dropdown */}
-              <div className='relative w-full xl:w-50 select-none'>
-                <Select
-                  value={filterKernel === 'all' ? '' : filterKernel}
-                  onValueChange={(value) =>
-                    setFilterKernel(value as 'all' | 'replicad' | 'openscad')
-                  }
-                >
-                  <SelectTrigger
-                    className={cn(
-                      'w-full h-9 border-border/80 bg-background',
-                      filterKernel !== 'all' && '[&>svg:last-child]:invisible',
-                    )}
-                  >
-                    <SelectValue placeholder='All Kernels' />
-                  </SelectTrigger>
-                  <SelectContent position='popper'>
-                    <SelectItem value='replicad'>
-                      <div className='flex items-center gap-2'>
-                        <img
-                          src={KERNEL_INFO.replicad.image}
-                          alt='Replicad'
-                          className='h-4 w-4 object-contain shrink-0'
-                        />
-                        <span>Replicad</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value='openscad'>
-                      <div className='flex items-center gap-2'>
-                        <img
-                          src={KERNEL_INFO.openscad.image}
-                          alt='OpenSCAD'
-                          className='h-4 w-4 object-contain shrink-0'
-                        />
-                        <span>OpenSCAD</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                {filterKernel !== 'all' && (
-                  <button
-                    type='button'
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setFilterKernel('all')
-                    }}
-                    className='absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors'
-                  >
-                    <X className='h-3 w-3' />
-                  </button>
-                )}
-              </div>
+              <Select
+                aria-label='Filter by Kernel'
+                className='w-full xl:w-50'
+                selectedKey={filterKernel}
+                onSelectionChange={(key) =>
+                  setFilterKernel(key as 'all' | 'replicad' | 'openscad')
+                }
+              >
+                <Select.Trigger>
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    <ListBox.Item id='all' textValue='All Kernels'>
+                      All Kernels
+                    </ListBox.Item>
+                    <ListBox.Item id='replicad' textValue='Replicad'>
+                      Replicad
+                    </ListBox.Item>
+                    <ListBox.Item id='openscad' textValue='OpenSCAD'>
+                      OpenSCAD
+                    </ListBox.Item>
+                  </ListBox>
+                </Select.Popover>
+              </Select>
 
               {/* Sort By Dropdown */}
               <Select
-                value={sortBy}
-                onValueChange={(value) =>
-                  setSortBy(value as 'last_accessed_at' | 'created_at')
+                aria-label='Sort By'
+                className='w-full xl:w-44'
+                selectedKey={sortBy}
+                onSelectionChange={(key) =>
+                  setSortBy(key as 'last_accessed_at' | 'created_at')
                 }
               >
-                <SelectTrigger className='w-full xl:w-44 h-9 border-border/80 bg-background'>
-                  <SelectValue placeholder='Sort by' />
-                </SelectTrigger>
-                <SelectContent position='popper'>
-                  <SelectItem value='last_accessed_at'>
-                    Last Accessed
-                  </SelectItem>
-                  <SelectItem value='created_at'>Created Date</SelectItem>
-                </SelectContent>
+                <Select.Trigger>
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    <ListBox.Item
+                      id='last_accessed_at'
+                      textValue='Last Accessed'
+                    >
+                      Last Accessed
+                    </ListBox.Item>
+                    <ListBox.Item id='created_at' textValue='Created Date'>
+                      Created Date
+                    </ListBox.Item>
+                  </ListBox>
+                </Select.Popover>
               </Select>
             </div>
 
             {/* New Project Button */}
-            <Button
-              size='sm'
-              onClick={() => setNewProjectOpen(true)}
-              className='shrink-0 select-none'
-            >
-              <Plus className='h-4 w-4 mr-1.5' />
+            <Button size='sm' onPress={() => setNewProjectOpen(true)}>
+              <Plus className='h-4 w-4' />
               New Project
             </Button>
           </div>
@@ -214,7 +183,7 @@ export function ProjectsView() {
           {/* Project Listing Header */}
           <div className='flex justify-between items-end'>
             <div>
-              <p className='text-muted-foreground text-sm mt-0.5 select-none'>
+              <p className='text-default-500 text-sm mt-0.5 select-none'>
                 {(() => {
                   const count = filteredProjects?.length ?? 0
                   const isFiltered =
@@ -240,31 +209,25 @@ export function ProjectsView() {
                   onClick={() => navigate(`/project/${project.id}`)}
                   onRename={() => setRenameTarget(project)}
                   onDelete={() => setDeleteTarget(project)}
-                  // Note: the original onRename / onDelete triggers setting targets
-                  // Let's match the original Dashboard.tsx logic:
-                  // onRename={() => setRenameTarget(project)}
-                  // onDelete={() => setDeleteTarget(project)}
                 />
               ))}
             </div>
           ) : (
-            <div className='flex flex-col items-center justify-center py-16 text-center select-none bg-muted/10 rounded-xl border border-dashed border-border/80'>
-              <Search className='h-8 w-8 text-muted-foreground/60 mb-3' />
-              <p className='font-medium text-muted-foreground'>
-                No projects found
-              </p>
-              <p className='text-xs text-muted-foreground/80 mt-1 max-w-xs'>
+            <div className='flex flex-col items-center justify-center py-16 text-center select-none bg-default-100 rounded-xl border border-dashed border-default-200'>
+              <Search className='h-8 w-8 text-default-400 mb-3' />
+              <p className='font-medium text-default-500'>No projects found</p>
+              <p className='text-xs text-default-400 mt-1 max-w-xs'>
                 Try adjusting your search query or kernel filter settings.
               </p>
               <Button
-                variant='link'
+                variant='ghost'
                 size='sm'
-                onClick={() => {
+                className='text-primary mt-2'
+                onPress={() => {
                   setSearchQuery('')
                   setFilterKernel('all')
                   setSortBy('last_accessed_at')
                 }}
-                className='mt-2 text-primary font-medium'
               >
                 Clear all filters
               </Button>

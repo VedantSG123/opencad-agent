@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react'
+import {
+  Group as ResizablePanelGroup,
+  Panel as ResizablePanel,
+  Separator as ResizableHandle,
+} from 'react-resizable-panels'
 import { useParams } from 'react-router'
 import { toast } from 'sonner'
 
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/components/ui/resizable'
 import { NodeOpenSCADProvider } from '@/hooks/useNodeOpenSCAD'
 import { useProjects, useUpdateProjectAccess } from '@/hooks/useProjects'
 import { cn } from '@/lib/utils'
@@ -63,15 +63,19 @@ function ProjectLayout({ project }: { project: Project }) {
   return (
     <EditorProvider project={project}>
       <FileSync />
-      <ResizablePanelGroup orientation='horizontal' className='flex-1'>
+      <ResizablePanelGroup
+        orientation='horizontal'
+        className='flex-1 flex w-full h-full'
+      >
         <ResizablePanel defaultSize={75} minSize={20}>
           <ResizablePanelGroup
             orientation='horizontal'
+            className='flex w-full h-full'
             elementRef={innerGroupRef}
           >
             <ResizablePanel
-              defaultSize={46}
-              minSize={15}
+              defaultSize={20}
+              minSize={10}
               collapsible
               collapsedSize={0}
               panelRef={codeEditorRef}

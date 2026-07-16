@@ -1,15 +1,9 @@
+import { Button, Switch } from '@heroui/react'
 import { ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router'
 
 import { PanelLeft } from '@/components/icons/PanelLeft'
 import { PanelRight } from '@/components/icons/PanelRight'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { KERNEL_INFO } from '@/constants/kernels'
 import type { Project } from '@/types/project'
 
@@ -42,26 +36,20 @@ export function TopBar({ project }: TopBarProps) {
     >
       <Button
         variant='ghost'
-        size='icon'
-        onClick={() => navigate(-1)}
+        isIconOnly
+        onPress={() => navigate(-1)}
         className='electron-no-drag shrink-0'
       >
         <ArrowLeft className='h-4 w-4' />
       </Button>
 
       {project && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <img
-              src={KERNEL_INFO[project.cad_kernel].image}
-              alt={KERNEL_INFO[project.cad_kernel].label}
-              className='h-5 w-5 object-contain shrink-0 cursor-default'
-            />
-          </TooltipTrigger>
-          <TooltipContent>
-            {KERNEL_INFO[project.cad_kernel].label}
-          </TooltipContent>
-        </Tooltip>
+        <img
+          src={KERNEL_INFO[project.cad_kernel].image}
+          alt={KERNEL_INFO[project.cad_kernel].label}
+          title={KERNEL_INFO[project.cad_kernel].label}
+          className='h-5 w-5 object-contain shrink-0 cursor-default'
+        />
       )}
 
       <span className='font-semibold truncate select-none'>
@@ -69,49 +57,37 @@ export function TopBar({ project }: TopBarProps) {
       </span>
 
       <div className='ml-auto flex items-center gap-0.5 electron-no-drag'>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className='flex items-center gap-1.5'>
-              <Switch checked={isFocusMode} onCheckedChange={toggleFocusMode} />
-              <span className='text-xs text-muted-foreground select-none'>
-                Focus
-              </span>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            {isFocusMode ? 'Exit focus mode' : 'Focus mode'}
-          </TooltipContent>
-        </Tooltip>
+        <div
+          className='flex items-center gap-1.5 cursor-pointer'
+          title={isFocusMode ? 'Exit focus mode' : 'Focus mode'}
+        >
+          <Switch
+            isSelected={isFocusMode}
+            onChange={toggleFocusMode}
+            size='sm'
+          />
+          <span className='text-xs text-default-500 select-none'>Focus</span>
+        </div>
 
-        <div className='w-px h-5 bg-border mx-1' />
+        <div className='w-px h-5 bg-default-200 mx-1' />
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={toggleCodeEditor}
-              className='p-0.5 rounded-md text-muted-foreground hover:text-foreground transition-colors'
-            >
-              <PanelLeft isCollapsed={isCodeEditorCollapsed} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {isCodeEditorCollapsed ? 'Show code editor' : 'Hide code editor'}
-          </TooltipContent>
-        </Tooltip>
+        <button
+          onClick={toggleCodeEditor}
+          className='p-0.5 rounded-md text-default-500 hover:text-foreground transition-colors'
+          title={
+            isCodeEditorCollapsed ? 'Show code editor' : 'Hide code editor'
+          }
+        >
+          <PanelLeft isCollapsed={isCodeEditorCollapsed} />
+        </button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={toggleAgent}
-              className='p-0.5 rounded-md text-muted-foreground hover:text-foreground transition-colors'
-            >
-              <PanelRight isCollapsed={isAgentCollapsed} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {isAgentCollapsed ? 'Show agent panel' : 'Hide agent panel'}
-          </TooltipContent>
-        </Tooltip>
+        <button
+          onClick={toggleAgent}
+          className='p-0.5 rounded-md text-default-500 hover:text-foreground transition-colors'
+          title={isAgentCollapsed ? 'Show agent panel' : 'Hide agent panel'}
+        >
+          <PanelRight isCollapsed={isAgentCollapsed} />
+        </button>
       </div>
     </header>
   )

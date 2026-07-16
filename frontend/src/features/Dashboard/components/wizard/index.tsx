@@ -1,8 +1,7 @@
+import { Button } from '@heroui/react'
 import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { joinPaths, normalizePath } from '@/lib/utils'
 import type { CadKernel, CreateProjectPayload } from '@/types/project'
 
@@ -104,9 +103,8 @@ export function ProjectWizard({
     state.name.trim().length > 0 && state.directory.trim().length > 0
 
   return (
-    <div className='space-y-5'>
+    <div className='space-y-5 mt-2'>
       <StepIndicator step={step} />
-      <Separator />
       <div className='min-h-55'>
         {step === 1 && (
           <ActionStep selected={state.action} onSelect={handleActionSelect} />
@@ -131,14 +129,14 @@ export function ProjectWizard({
             <Button
               variant='outline'
               size='sm'
-              onClick={handleBack}
-              disabled={isLoading}
+              onPress={handleBack}
+              isDisabled={isLoading}
             >
-              <ArrowLeft className='mr-1.5 h-4 w-4' />
+              <ArrowLeft className='h-4 w-4' />
               Back
             </Button>
           ) : onCancel ? (
-            <Button variant='ghost' size='sm' onClick={onCancel}>
+            <Button variant='ghost' size='sm' onPress={onCancel}>
               Cancel
             </Button>
           ) : (
@@ -146,7 +144,11 @@ export function ProjectWizard({
           )}
         </div>
         {step === 3 && (
-          <Button onClick={handleSubmit} disabled={!step3Valid || isLoading}>
+          <Button
+            className='bg-primary text-white'
+            onPress={handleSubmit}
+            isDisabled={!step3Valid || isLoading}
+          >
             {isLoading
               ? 'Creating…'
               : state.action === 'open'

@@ -1,3 +1,4 @@
+import { Button } from '@heroui/react'
 import { ArrowLeftRight, Code2 } from 'lucide-react'
 import * as THREE from 'three'
 
@@ -23,16 +24,18 @@ export function ViewportPanel() {
       <div className='w-full flex justify-end'>
         {isFocusMode && (
           <div className='flex items-center gap-1 border-b px-1 h-10 shrink-0'>
-            <button
-              onClick={() => setFocusedPanel('editor')}
-              className='flex items-center gap-2 px-2 h-7 text-xs rounded-md text-muted-foreground group hover:text-foreground hover:bg-accent/50 transition-colors'
+            <Button
+              onPress={() => setFocusedPanel('editor')}
+              variant='ghost'
+              size='sm'
+              className='flex items-center gap-2 px-2 h-7 text-xs rounded-md text-muted-foreground group hover:text-foreground hover:bg-accent/50 transition-colors min-w-0'
             >
               <ArrowLeftRight className='h-4 w-4 group-hover:text-blue-500' />
               <div className='flex items-center gap-1'>
                 <Code2 className='h-3.5 w-3.5' />
                 <span>Code Editor</span>
               </div>
-            </button>
+            </Button>
           </div>
         )}
       </div>

@@ -1,16 +1,6 @@
+import { Button, Card, Chip, Dropdown, Skeleton } from '@heroui/react'
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Skeleton } from '@/components/ui/skeleton'
 import { KERNEL_INFO } from '@/constants/kernels'
 import type { Project } from '@/types/project'
 import { formatRelativeTime, truncatePath } from '@/utils/date'
@@ -34,75 +24,78 @@ export function ProjectCard({
 
   return (
     <Card
-      className='group overflow-hidden hover:shadow-md transition-all cursor-pointer gap-0 py-0'
+      className='group overflow-hidden hover:shadow-md transition-all cursor-pointer gap-0'
       onClick={onClick}
     >
-      <CardContent className='p-0'>
-        <div className='relative bg-muted/40 flex items-center justify-center h-28 border-b'>
+      <Card.Content>
+        <div className='relative bg-default-100 flex items-center justify-center h-32 border-b border-default-200 -mx-4 -mt-4'>
           <img
             src={kernel.image}
             alt={kernel.label}
             className='h-14 w-14 object-contain'
           />
-          <div className='absolute top-1.5 right-1.5'>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant='ghost'
-                  size='icon'
-                  className='h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity'
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MoreHorizontal className='h-4 w-4' />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align='end'>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onRename()
+          <div className='absolute top-4 right-4'>
+            <Dropdown>
+              <Button
+                variant='ghost'
+                isIconOnly
+                className='h-7 w-7 opacity-0 group-hover:opacity-100 aria-expanded:opacity-100 transition-opacity'
+              >
+                <MoreHorizontal className='h-4 w-4' />
+              </Button>
+              <Dropdown.Popover>
+                <Dropdown.Menu
+                  aria-label='Project actions'
+                  onAction={(key) => {
+                    if (key === 'rename') onRename()
+                    if (key === 'delete') onDelete()
                   }}
                 >
-                  <Pencil className='mr-2 h-4 w-4' />
-                  Rename
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onDelete()
-                  }}
-                  className='text-destructive focus:text-destructive'
-                >
-                  <Trash2 className='mr-2 h-4 w-4' />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <Dropdown.Item id='rename' textValue='Rename'>
+                    <div className='flex items-center'>
+                      <Pencil className='mr-2 h-4 w-4' />
+                      Rename
+                    </div>
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    id='delete'
+                    textValue='Delete'
+                    variant='danger'
+                  >
+                    <div className='flex items-center'>
+                      <Trash2 className='mr-2 h-4 w-4' />
+                      Delete
+                    </div>
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown>
           </div>
         </div>
-        <div className='p-4 space-y-2'>
+        <div className='space-y-2 mt-2'>
           <div className='flex items-center justify-between gap-2'>
             <h3 className='font-semibold text-sm leading-tight truncate'>
               {project.name}
             </h3>
-            <Badge variant='secondary' className='text-xs shrink-0'>
+            <Chip
+              variant='soft'
+              color='default'
+              size='sm'
+              className='text-xs shrink-0'
+            >
               {kernel.label}
-            </Badge>
+            </Chip>
           </div>
-          <p
-            className='text-xs text-muted-foreground font-mono truncate'
-            title={project.directory}
-          >
+          <p className='text-xs truncate' title={project.directory}>
             {truncatePath(project.directory)}
           </p>
-          <p className='text-xs text-muted-foreground'>
+          <p className='text-xs text-muted'>
             {sortBy === 'created_at' || !project.time.accessed
               ? `Created at ${formatRelativeTime(project.time.created)}`
               : `Opened ${formatRelativeTime(project.time.accessed)}`}
           </p>
         </div>
-      </CardContent>
+      </Card.Content>
     </Card>
   )
 }
@@ -110,14 +103,14 @@ export function ProjectCard({
 export function ProjectCardSkeleton() {
   return (
     <Card className='overflow-hidden gap-0 py-0'>
-      <CardContent className='p-0'>
+      <Card.Content className='p-0'>
         <Skeleton className='h-28 rounded-none' />
         <div className='p-4 space-y-2'>
-          <Skeleton className='h-4 w-3/4' />
-          <Skeleton className='h-3 w-full' />
-          <Skeleton className='h-3 w-1/3' />
+          <Skeleton className='h-4 w-3/4 rounded-lg' />
+          <Skeleton className='h-3 w-full rounded-lg' />
+          <Skeleton className='h-3 w-1/3 rounded-lg' />
         </div>
-      </CardContent>
+      </Card.Content>
     </Card>
   )
 }

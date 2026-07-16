@@ -1,16 +1,7 @@
+import { Button, Modal } from '@heroui/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import {
   extractErrorMessage,
   useDeleteProject,
@@ -50,27 +41,42 @@ export function DeleteDialog({ project, onClose }: DeleteDialogProps) {
   }
 
   return (
-    <AlertDialog open={!!project} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete Project</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete{' '}
-            <strong>&quot;{project?.name}&quot;</strong>? This action cannot be
-            undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleConfirm}
-            disabled={isDeleting}
-            className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
-          >
-            {isDeleting ? 'Deleting…' : 'Delete'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Modal>
+      <Modal.Backdrop
+        isOpen={!!project}
+        onOpenChange={(open) => !open && onClose()}
+      >
+        <Modal.Container>
+          <Modal.Dialog>
+            <Modal.Header>
+              <div className='flex flex-col gap-1'>
+                <h3 className='text-lg font-bold'>Delete Project</h3>
+                <p className='text-sm font-normal text-default-500'>
+                  Are you sure you want to delete{' '}
+                  <strong>&quot;{project?.name}&quot;</strong>? This action
+                  cannot be undone.
+                </p>
+              </div>
+            </Modal.Header>
+            <Modal.Footer>
+              <Button
+                variant='outline'
+                onPress={onClose}
+                isDisabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                className='bg-danger text-white'
+                onPress={handleConfirm}
+                isDisabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting…' : 'Delete'}
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+    </Modal>
   )
 }

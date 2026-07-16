@@ -1,8 +1,8 @@
+import { Card } from '@heroui/react'
 import { Layers } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import { Card, CardContent } from '@/components/ui/card'
 import {
   extractErrorMessage,
   useCreateProject,
@@ -49,9 +49,9 @@ export function OnboardingScreen() {
           </p>
         </div>
         <Card>
-          <CardContent className='pt-6 pb-5 px-6'>
+          <Card.Content className='pt-6 pb-5 px-6'>
             <ProjectWizard onComplete={handleComplete} isLoading={isCreating} />
-          </CardContent>
+          </Card.Content>
         </Card>
       </div>
     </div>

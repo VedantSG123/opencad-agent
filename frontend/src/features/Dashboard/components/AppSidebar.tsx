@@ -1,88 +1,86 @@
+import { PanelLeftClose } from 'lucide-react'
 import { Folder, LayoutDashboard, Settings } from 'lucide-react'
 import { Link, useLocation } from 'react-router'
 
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarTrigger,
-} from '@/components/ui/sidebar'
+import { cn } from '@/lib/utils'
 
 interface AppSidebarProps {
   onSettingsClick: () => void
+  onToggle: () => void
+  isOpen: boolean
 }
 
-export function AppSidebar({ onSettingsClick }: AppSidebarProps) {
+export function AppSidebar({
+  onSettingsClick,
+  onToggle,
+  isOpen,
+}: AppSidebarProps) {
   const location = useLocation()
   const currentPath = location.pathname
 
   return (
-    <Sidebar
-      collapsible='offcanvas'
-      className='bg-background'
-      innerClassName='bg-background'
+    <aside
+      className={cn(
+        'flex flex-col h-full shrink-0 overflow-hidden border-r border-border bg-background transition-all duration-300',
+        isOpen ? 'w-64' : 'w-0',
+      )}
     >
-      <SidebarHeader>
-        <div className='w-full flex justify-end mt-1'>
-          <SidebarTrigger className='hover:bg-sidebar-accent hover:text-sidebar-accent-foreground' />
+      <div
+        className={cn(
+          'flex-1 flex flex-col min-w-64 transition-opacity duration-300',
+          isOpen ? 'opacity-100 delay-150' : 'opacity-0',
+        )}
+      >
+        {/* Collapse button at top */}
+        <div className='flex items-center justify-end px-3 py-2 border-b border-border'>
+          <button
+            onClick={onToggle}
+            className='p-2 rounded-md hover:bg-accent/50 hover:text-foreground text-muted-foreground transition-colors cursor-pointer'
+            title='Close sidebar'
+          >
+            <PanelLeftClose className='h-4 w-4' />
+          </button>
         </div>
-      </SidebarHeader>
 
-      <SidebarContent className='py-4'>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={currentPath === '/'}
-                  asChild
-                  tooltip='Dashboard'
-                  className='transition-all duration-200'
-                >
-                  <Link to='/'>
-                    <LayoutDashboard className='h-4 w-4' />
-                    <span>Dashboard</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={currentPath === '/projects'}
-                  asChild
-                  tooltip='Projects'
-                  className='transition-all duration-200'
-                >
-                  <Link to='/projects'>
-                    <Folder className='h-4 w-4' />
-                    <span>Projects</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-
-      <SidebarFooter className='p-2'>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={onSettingsClick}
-              tooltip='Settings'
-              className='transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+        <div className='flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-2'>
+          <nav className='flex flex-col gap-1'>
+            <Link
+              to='/'
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                currentPath === '/'
+                  ? 'bg-accent text-accent-foreground'
+                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+              )}
             >
-              <Settings className='h-4 w-4' />
-              <span>Settings</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
+              <LayoutDashboard className='h-4 w-4' />
+              <span>Dashboard</span>
+            </Link>
+            <Link
+              to='/projects'
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                currentPath === '/projects'
+                  ? 'bg-accent text-accent-foreground'
+                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+              )}
+            >
+              <Folder className='h-4 w-4' />
+              <span>Projects</span>
+            </Link>
+          </nav>
+        </div>
+
+        <div className='p-3 border-t border-border'>
+          <button
+            onClick={onSettingsClick}
+            className='w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer outline-none'
+          >
+            <Settings className='h-4 w-4' />
+            <span>Settings</span>
+          </button>
+        </div>
+      </div>
+    </aside>
   )
 }

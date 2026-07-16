@@ -1,13 +1,7 @@
+import { Modal } from '@heroui/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import {
   extractErrorMessage,
   useCreateProject,
@@ -51,18 +45,29 @@ export function NewProjectDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-130'>
-        <DialogHeader>
-          <DialogTitle>New Project</DialogTitle>
-          <DialogDescription>Create or import a CAD project</DialogDescription>
-        </DialogHeader>
-        <ProjectWizard
-          onComplete={handleComplete}
-          onCancel={() => onOpenChange(false)}
-          isLoading={isCreating}
-        />
-      </DialogContent>
-    </Dialog>
+    <Modal>
+      <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
+        <Modal.Container>
+          <Modal.Dialog>
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <div className='flex flex-col gap-1'>
+                <h3 className='text-xl font-semibold'>New Project</h3>
+                <p className='text-sm font-normal text-default-500'>
+                  Create or import a CAD project
+                </p>
+              </div>
+            </Modal.Header>
+            <Modal.Body className='p-1'>
+              <ProjectWizard
+                onComplete={handleComplete}
+                onCancel={() => onOpenChange(false)}
+                isLoading={isCreating}
+              />
+            </Modal.Body>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+    </Modal>
   )
 }

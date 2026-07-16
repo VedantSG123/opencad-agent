@@ -34,7 +34,7 @@ export function ActionStep({ selected, onSelect }: ActionStepProps) {
     <div className='space-y-4'>
       <div className='text-center'>
         <p className='font-semibold text-base'>What would you like to do?</p>
-        <p className='text-muted-foreground text-sm mt-0.5'>
+        <p className='text-default-500 text-sm mt-0.5'>
           Choose how you&apos;d like to start
         </p>
       </div>
@@ -45,25 +45,25 @@ export function ActionStep({ selected, onSelect }: ActionStepProps) {
             onClick={() => onSelect(key)}
             className={cn(
               'flex flex-col items-center gap-3 p-5 rounded-xl border-2 cursor-pointer transition-all text-center',
-              'hover:border-primary hover:bg-primary/5',
+              'hover:border-accent-soft hover:bg-accent-soft',
               selected === key
-                ? 'border-primary bg-primary/5'
-                : 'border-border bg-card',
+                ? 'border-accent-soft bg-accent-soft'
+                : 'border-default bg-surface',
             )}
           >
             <div
               className={cn(
                 'w-11 h-11 rounded-xl flex items-center justify-center transition-colors',
                 selected === key
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground',
+                  ? 'bg-accent text-accent-foreground'
+                  : 'bg-default text-default-500',
               )}
             >
               <Icon className='w-5 h-5' />
             </div>
             <div>
               <p className='font-semibold text-sm'>{title}</p>
-              <p className='text-muted-foreground text-xs mt-0.5 leading-relaxed'>
+              <p className='text-default-500 text-xs mt-0.5 leading-relaxed'>
                 {desc}
               </p>
             </div>

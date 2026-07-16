@@ -1,6 +1,6 @@
+import { Button } from '@heroui/react'
 import { Moon, Sun } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
 import { useTheme } from '@/contexts/theme-context'
 
 export function ThemeToggle() {
@@ -13,8 +13,8 @@ export function ThemeToggle() {
   return (
     <Button
       variant='ghost'
-      size='icon'
-      onClick={toggleTheme}
+      isIconOnly
+      onPress={toggleTheme}
       className='h-8 w-8'
     >
       {theme === 'dark' ? (

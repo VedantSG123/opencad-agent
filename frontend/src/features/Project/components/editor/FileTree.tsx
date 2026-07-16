@@ -13,11 +13,6 @@ import { toast } from 'sonner'
 
 import type { TreeRenderItemParams } from '@/components/tree-view'
 import { type TreeDataItem, TreeView } from '@/components/tree-view'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { cn, toFsPath } from '@/lib/utils'
 
 import { usePanelContext } from '../../context/PanelContext'
@@ -263,23 +258,16 @@ function useMainFileRenderItem(
               <Icon className='h-4 w-4 shrink-0 mr-2 text-muted-foreground' />
             )}
             {isMain && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Crown className='h-3 w-3 shrink-0 mr-1.5 text-amber-400' />
-                </TooltipTrigger>
-                <TooltipContent>Main entry file</TooltipContent>
-              </Tooltip>
+              <span title='Main entry file' className='flex items-center'>
+                <Crown className='h-3 w-3 shrink-0 mr-1.5 text-amber-400' />
+              </span>
             )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className={cn('text-sm truncate', isLeaf && 'grow')}>
-                  {item.name}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <span className='font-mono text-xs'>{item.id}</span>
-              </TooltipContent>
-            </Tooltip>
+            <span
+              className={cn('text-sm truncate', isLeaf && 'grow')}
+              title={item.id}
+            >
+              {item.name}
+            </span>
           </div>
         </div>
       )
@@ -536,30 +524,20 @@ export function FileTree() {
             Files
           </p>
           <div className='flex items-center gap-1.5'>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => startCreation('file')}
-                  className='p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer'
-                  aria-label='New File'
-                >
-                  <FilePlus className='h-3.5 w-3.5' />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>New File</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => startCreation('folder')}
-                  className='p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer'
-                  aria-label='New Folder'
-                >
-                  <FolderPlus className='h-3.5 w-3.5' />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>New Folder</TooltipContent>
-            </Tooltip>
+            <button
+              onClick={() => startCreation('file')}
+              className='p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer'
+              title='New File'
+            >
+              <FilePlus className='h-3.5 w-3.5' />
+            </button>
+            <button
+              onClick={() => startCreation('folder')}
+              className='p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer'
+              title='New Folder'
+            >
+              <FolderPlus className='h-3.5 w-3.5' />
+            </button>
           </div>
         </div>
         <div className='flex-1 overflow-auto'>

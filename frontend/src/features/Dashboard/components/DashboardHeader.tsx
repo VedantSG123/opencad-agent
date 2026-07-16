@@ -1,7 +1,7 @@
+import { Button } from '@heroui/react'
 import { Layers, Plus } from 'lucide-react'
 
 import { ThemeToggle } from '@/components/custom/ThemeToggle'
-import { Button } from '@/components/ui/button'
 
 interface DashboardHeaderProps {
   onNewProject: () => void
@@ -32,7 +32,7 @@ export function DashboardHeader({ onNewProject }: DashboardHeaderProps) {
           </span>
         </div>
         <div className='flex items-center gap-2 electron-no-drag'>
-          <Button size='sm' onClick={onNewProject} className='electron-no-drag'>
+          <Button size='sm' onPress={onNewProject} className='electron-no-drag'>
             <Plus className='h-4 w-4 mr-1.5' />
             New Project
           </Button>

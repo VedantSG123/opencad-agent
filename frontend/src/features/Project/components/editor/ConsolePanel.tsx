@@ -1,8 +1,7 @@
+import { Button } from '@heroui/react'
 import { ChevronDown, Terminal, Trash2 } from 'lucide-react'
 import * as React from 'react'
 
-import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { usePanelContext } from '@/features/Project/context/PanelContext'
 import { type LogEntry, useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
 import { useReplicad } from '@/hooks/useReplicad'
@@ -48,20 +47,22 @@ function ConsolePanelBase({ logs, clearLogs, error }: ConsolePanelBaseProps) {
         <div className='flex items-center gap-1'>
           <Button
             variant='ghost'
-            size='icon'
-            onClick={clearLogs}
-            className='h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors'
-            title='Clear console'
-            disabled={logs.length === 0}
+            isIconOnly
+            size='sm'
+            onPress={clearLogs}
+            className='h-6 w-6 min-w-6 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors'
+            aria-label='Clear console'
+            isDisabled={logs.length === 0}
           >
             <Trash2 className='h-3.5 w-3.5' />
           </Button>
           <Button
             variant='ghost'
-            size='icon'
-            onClick={toggleConsole}
-            className='h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors'
-            title='Minimize console'
+            isIconOnly
+            size='sm'
+            onPress={toggleConsole}
+            className='h-6 w-6 min-w-6 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors'
+            aria-label='Minimize console'
           >
             <ChevronDown className='h-4 w-4' />
           </Button>
@@ -69,7 +70,7 @@ function ConsolePanelBase({ logs, clearLogs, error }: ConsolePanelBaseProps) {
       </div>
 
       {/* Console Output Scroll Area */}
-      <ScrollArea ref={scrollRef} className='flex-1 min-h-0'>
+      <div ref={scrollRef} className='flex-1 min-h-0 overflow-y-auto'>
         <div className='p-3 font-mono text-xs leading-relaxed space-y-1.5'>
           {logs.length === 0 ? (
             <div className='h-full flex items-center justify-center text-muted-foreground italic select-none'>
@@ -86,11 +87,10 @@ function ConsolePanelBase({ logs, clearLogs, error }: ConsolePanelBaseProps) {
                   key={log.timestamp + '-' + index}
                   className={cn(
                     'px-2 py-1 rounded-sm whitespace-pre-wrap break-all border-l-2 border-transparent animate-in fade-in duration-200 slide-in-from-bottom-1',
-                    isError &&
-                      'bg-destructive/10 text-destructive border-destructive',
+                    isError && 'bg-danger/10 text-danger border-danger',
                     isWarn &&
-                      'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/80',
-                    isInfo && 'text-sky-600 dark:text-sky-400',
+                      'bg-warning/10 text-warning dark:text-warning border-warning/80',
+                    isInfo && 'text-primary dark:text-primary',
                     !isError && !isWarn && !isInfo && 'text-foreground',
                   )}
                 >
@@ -103,7 +103,7 @@ function ConsolePanelBase({ logs, clearLogs, error }: ConsolePanelBaseProps) {
             })
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   )
 }

@@ -1,12 +1,6 @@
+import { PanelLeft } from 'lucide-react'
 import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router'
-
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
-} from '@/components/ui/sidebar'
 
 import { AppSidebar } from './components/AppSidebar'
 import { SettingsDialog } from './components/SettingsDialog'
@@ -14,8 +8,8 @@ import { SettingsDialog } from './components/SettingsDialog'
 export { DashboardView } from './components/DashboardView'
 export { ProjectsView } from './components/ProjectsView'
 
-function DashboardLayoutInner() {
-  const { open } = useSidebar()
+export function Dashboard() {
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const location = useLocation()
   const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -27,9 +21,13 @@ function DashboardLayoutInner() {
     location.pathname === '/projects' ? 'projects' : 'dashboard'
 
   return (
-    <>
-      <AppSidebar onSettingsClick={() => setSettingsOpen(true)} />
-      <SidebarInset className='min-h-screen flex flex-col bg-background'>
+    <div className='flex h-screen w-full overflow-hidden'>
+      <AppSidebar
+        onSettingsClick={() => setSettingsOpen(true)}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        isOpen={sidebarOpen}
+      />
+      <div className='flex-1 flex flex-col bg-background min-w-0'>
         <header
           className={`h-14 shrink-0 flex items-center px-4 border-b border-border select-none ${
             isElectron ? 'electron-drag' : ''
@@ -40,9 +38,13 @@ function DashboardLayoutInner() {
               isMac ? 'pl-[80px]' : ''
             } ${isWinOrLinux ? 'pr-[140px]' : ''}`}
           >
-            {!open && (
-              <SidebarTrigger className='hover:bg-muted hover:text-foreground transition-all duration-200' />
-            )}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className='p-2 -ml-2 rounded-md hover:bg-muted hover:text-foreground transition-all duration-200 cursor-pointer'
+              title='Toggle Sidebar'
+            >
+              <PanelLeft className='h-4 w-4' />
+            </button>
             <span className='font-semibold capitalize select-none'>
               {currentView}
             </span>
@@ -52,18 +54,11 @@ function DashboardLayoutInner() {
         <main className='flex-1 flex flex-col overflow-auto bg-background/50'>
           <Outlet />
         </main>
-      </SidebarInset>
+      </div>
 
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-    </>
+    </div>
   )
 }
 
-export function Dashboard() {
-  return (
-    <SidebarProvider>
-      <DashboardLayoutInner />
-    </SidebarProvider>
-  )
-}
 export default Dashboard
