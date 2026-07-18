@@ -110,7 +110,7 @@ function MonacoEditorBase({
   onContentChange,
   onClearContent,
 }: MonacoEditorBaseProps) {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const { isFocusMode, focusedPanel } = usePanelContext()
   const isTransparent = isFocusMode && focusedPanel === 'editor'
   const containerRef = useRef<HTMLDivElement>(null)
@@ -270,14 +270,16 @@ function MonacoEditorBase({
   useEffect(() => {
     if (isTransparent) {
       monaco.editor.setTheme(
-        theme === 'dark'
+        resolvedTheme === 'dark'
           ? 'custom-vs-dark-transparent'
           : 'custom-vs-transparent',
       )
     } else {
-      monaco.editor.setTheme(theme === 'dark' ? 'custom-vs-dark' : 'custom-vs')
+      monaco.editor.setTheme(
+        resolvedTheme === 'dark' ? 'custom-vs-dark' : 'custom-vs',
+      )
     }
-  }, [theme, isTransparent])
+  }, [resolvedTheme, isTransparent])
 
   // ── Switch model and attach change listener when active path changes ───────────
 

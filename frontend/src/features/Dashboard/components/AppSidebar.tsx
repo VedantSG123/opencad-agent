@@ -1,27 +1,25 @@
-import { PanelLeftClose } from 'lucide-react'
 import { Folder, LayoutDashboard, Settings } from 'lucide-react'
 import { Link, useLocation } from 'react-router'
 
+import { usePlatform } from '@/hooks/usePlatform'
 import { cn } from '@/lib/utils'
 
 interface AppSidebarProps {
   onSettingsClick: () => void
-  onToggle: () => void
   isOpen: boolean
 }
 
-export function AppSidebar({
-  onSettingsClick,
-  onToggle,
-  isOpen,
-}: AppSidebarProps) {
+export function AppSidebar({ onSettingsClick, isOpen }: AppSidebarProps) {
   const location = useLocation()
   const currentPath = location.pathname
+
+  const { isWin } = usePlatform()
 
   return (
     <aside
       className={cn(
-        'flex flex-col h-full shrink-0 overflow-hidden border-r border-border bg-background transition-all duration-300',
+        'flex flex-col h-full shrink-0 overflow-hidden transition-all duration-300',
+        isWin ? '' : 'border-r border-border',
         isOpen ? 'w-64' : 'w-0',
       )}
     >
@@ -31,17 +29,6 @@ export function AppSidebar({
           isOpen ? 'opacity-100 delay-150' : 'opacity-0',
         )}
       >
-        {/* Collapse button at top */}
-        <div className='flex items-center justify-end px-3 py-2 border-b border-border'>
-          <button
-            onClick={onToggle}
-            className='p-2 rounded-md hover:bg-accent/50 hover:text-foreground text-muted-foreground transition-colors cursor-pointer'
-            title='Close sidebar'
-          >
-            <PanelLeftClose className='h-4 w-4' />
-          </button>
-        </div>
-
         <div className='flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-2'>
           <nav className='flex flex-col gap-1'>
             <Link

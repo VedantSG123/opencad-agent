@@ -1,3 +1,5 @@
+import type { AppSettings, ResolvedTheme, ThemeSetting } from 'shared'
+
 export interface WatchEvent {
   event: 'fs:watch'
   type: 'change' | 'add' | 'unlink' | 'addDir' | 'unlinkDir'
@@ -41,7 +43,11 @@ export interface ElectronAPI {
   isElectron: boolean
   backendPort: number
   platform: string
-  updateTheme: (theme: 'dark' | 'light') => void
+  initialTheme: ThemeSetting
+  initialResolvedTheme: ResolvedTheme
+  getSettings: () => Promise<Result<AppSettings>>
+  setTheme: (theme: ThemeSetting) => Promise<Result<ResolvedTheme>>
+  onThemeUpdated: (handler: (theme: ResolvedTheme) => void) => () => void
   pingBackend: () => Promise<Result<string>>
   openFileDialog: (options: {
     mode: 'file' | 'directory'

@@ -2,15 +2,14 @@ import { Button } from '@heroui/react'
 import { Layers, Plus } from 'lucide-react'
 
 import { ThemeToggle } from '@/components/custom/ThemeToggle'
+import { usePlatform } from '@/hooks/usePlatform'
 
 interface DashboardHeaderProps {
   onNewProject: () => void
 }
 
 export function DashboardHeader({ onNewProject }: DashboardHeaderProps) {
-  const isElectron = typeof window !== 'undefined' && !!window.electron
-  const isMac = isElectron && window.electron?.platform === 'darwin'
-  const isWinOrLinux = isElectron && window.electron?.platform !== 'darwin'
+  const { isElectron, isMac, isWinOrLinux } = usePlatform()
 
   return (
     <header

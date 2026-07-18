@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router'
 import { PanelLeft } from '@/components/icons/PanelLeft'
 import { PanelRight } from '@/components/icons/PanelRight'
 import { KERNEL_INFO } from '@/constants/kernels'
+import { usePlatform } from '@/hooks/usePlatform'
 import type { Project } from '@/types/project'
 
 import { usePanelContext } from '../context/PanelContext'
@@ -24,9 +25,7 @@ export function TopBar({ project }: TopBarProps) {
     toggleFocusMode,
   } = usePanelContext()
 
-  const isElectron = typeof window !== 'undefined' && !!window.electron
-  const isMac = isElectron && window.electron?.platform === 'darwin'
-  const isWinOrLinux = isElectron && window.electron?.platform !== 'darwin'
+  const { isElectron, isMac, isWinOrLinux } = usePlatform()
 
   return (
     <header

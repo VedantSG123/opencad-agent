@@ -23,13 +23,14 @@
     "@zenfs/core": "^2.5.7",
     "chokidar": "^5.0.0",
     "comctx": "^1.7.5",
-    "fflate": "^0.8.3"
+    "fflate": "^0.8.3",
+    "shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.14.2",
     "concurrently": "^8.2.2",
-    "electron": "^30.0.1",
-    "electron-builder": "^24.13.3",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3",
     "jiti": "^2.7.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.0"

@@ -47,6 +47,6 @@ const lightTheme = {
 }
 
 export function useLevaTheme() {
-  const { theme } = useTheme()
-  return theme === 'dark' ? darkTheme : lightTheme
+  const { resolvedTheme } = useTheme()
+  return resolvedTheme === 'dark' ? darkTheme : lightTheme
 }

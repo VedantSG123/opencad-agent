@@ -1,13 +1,19 @@
 import { Button } from '@heroui/react'
-import { Moon, Sun } from 'lucide-react'
+import { Monitor, Moon, Sun } from 'lucide-react'
 
 import { useTheme } from '@/contexts/theme-context'
+
+const NEXT_THEME = {
+  light: 'dark',
+  dark: 'system',
+  system: 'light',
+} as const
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
 
   function toggleTheme() {
-    setTheme(theme === 'dark' ? 'light' : 'dark')
+    setTheme(NEXT_THEME[theme])
   }
 
   return (
@@ -18,9 +24,11 @@ export function ThemeToggle() {
       className='h-8 w-8'
     >
       {theme === 'dark' ? (
-        <Sun className='h-4 w-4' />
-      ) : (
         <Moon className='h-4 w-4' />
+      ) : theme === 'system' ? (
+        <Monitor className='h-4 w-4' />
+      ) : (
+        <Sun className='h-4 w-4' />
       )}
     </Button>
   )

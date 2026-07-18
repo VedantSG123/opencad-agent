@@ -3,22 +3,25 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
+    "shared",
     "backend",
     "frontend",
     "electron"
   ],
   "scripts": {
-    "dev": "concurrently -k -n \"frontend,electron\" -c \"blue,green\" \"(cd frontend && bun dev)\" \"(cd electron && bun dev)\"",
+    "dev": "bun run build:shared && concurrently -k -n \"frontend,electron\" -c \"blue,green\" \"(cd frontend && bun dev)\" \"(cd electron && bun dev)\"",
+    "build:shared": "(cd shared && bun run build)",
     "build:frontend": "(cd frontend && bun run build)",
     "build:backend": "(cd backend && bun run build)",
     "build:electron": "(cd electron && bun run build)",
-    "build": "bun run build:frontend && bun run build:backend && bun run build:electron",
+    "build": "bun run build:shared && bun run build:frontend && bun run build:backend && bun run build:electron",
+    "lint:shared": "(cd shared && bun run lint)",
     "lint:frontend": "(cd frontend && bun run lint)",
     "lint:backend": "(cd backend && bun run lint)",
     "lint:electron": "(cd electron && bun run lint)",
-    "lint": "bun run lint:frontend && bun run lint:backend && bun run lint:electron",
-    "format": "prettier --write \"{backend,frontend,electron}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,json,css}\" \"*.{json,mjs,mts}\"",
-    "format:check": "prettier --check \"{backend,frontend,electron}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,json,css}\" \"*.{json,mjs,mts}\"",
+    "lint": "bun run lint:shared && bun run lint:frontend && bun run lint:backend && bun run lint:electron",
+    "format": "prettier --write \"{shared,backend,frontend,electron}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,json,css}\" \"*.{json,mjs,mts}\"",
+    "format:check": "prettier --check \"{shared,backend,frontend,electron}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,json,css}\" \"*.{json,mjs,mts}\"",
     "package": "bun run build && (cd electron && bun run package)"
   },
   "devDependencies": {
