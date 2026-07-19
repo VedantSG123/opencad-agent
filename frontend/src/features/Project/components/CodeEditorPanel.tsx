@@ -1,8 +1,9 @@
 import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/components/ui/resizable'
+  Group as ResizablePanelGroup,
+  Panel as ResizablePanel,
+  Separator as ResizableHandle,
+} from 'react-resizable-panels'
+
 import { usePanelContext } from '@/features/Project/context/PanelContext'
 
 import { ConsolePanel } from './editor/ConsolePanel'
@@ -16,10 +17,13 @@ export function CodeEditorPanel() {
 
   return (
     <div className='h-full flex flex-col overflow-hidden'>
-      <div className='bg-card'>
+      <div className='bg-background'>
         <RibbonBar />
       </div>
-      <ResizablePanelGroup orientation='vertical' className='flex-1'>
+      <ResizablePanelGroup
+        orientation='vertical'
+        className='flex-1 flex flex-col w-full h-full'
+      >
         <ResizablePanel defaultSize={80} minSize={30}>
           <div className='flex flex-1 h-full overflow-hidden'>
             <FileTree />

@@ -3,7 +3,14 @@
 import { fileURLToPath } from 'node:url'
 
 import { spawn } from 'child_process'
-import { app, BrowserWindow, dialog, ipcMain, safeStorage } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  nativeTheme,
+  safeStorage,
+} from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -11,9 +18,12 @@ import { registerBackendIpc } from './ipc/backend.js'
 import { registerDialogIpc } from './ipc/dialog.js'
 import { registerFsIpc } from './ipc/fs.js'
 import { registerOpenSCADIpc } from './ipc/openscad.js'
+import { registerSettingsIpc } from './ipc/settings.js'
 import { registerWorkspaceIpc } from './ipc/workspace.js'
 import { createHandler } from './utils/ipc-utils.js'
 import { findFreePort } from './utils/network.js'
+import { getSettings } from './utils/settings.js'
+import { getResolvedTheme, getTitleBarOverlay } from './utils/theme.js'
 import {
   startVaultServer,
   stopVaultServer,
@@ -118,7 +128,16 @@ function startBackend(port: number, vaultPort: number, vaultSecret: string) {
 
 function createWindow(port: number) {
   const isMac = process.platform === 'darwin'
-  const macTrafficLightPosition = { x: 14, y: 16 }
+  const isWin = process.platform === 'win32'
+  // Vertically centered against the same 36px titlebar height used for the
+  // Windows/Linux overlay (see getTitleBarOverlay), for a consistent look.
+  const macTrafficLightPosition = { x: 14, y: 9 }
+
+  // Reflect the persisted theme preference in the native theme before the
+  // window is created, so the initial titlebar overlay and the renderer's
+  // first paint both match (rather than briefly flashing 'light').
+  nativeTheme.themeSource = getSettings().appearance.theme
+  const resolvedTheme = getResolvedTheme()
 
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -130,19 +149,20 @@ function createWindow(port: number) {
           trafficLightPosition: macTrafficLightPosition,
         }
       : {
-          titleBarOverlay: {
-            color: '#09090b',
-            symbolColor: '#a1a1aa',
-            height: 48,
-          },
+          titleBarOverlay: getTitleBarOverlay(resolvedTheme),
         }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      additionalArguments: [`--backend-port=${port}`],
+      additionalArguments: [
+        `--backend-port=${port}`,
+        `--initial-theme=${getSettings().appearance.theme}`,
+        `--initial-resolved-theme=${resolvedTheme}`,
+      ],
     },
     autoHideMenuBar: true,
+    ...(isWin ? { backgroundMaterial: 'mica' } : {}),
   })
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL
@@ -190,6 +210,7 @@ app.whenReady().then(async () => {
     registerFsIpc(ipcMain)
     registerWorkspaceIpc(ipcMain, backendPort)
     registerOpenSCADIpc(ipcMain)
+    registerSettingsIpc(ipcMain, () => mainWindow)
 
     // Secure credentials IPC handlers for frontend
     ipcMain.handle(
@@ -205,20 +226,6 @@ app.whenReady().then(async () => {
         return safeStorage.isEncryptionAvailable()
       }),
     )
-
-    ipcMain.on('theme:change', (_event, theme: 'dark' | 'light') => {
-      if (
-        mainWindow &&
-        !mainWindow.isDestroyed() &&
-        process.platform !== 'darwin'
-      ) {
-        mainWindow.setTitleBarOverlay({
-          color: theme === 'dark' ? '#0a0a0a' : '#e9e4d8',
-          symbolColor: theme === 'dark' ? '#c2c2c2' : '#1e1e1e',
-          height: 48,
-        })
-      }
-    })
 
     // Broadcast performance metrics every second
     setInterval(() => {

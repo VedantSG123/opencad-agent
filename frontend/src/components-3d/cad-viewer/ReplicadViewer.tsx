@@ -1,7 +1,7 @@
 import type * as React from 'react'
 
+import { ErrorBoundary } from '@/components/custom/ErrorBoundary'
 import { ReplicadSVGViewer } from '@/components/custom/SvgViewer'
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import type { MeshRenderOutput, SvgRenderOutput } from '@/types'
 
 import type { StageHandle } from '../helpers/Stage'

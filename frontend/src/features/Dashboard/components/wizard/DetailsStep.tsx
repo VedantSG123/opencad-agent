@@ -1,8 +1,7 @@
-import { FolderOpen, Loader2 } from 'lucide-react'
+import { Button, Input, Label } from '@heroui/react'
+import { FolderOpenIcon, Loading02Icon } from '@hugeicons/core-free-icons'
 
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Icon } from '@/components/icons/HugeIcon'
 import { useFileDialog } from '@/hooks/useFileDialog'
 import { joinPaths, normalizePath } from '@/lib/utils'
 import type { CadKernel } from '@/types/project'
@@ -53,7 +52,7 @@ export function DetailsStep({
     <div className='space-y-4'>
       <div className='text-center'>
         <p className='font-semibold text-base'>Project Details</p>
-        <p className='text-muted-foreground text-sm mt-0.5'>
+        <p className='text-foreground/60 text-sm mt-0.5'>
           {isOpen
             ? 'Select the existing project directory'
             : 'Configure your new project'}
@@ -62,36 +61,43 @@ export function DetailsStep({
       <div className='space-y-3'>
         {isOpen && (
           <div className='space-y-1.5'>
-            <Label htmlFor='wiz-dir-open'>Project Directory</Label>
-            <div className='flex gap-2'>
-              <Input
-                id='wiz-dir-open'
-                placeholder='/home/user/projects/mymodel'
-                value={directory}
-                onChange={(e) => onDirectoryChange(e.target.value)}
-                autoFocus
-              />
+            <div className='flex gap-2 items-end'>
+              <div className='flex flex-col gap-1.5 flex-1'>
+                <Label htmlFor='wiz-dir-open'>Project Directory</Label>
+                <Input
+                  id='wiz-dir-open'
+                  placeholder='/home/user/projects/mymodel'
+                  value={directory}
+                  onChange={(e) => onDirectoryChange(e.target.value)}
+                  autoFocus
+                  className='w-full'
+                />
+              </div>
               <Button
                 type='button'
                 variant='outline'
-                size='icon'
-                onClick={handleBrowseDirectory}
-                disabled={fileDialog.isActive}
-                title='Browse for project directory'
+                isIconOnly
+                onPress={handleBrowseDirectory}
+                isDisabled={fileDialog.isActive}
+                aria-label='Browse for project directory'
               >
                 {fileDialog.isActive ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
+                  <Icon
+                    icon={Loading02Icon}
+                    size={16}
+                    className='animate-spin'
+                  />
                 ) : (
-                  <FolderOpen className='h-4 w-4' />
+                  <Icon icon={FolderOpenIcon} size={16} />
                 )}
               </Button>
             </div>
-            <p className='text-xs text-muted-foreground'>
+            <p className='text-xs text-foreground/60'>
               Root directory of your existing CAD project
             </p>
           </div>
         )}
-        <div className='space-y-1.5'>
+        <div className='flex flex-col gap-1'>
           <Label htmlFor='wiz-name'>Project Name</Label>
           <Input
             id='wiz-name'
@@ -99,35 +105,43 @@ export function DetailsStep({
             value={name}
             onChange={(e) => onNameChange(e.target.value)}
             autoFocus={!isOpen}
+            className='w-full'
           />
         </div>
         {!isOpen && (
-          <div className='space-y-1.5'>
-            <Label htmlFor='wiz-dir'>Projects Directory</Label>
-            <div className='flex gap-2'>
-              <Input
-                id='wiz-dir'
-                placeholder='/home/user/projects'
-                value={directory}
-                onChange={(e) => onDirectoryChange(e.target.value)}
-              />
+          <div className='flex flex-col gap-4 mt-4'>
+            <div className='flex gap-2 items-end mt-2'>
+              <div className='flex flex-col gap-1 flex-1'>
+                <Label htmlFor='wiz-dir'>Projects Directory</Label>
+                <Input
+                  id='wiz-dir'
+                  placeholder='/home/user/projects'
+                  value={directory}
+                  onChange={(e) => onDirectoryChange(e.target.value)}
+                  className='w-full'
+                />
+              </div>
               <Button
                 type='button'
-                variant='outline'
-                size='icon'
-                onClick={handleBrowseDirectory}
-                disabled={fileDialog.isActive}
-                title='Browse for directory'
+                variant='tertiary'
+                isIconOnly
+                onPress={handleBrowseDirectory}
+                isDisabled={fileDialog.isActive}
+                aria-label='Browse for directory'
               >
                 {fileDialog.isActive ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
+                  <Icon
+                    icon={Loading02Icon}
+                    size={16}
+                    className='animate-spin'
+                  />
                 ) : (
-                  <FolderOpen className='h-4 w-4' />
+                  <Icon icon={FolderOpenIcon} size={16} />
                 )}
               </Button>
             </div>
             {scriptPathPreview && (
-              <p className='text-xs text-muted-foreground font-mono'>
+              <p className='text-xs text-foreground/60 font-mono'>
                 Project script path: {scriptPathPreview}
               </p>
             )}

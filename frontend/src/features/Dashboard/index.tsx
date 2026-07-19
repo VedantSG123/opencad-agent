@@ -1,12 +1,11 @@
+import { LayoutAlignLeftIcon, LayoutLeftIcon } from '@hugeicons/core-free-icons'
 import { useState } from 'react'
-import { Outlet, useLocation } from 'react-router'
+import { Outlet } from 'react-router'
 
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
-} from '@/components/ui/sidebar'
+import { TitlebarIconButton } from '@/components/custom/TitlebarIconButton'
+import { Icon } from '@/components/icons/HugeIcon'
+import { usePlatform } from '@/hooks/usePlatform'
+import { cn } from '@/lib/utils'
 
 import { AppSidebar } from './components/AppSidebar'
 import { SettingsDialog } from './components/SettingsDialog'
@@ -14,56 +13,50 @@ import { SettingsDialog } from './components/SettingsDialog'
 export { DashboardView } from './components/DashboardView'
 export { ProjectsView } from './components/ProjectsView'
 
-function DashboardLayoutInner() {
-  const { open } = useSidebar()
-  const location = useLocation()
+export function Dashboard() {
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const isElectron = typeof window !== 'undefined' && !!window.electron
-  const isMac = isElectron && window.electron?.platform === 'darwin'
-  const isWinOrLinux = isElectron && window.electron?.platform !== 'darwin'
-
-  const currentView =
-    location.pathname === '/projects' ? 'projects' : 'dashboard'
+  const { isElectron, isMac } = usePlatform()
 
   return (
-    <>
-      <AppSidebar onSettingsClick={() => setSettingsOpen(true)} />
-      <SidebarInset className='min-h-screen flex flex-col bg-background'>
-        <header
-          className={`h-14 shrink-0 flex items-center px-4 border-b border-border select-none ${
-            isElectron ? 'electron-drag' : ''
-          }`}
+    <div className='flex flex-col h-screen w-full overflow-hidden'>
+      <header
+        className={cn(
+          'h-9 shrink-0 flex items-center px-4 select-none',
+          isElectron ? 'electron-drag' : '',
+        )}
+      >
+        <div
+          className={cn(
+            'h-full flex items-center electron-no-drag',
+            isMac ? 'pl-20' : '',
+          )}
         >
-          <div
-            className={`flex items-center gap-2 electron-no-drag ${
-              isMac ? 'pl-[80px]' : ''
-            } ${isWinOrLinux ? 'pr-[140px]' : ''}`}
+          <TitlebarIconButton
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className='-ml-2 mt-0.5'
           >
-            {!open && (
-              <SidebarTrigger className='hover:bg-muted hover:text-foreground transition-all duration-200' />
-            )}
-            <span className='font-semibold capitalize select-none'>
-              {currentView}
-            </span>
-          </div>
-        </header>
+            <Icon icon={sidebarOpen ? LayoutAlignLeftIcon : LayoutLeftIcon} />
+          </TitlebarIconButton>
+        </div>
+      </header>
 
-        <main className='flex-1 flex flex-col overflow-auto bg-background/50'>
-          <Outlet />
+      <div className='flex-1 flex min-w-0 overflow-hidden'>
+        <AppSidebar
+          onSettingsClick={() => setSettingsOpen(true)}
+          isOpen={sidebarOpen}
+        />
+        <main className='flex-1 flex flex-col overflow-hidden'>
+          <div className='flex-1 flex flex-col overflow-auto shadow bg-background rounded-tl-xl border-t border-l dark:border-border/60'>
+            <Outlet />
+          </div>
         </main>
-      </SidebarInset>
+      </div>
 
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-    </>
+    </div>
   )
 }
 
-export function Dashboard() {
-  return (
-    <SidebarProvider>
-      <DashboardLayoutInner />
-    </SidebarProvider>
-  )
-}
 export default Dashboard

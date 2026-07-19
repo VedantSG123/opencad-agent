@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react'
+import {
+  Group as ResizablePanelGroup,
+  Panel as ResizablePanel,
+  Separator as ResizableHandle,
+} from 'react-resizable-panels'
 import { useParams } from 'react-router'
 import { toast } from 'sonner'
 
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/components/ui/resizable'
 import { NodeOpenSCADProvider } from '@/hooks/useNodeOpenSCAD'
 import { useProjects, useUpdateProjectAccess } from '@/hooks/useProjects'
 import { cn } from '@/lib/utils'
@@ -63,10 +63,14 @@ function ProjectLayout({ project }: { project: Project }) {
   return (
     <EditorProvider project={project}>
       <FileSync />
-      <ResizablePanelGroup orientation='horizontal' className='flex-1'>
+      <ResizablePanelGroup
+        orientation='horizontal'
+        className='flex-1 flex w-full h-full'
+      >
         <ResizablePanel defaultSize={75} minSize={20}>
           <ResizablePanelGroup
             orientation='horizontal'
+            className='flex w-full h-full'
             elementRef={innerGroupRef}
           >
             <ResizablePanel
@@ -162,9 +166,9 @@ export function ProjectPage() {
   const isOpenSCAD = project.cad_kernel === 'openscad'
 
   const content = (
-    <div className='h-screen flex flex-col bg-background p-2 overflow-hidden'>
+    <div className='h-screen flex flex-col overflow-hidden'>
       <TopBar project={project} />
-      <div className='flex-1 flex overflow-hidden rounded-lg border-2'>
+      <div className='flex-1 flex overflow-hidden rounded-t-lg bg-background'>
         <ProjectLayout project={project} />
       </div>
     </div>

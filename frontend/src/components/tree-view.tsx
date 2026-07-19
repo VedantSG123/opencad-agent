@@ -1,20 +1,21 @@
+import { ArrowRight01Icon } from '@hugeicons/core-free-icons'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
 import { cva } from 'class-variance-authority'
-import { ChevronRight } from 'lucide-react'
 import React from 'react'
 
+import { Icon } from '@/components/icons/HugeIcon'
 import { cn } from '@/lib/utils'
 
 const treeVariants = cva(
-  'group hover:before:opacity-100 before:absolute before:rounded-lg before:left-0 px-2 before:w-full before:opacity-0 before:bg-accent/70 before:h-[2rem] before:-z-10',
+  'group hover:before:opacity-100 before:absolute before:rounded-lg before:left-0 px-2 before:w-full before:opacity-0 before:bg-muted/20 before:h-[2rem] before:-z-10',
 )
 
 const selectedTreeVariants = cva(
-  'before:opacity-100 before:bg-accent/70 text-accent-foreground',
+  'before:opacity-100 before:bg-muted/20 text-foreground',
 )
 
 const dragOverVariants = cva(
-  'before:opacity-100 before:bg-primary/20 text-primary-foreground',
+  'before:opacity-100 before:bg-accent/20 text-accent',
 )
 
 interface TreeDataItem {
@@ -139,7 +140,7 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
     }, [data, expandAll, initialSelectedItemId, propExpandedItemIds])
 
     return (
-      <div className={cn('overflow-hidden relative p-2', className)}>
+      <div className={cn('overflow-hidden relative p-1', className)}>
         <TreeItem
           data={data}
           ref={ref}
@@ -353,7 +354,9 @@ const TreeNode = ({
                 isOpen={isOpen}
                 default={defaultNodeIcon}
               />
-              <span className='text-sm truncate'>{item.name}</span>
+              <span className='text-sm truncate text-foreground/60'>
+                {item.name}
+              </span>
               <TreeActions isSelected={isSelected}>{item.actions}</TreeActions>
             </>
           )}
@@ -447,7 +450,7 @@ const TreeLeaf = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          'ml-5 flex text-left items-center py-2 cursor-pointer before:right-1',
+          'flex text-left items-center py-2 cursor-pointer before:right-1',
           treeVariants(),
           className,
           isSelected && selectedTreeVariants(),
@@ -482,7 +485,9 @@ const TreeLeaf = React.forwardRef<
               isSelected={isSelected}
               default={defaultLeafIcon}
             />
-            <span className='flex-grow text-sm truncate'>{item.name}</span>
+            <span className='grow text-sm truncate text-foreground/60'>
+              {item.name}
+            </span>
             <TreeActions isSelected={isSelected && !item.disabled}>
               {item.actions}
             </TreeActions>
@@ -507,7 +512,11 @@ const AccordionTrigger = React.forwardRef<
       )}
       {...props}
     >
-      <ChevronRight className='h-4 w-4 shrink-0 transition-transform duration-200 text-accent-foreground/50 mr-1' />
+      <Icon
+        icon={ArrowRight01Icon}
+        size={16}
+        className='shrink-0 transition-transform duration-200 text-foreground/50 mr-1'
+      />
       {children}
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>

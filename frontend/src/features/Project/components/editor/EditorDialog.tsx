@@ -1,15 +1,4 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { Button, Modal } from '@heroui/react'
 
 import { useEditor } from './context'
 
@@ -25,63 +14,76 @@ export function EditorDialog() {
   if (!isOpen) return null
 
   return (
-    <AlertDialog open>
-      <AlertDialogContent>
-        {dialogState.type === 'close-confirm' && (
-          <>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-              <AlertDialogDescription>
-                Do you want to save the changes made to{' '}
-                <span className='font-medium text-foreground'>
-                  {fileName(dialogState.path)}
-                </span>
-                ?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={dialogState.onCancel}>
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={dialogState.onDiscard}
-                className={cn(buttonVariants({ variant: 'destructive' }))}
-              >
-                Don&apos;t Save
-              </AlertDialogAction>
-              <AlertDialogAction onClick={() => void dialogState.onSave()}>
-                Save
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </>
-        )}
+    <Modal isOpen={true}>
+      <Modal.Backdrop>
+        <Modal.Container>
+          <Modal.Dialog>
+            {dialogState.type === 'close-confirm' && (
+              <>
+                <Modal.Header>
+                  <h3 className='text-lg font-bold'>Unsaved Changes</h3>
+                </Modal.Header>
+                <Modal.Body>
+                  <p className='text-default-500 text-sm'>
+                    Do you want to save the changes made to{' '}
+                    <span className='font-medium text-foreground'>
+                      {fileName(dialogState.path)}
+                    </span>
+                    ?
+                  </p>
+                </Modal.Body>
+                <Modal.Footer>
+                  <Button variant='outline' onPress={dialogState.onCancel}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className='bg-danger text-white'
+                    onPress={dialogState.onDiscard}
+                  >
+                    Don&apos;t Save
+                  </Button>
+                  <Button
+                    className='bg-primary text-white'
+                    onPress={() => void dialogState.onSave()}
+                  >
+                    Save
+                  </Button>
+                </Modal.Footer>
+              </>
+            )}
 
-        {dialogState.type === 'external-conflict' && (
-          <>
-            <AlertDialogHeader>
-              <AlertDialogTitle>File Modified Externally</AlertDialogTitle>
-              <AlertDialogDescription>
-                <span className='font-medium text-foreground'>
-                  {fileName(dialogState.path)}
-                </span>{' '}
-                has been modified externally. You have unsaved changes that
-                would be overwritten. What would you like to do?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={dialogState.onKeepMine}>
-                Keep My Changes
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={dialogState.onKeepExternal}
-                className={cn(buttonVariants({ variant: 'destructive' }))}
-              >
-                Accept External Changes
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </>
-        )}
-      </AlertDialogContent>
-    </AlertDialog>
+            {dialogState.type === 'external-conflict' && (
+              <>
+                <Modal.Header>
+                  <h3 className='text-lg font-bold'>
+                    File Modified Externally
+                  </h3>
+                </Modal.Header>
+                <Modal.Body>
+                  <p className='text-default-500 text-sm'>
+                    <span className='font-medium text-foreground'>
+                      {fileName(dialogState.path)}
+                    </span>{' '}
+                    has been modified externally. You have unsaved changes that
+                    would be overwritten. What would you like to do?
+                  </p>
+                </Modal.Body>
+                <Modal.Footer>
+                  <Button variant='outline' onPress={dialogState.onKeepMine}>
+                    Keep My Changes
+                  </Button>
+                  <Button
+                    className='bg-danger text-white'
+                    onPress={dialogState.onKeepExternal}
+                  >
+                    Accept External Changes
+                  </Button>
+                </Modal.Footer>
+              </>
+            )}
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+    </Modal>
   )
 }

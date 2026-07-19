@@ -90,13 +90,13 @@ export function InfiniteGridMaterial({
 }
 
 export function InfiniteGrid() {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const gridMaterial = React.useMemo(
     () =>
       InfiniteGridMaterial({
-        color: theme === 'dark' ? '#888888' : '#dddddd',
+        color: resolvedTheme === 'dark' ? '#888888' : '#dddddd',
       }),
-    [theme],
+    [resolvedTheme],
   )
 
   return <Plane material={gridMaterial} />
