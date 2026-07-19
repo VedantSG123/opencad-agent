@@ -23,7 +23,6 @@ export default function App() {
   // only needs to run once here rather than in every component that cares.
   useEffect(() => {
     document.body.classList.toggle('bg-transparent', isWin)
-    document.body.classList.toggle('bg-background', !isWin)
   }, [isWin])
 
   return (

@@ -15,7 +15,7 @@
     "build": "bun scripts/setup-openscad.ts && bun run build:preload && bun run build:main",
     "lint": "eslint .",
     "start": "electron dist/main.js",
-    "dev": "bun scripts/setup-openscad.ts && bun run build:preload && bun run build:main && concurrently -k -n \"tsc,electron\" -c \"blue,green\" \"tsc -p tsconfig.json -w\" \"electron dist/main.js\"",
+    "dev": "bun scripts/setup-openscad.ts && bun run build:preload && bun run build:main && concurrently -k -n \"tsc,electron\" -c \"blue,green\" \"tsc -p tsconfig.json -w\" \"electron --no-sandbox dist/main.js\"",
     "package": "electron-builder"
   },
   "dependencies": {

@@ -7,12 +7,7 @@ export function getResolvedTheme(): ResolvedTheme {
 
 export function getTitleBarOverlay(theme: ResolvedTheme) {
   return {
-    color:
-      process.platform === 'win32'
-        ? '#00000000'
-        : theme === 'dark'
-          ? '#0a0a0a'
-          : '#e9e4d8',
+    color: '#00000000',
     symbolColor: theme === 'dark' ? '#c2c2c2' : '#1e1e1e',
     height: 36,
   }

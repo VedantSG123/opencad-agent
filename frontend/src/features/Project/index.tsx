@@ -168,7 +168,7 @@ export function ProjectPage() {
   const content = (
     <div className='h-screen flex flex-col overflow-hidden'>
       <TopBar project={project} />
-      <div className='flex-1 flex overflow-hidden rounded-t-lg bg-background border dark:border-border'>
+      <div className='flex-1 flex overflow-hidden rounded-t-lg bg-background'>
         <ProjectLayout project={project} />
       </div>
     </div>

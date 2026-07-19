@@ -6,7 +6,6 @@ import {
 import { NavLink } from 'react-router'
 
 import { Icon } from '@/components/icons/HugeIcon'
-import { usePlatform } from '@/hooks/usePlatform'
 import { cn } from '@/lib/utils'
 
 interface AppSidebarProps {
@@ -44,13 +43,10 @@ function SidebarNavLink({ to, icon, children }: SidebarNavLinkProps) {
 }
 
 export function AppSidebar({ onSettingsClick, isOpen }: AppSidebarProps) {
-  const { isWin } = usePlatform()
-
   return (
     <aside
       className={cn(
         'flex flex-col h-full shrink-0 overflow-hidden transition-all duration-300',
-        isWin ? '' : 'border-r border-border',
         isOpen ? 'w-64' : 'w-0',
       )}
     >
