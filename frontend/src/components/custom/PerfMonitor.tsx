@@ -1,6 +1,12 @@
-import { Activity, ChevronDown, ChevronUp } from 'lucide-react'
+import {
+  Activity03Icon,
+  ArrowDown01Icon,
+  ArrowUp01Icon,
+} from '@hugeicons/core-free-icons'
 import { useEffect, useRef, useState } from 'react'
 import Stats from 'stats.js'
+
+import { Icon } from '@/components/icons/HugeIcon'
 
 export default function PerfMonitor() {
   const [isOpen, setIsOpen] = useState(() => {
@@ -66,11 +72,15 @@ export default function PerfMonitor() {
           <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75'></span>
           <span className='relative inline-flex rounded-full h-2 w-2 bg-emerald-500'></span>
         </div>
-        <Activity className='h-4 w-4 text-emerald-400 animate-pulse' />
+        <Icon
+          icon={Activity03Icon}
+          size={16}
+          className='text-emerald-400 animate-pulse'
+        />
         <span className='text-[10px] font-semibold tracking-wider text-neutral-400 font-mono'>
           TELEMETRY
         </span>
-        <ChevronUp className='h-3.5 w-3.5 text-neutral-500' />
+        <Icon icon={ArrowUp01Icon} size={14} className='text-neutral-500' />
       </button>
     )
   }
@@ -80,7 +90,7 @@ export default function PerfMonitor() {
       {/* Header */}
       <div className='flex items-center justify-between border-b border-neutral-800/60 pb-1.5 px-0.5'>
         <div className='flex items-center gap-1.5'>
-          <Activity className='h-3.5 w-3.5 text-emerald-400' />
+          <Icon icon={Activity03Icon} size={14} className='text-emerald-400' />
           <span className='font-mono text-[10px] font-semibold tracking-wider text-neutral-400'>
             SYSTEM TELEMETRY
           </span>
@@ -90,7 +100,7 @@ export default function PerfMonitor() {
           className='text-neutral-400 hover:text-neutral-200 cursor-pointer p-0.5 rounded hover:bg-neutral-800/50 transition-colors'
           title='Minimize overlay'
         >
-          <ChevronDown className='h-4 w-4' />
+          <Icon icon={ArrowDown01Icon} size={16} />
         </button>
       </div>
 

@@ -17,7 +17,7 @@ export function CodeEditorPanel() {
 
   return (
     <div className='h-full flex flex-col overflow-hidden'>
-      <div className='bg-card'>
+      <div className='bg-background'>
         <RibbonBar />
       </div>
       <ResizablePanelGroup

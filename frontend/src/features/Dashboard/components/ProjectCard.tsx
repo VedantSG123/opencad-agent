@@ -1,6 +1,9 @@
 import { Button, Card, Chip, Dropdown, Skeleton } from '@heroui/react'
-import { Delete01Icon, Edit02Icon } from '@hugeicons/core-free-icons'
-import { MoreHorizontal } from 'lucide-react'
+import {
+  Delete01Icon,
+  Edit02Icon,
+  MoreHorizontalIcon,
+} from '@hugeicons/core-free-icons'
 
 import { Icon } from '@/components/icons/HugeIcon'
 import { KERNEL_INFO } from '@/constants/kernels'
@@ -43,7 +46,7 @@ export function ProjectCard({
                 isIconOnly
                 className='h-7 w-7 opacity-0 group-hover:opacity-100 aria-expanded:opacity-100 transition-opacity'
               >
-                <MoreHorizontal className='h-4 w-4' />
+                <Icon icon={MoreHorizontalIcon} size={16} />
               </Button>
               <Dropdown.Popover>
                 <Dropdown.Menu
@@ -76,7 +79,7 @@ export function ProjectCard({
         </div>
         <div className='space-y-2 mt-2'>
           <div className='flex items-center justify-between gap-2'>
-            <h3 className='font-semibold text-sm leading-tight truncate'>
+            <h3 className='font-medium text-sm text-foreground/70 leading-tight truncate'>
               {project.name}
             </h3>
             <Chip
@@ -88,7 +91,10 @@ export function ProjectCard({
               {kernel.label}
             </Chip>
           </div>
-          <p className='text-xs truncate' title={project.directory}>
+          <p
+            className='text-xs truncate text-foreground/70'
+            title={project.directory}
+          >
             {truncatePath(project.directory)}
           </p>
           <p className='text-xs text-muted'>

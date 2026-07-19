@@ -1,6 +1,7 @@
 import { Button, Input, Label } from '@heroui/react'
-import { FolderOpen, Loader2 } from 'lucide-react'
+import { FolderOpenIcon, Loading02Icon } from '@hugeicons/core-free-icons'
 
+import { Icon } from '@/components/icons/HugeIcon'
 import { useFileDialog } from '@/hooks/useFileDialog'
 import { joinPaths, normalizePath } from '@/lib/utils'
 import type { CadKernel } from '@/types/project'
@@ -51,7 +52,7 @@ export function DetailsStep({
     <div className='space-y-4'>
       <div className='text-center'>
         <p className='font-semibold text-base'>Project Details</p>
-        <p className='text-default-500 text-sm mt-0.5'>
+        <p className='text-foreground/60 text-sm mt-0.5'>
           {isOpen
             ? 'Select the existing project directory'
             : 'Configure your new project'}
@@ -81,13 +82,17 @@ export function DetailsStep({
                 aria-label='Browse for project directory'
               >
                 {fileDialog.isActive ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
+                  <Icon
+                    icon={Loading02Icon}
+                    size={16}
+                    className='animate-spin'
+                  />
                 ) : (
-                  <FolderOpen className='h-4 w-4' />
+                  <Icon icon={FolderOpenIcon} size={16} />
                 )}
               </Button>
             </div>
-            <p className='text-xs text-default-500'>
+            <p className='text-xs text-foreground/60'>
               Root directory of your existing CAD project
             </p>
           </div>
@@ -125,14 +130,18 @@ export function DetailsStep({
                 aria-label='Browse for directory'
               >
                 {fileDialog.isActive ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
+                  <Icon
+                    icon={Loading02Icon}
+                    size={16}
+                    className='animate-spin'
+                  />
                 ) : (
-                  <FolderOpen className='h-4 w-4' />
+                  <Icon icon={FolderOpenIcon} size={16} />
                 )}
               </Button>
             </div>
             {scriptPathPreview && (
-              <p className='text-xs text-default-500 font-mono'>
+              <p className='text-xs text-foreground/60 font-mono'>
                 Project script path: {scriptPathPreview}
               </p>
             )}

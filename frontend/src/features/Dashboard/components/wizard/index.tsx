@@ -1,7 +1,8 @@
 import { Button } from '@heroui/react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft02Icon } from '@hugeicons/core-free-icons'
 import { useState } from 'react'
 
+import { Icon } from '@/components/icons/HugeIcon'
 import { joinPaths, normalizePath } from '@/lib/utils'
 import type { CadKernel, CreateProjectPayload } from '@/types/project'
 
@@ -132,7 +133,7 @@ export function ProjectWizard({
               onPress={handleBack}
               isDisabled={isLoading}
             >
-              <ArrowLeft className='h-4 w-4' />
+              <Icon icon={ArrowLeft02Icon} size={16} />
               Back
             </Button>
           ) : onCancel ? (
@@ -145,7 +146,7 @@ export function ProjectWizard({
         </div>
         {step === 3 && (
           <Button
-            className='bg-primary text-white'
+            className='bg-accent text-accent-foreground'
             onPress={handleSubmit}
             isDisabled={!step3Valid || isLoading}
           >

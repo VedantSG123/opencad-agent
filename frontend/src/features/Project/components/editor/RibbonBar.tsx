@@ -1,16 +1,17 @@
-import { Button } from '@heroui/react'
 import {
-  AlertTriangle,
-  ArrowLeftRight,
-  Box,
-  Crown,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Terminal,
-  X,
-} from 'lucide-react'
+  Alert02Icon,
+  ArrowDataTransferHorizontalIcon,
+  BoxIcon,
+  Crown02Icon,
+  LayoutAlignLeftIcon,
+  LayoutLeftIcon,
+  TerminalIcon,
+} from '@hugeicons/core-free-icons'
 import { useState } from 'react'
 
+import { TitlebarIconButton } from '@/components/custom/TitlebarIconButton'
+import { Icon } from '@/components/icons/HugeIcon'
+import { XIcon } from '@/components/icons/XIcon'
 import { usePanelContext } from '@/features/Project/context/PanelContext'
 import { cn, toFsPath } from '@/lib/utils'
 
@@ -44,28 +45,25 @@ export function RibbonBar() {
       : null
 
   return (
-    <div className='flex items-center gap-1 border-b border-default-200 px-1 h-10 shrink-0'>
-      <Button
-        variant='ghost'
-        isIconOnly
-        className='h-7 w-7 min-w-7 shrink-0'
+    <div className='flex items-center gap-1 border-b border-border px-1 h-10 shrink-0'>
+      <TitlebarIconButton
         onPress={() => setSidebarOpen((v) => !v)}
+        aria-label={sidebarOpen ? 'Hide file sidebar' : 'Show file sidebar'}
       >
-        {sidebarOpen ? (
-          <PanelLeftClose className='h-4 w-4' />
-        ) : (
-          <PanelLeftOpen className='h-4 w-4' />
-        )}
-      </Button>
+        <Icon
+          icon={sidebarOpen ? LayoutAlignLeftIcon : LayoutLeftIcon}
+          size={16}
+        />
+      </TitlebarIconButton>
 
-      <div className='w-px h-5 bg-default-200 mx-1 shrink-0' />
+      <div className='w-px h-5 bg-border mx-1 shrink-0' />
 
       {missingMainFile && (
         <button
           onClick={() => setMainFileDialogOpen(true)}
           className='flex items-center gap-1 px-2 h-7 text-xs rounded-md shrink-0 text-amber-500 hover:bg-amber-500/10 transition-colors'
         >
-          <AlertTriangle className='h-3.5 w-3.5' />
+          <Icon icon={Alert02Icon} size={14} />
           No main file
         </button>
       )}
@@ -79,13 +77,19 @@ export function RibbonBar() {
               key={path}
               onClick={() => setActiveTab(path)}
               className={cn(
-                'flex items-center gap-1.5 px-3 h-7 text-xs rounded-md shrink-0 max-w-40 group transition-colors',
+                'flex items-center gap-1.5 px-2 h-7 text-xs rounded-md shrink-0 max-w-40 group transition-colors',
                 activeTab === path
-                  ? 'bg-content3 text-content3-foreground'
-                  : 'text-default-500 hover:bg-content3/50 hover:text-foreground',
+                  ? 'bg-muted/10 text-foreground'
+                  : 'text-foreground/60 hover:bg-muted/15 hover:text-foreground',
               )}
             >
-              {isMain && <Crown className='h-3 w-3 shrink-0 text-amber-400' />}
+              {isMain && (
+                <Icon
+                  icon={Crown02Icon}
+                  size={12}
+                  className='shrink-0 text-amber-400'
+                />
+              )}
               <span className='truncate'>{fileName(path)}</span>
               {/* Close/dirty indicator — same slot, swap on hover */}
               <span className='relative h-3.5 w-3.5 shrink-0 flex items-center justify-center'>
@@ -95,9 +99,9 @@ export function RibbonBar() {
                 <span
                   role='button'
                   onClick={(e) => requestCloseTab(path, e)}
-                  className='absolute inset-0 rounded-sm flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-content4 transition-opacity'
+                  className='absolute inset-0 rounded-sm flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-muted/25 transition-opacity'
                 >
-                  <X className='h-2.5 w-2.5' />
+                  <XIcon size={10} />
                 </span>
               </span>
             </button>
@@ -105,29 +109,26 @@ export function RibbonBar() {
         })}
       </div>
 
-      <Button
-        variant='ghost'
-        isIconOnly
-        className={cn(
-          'h-7 w-7 min-w-7 shrink-0 transition-colors',
-          !isConsoleCollapsed
-            ? 'text-foreground bg-content3'
-            : 'text-default-500 hover:text-foreground hover:bg-content3/50',
-        )}
+      <TitlebarIconButton
+        className={cn(!isConsoleCollapsed && 'text-foreground bg-muted/10')}
         onPress={toggleConsole}
         aria-label='Toggle execution console'
       >
-        <Terminal className='h-4 w-4' />
-      </Button>
+        <Icon icon={TerminalIcon} size={16} />
+      </TitlebarIconButton>
 
       {isFocusMode && (
         <button
           onClick={() => setFocusedPanel('viewport')}
-          className='flex items-center gap-2 px-2 h-7 text-xs rounded-md shrink-0 text-default-500 group hover:text-foreground hover:bg-content3/50 transition-colors'
+          className='flex items-center gap-2 px-2 h-7 text-xs rounded-md shrink-0 text-foreground/60 group hover:text-foreground hover:bg-muted/15 transition-colors'
         >
-          <ArrowLeftRight className='h-4 w-4 group-hover:text-blue-500' />
+          <Icon
+            icon={ArrowDataTransferHorizontalIcon}
+            size={16}
+            className='group-hover:text-blue-500'
+          />
           <div className='flex items-center gap-1'>
-            <Box className='h-3.5 w-3.5' />
+            <Icon icon={BoxIcon} size={14} />
             <span>3D Viewport</span>
           </div>
         </button>

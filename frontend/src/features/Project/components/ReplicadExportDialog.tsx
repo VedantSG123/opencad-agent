@@ -1,16 +1,17 @@
 import { Button, Modal } from '@heroui/react'
-import { zipSync } from 'fflate'
 import {
-  AlertTriangle,
-  CheckCircle2,
-  Download,
-  Loader2,
-  Settings,
-  Terminal,
-} from 'lucide-react'
+  Alert02Icon,
+  CheckmarkCircle02Icon,
+  Download04Icon,
+  Loading02Icon,
+  Settings01Icon,
+  TerminalIcon,
+} from '@hugeicons/core-free-icons'
+import { zipSync } from 'fflate'
 import * as React from 'react'
 import { toast } from 'sonner'
 
+import { Icon } from '@/components/icons/HugeIcon'
 import { getBuilderApi } from '@/kernels/replicad/builderApi'
 import { cn } from '@/lib/utils'
 import type {
@@ -278,12 +279,13 @@ export function ReplicadExportDialog({
       >
         <Modal.Container>
           <Modal.Dialog className='max-w-xl max-h-[80vh]'>
+            <Modal.CloseTrigger />
             <Modal.Header>
               <div className='flex flex-col gap-1'>
-                <h3 className='text-xl font-bold bg-linear-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent'>
+                <h3 className='text-xl font-bold text-foreground'>
                   Export CAD Model
                 </h3>
-                <p className='text-sm font-normal text-default-500'>
+                <p className='text-sm font-normal text-foreground/60'>
                   Export the current Replicad viewport models into standard CAD
                   and mesh formats.
                 </p>
@@ -303,19 +305,19 @@ export function ReplicadExportDialog({
                           className={cn(
                             'flex flex-col items-start text-left p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer outline-hidden select-none',
                             isActive
-                              ? 'border-blue-500 bg-blue-500/5 dark:bg-blue-500/10 text-foreground ring-2 ring-blue-500/20'
-                              : 'border-border/60 hover:border-muted-foreground/30 text-muted-foreground hover:text-foreground bg-accent/20',
+                              ? 'border-accent bg-accent/5 text-foreground'
+                              : 'border-border/60 hover:border-foreground/30 text-foreground/60 hover:text-foreground bg-muted/10',
                           )}
                         >
                           <div className='flex items-center justify-between w-full mb-1'>
                             <span className='font-bold text-sm text-foreground'>
                               {card.label}
                             </span>
-                            <span className='text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-sm bg-accent border border-border/50 text-muted-foreground'>
+                            <span className='text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-sm bg-muted/20 border border-border/50 text-foreground/60'>
                               {card.ext}
                             </span>
                           </div>
-                          <span className='text-xs text-muted-foreground leading-relaxed'>
+                          <span className='text-xs text-foreground/60 leading-relaxed'>
                             {card.description}
                           </span>
                         </button>
@@ -329,14 +331,14 @@ export function ReplicadExportDialog({
                       <button
                         type='button'
                         onClick={() => setShowAdvanced(!showAdvanced)}
-                        className='flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none'
+                        className='flex items-center gap-1.5 text-xs font-semibold text-foreground/60 hover:text-foreground transition-colors cursor-pointer select-none'
                       >
-                        <Settings className='h-3.5 w-3.5' />
+                        <Icon icon={Settings01Icon} size={14} />
                         <span>Advanced Mesh Parameters</span>
                       </button>
 
                       {showAdvanced && (
-                        <div className='grid grid-cols-2 gap-4 mt-3 p-3 rounded-lg bg-accent/30 border border-border/40 animate-in fade-in slide-in-from-top-1 duration-200'>
+                        <div className='grid grid-cols-2 gap-4 mt-3 p-3 rounded-lg bg-muted/10 border border-border/40 animate-in fade-in slide-in-from-top-1 duration-200'>
                           <div className='flex flex-col gap-1.5'>
                             <label
                               htmlFor='tolerance'
@@ -355,7 +357,7 @@ export function ReplicadExportDialog({
                                 setTolerance(parseFloat(e.target.value))
                               }
                             />
-                            <p className='text-xs text-muted-foreground'>
+                            <p className='text-xs text-foreground/60'>
                               Lower is finer/higher triangles (default 0.01)
                             </p>
                           </div>
@@ -378,7 +380,7 @@ export function ReplicadExportDialog({
                                 setAngularTolerance(parseInt(e.target.value))
                               }
                             />
-                            <p className='text-xs text-muted-foreground'>
+                            <p className='text-xs text-foreground/60'>
                               Max angle deflection in degrees (default 30)
                             </p>
                           </div>
@@ -392,12 +394,16 @@ export function ReplicadExportDialog({
               {/* State: Exporting (Loading) */}
               {status === 'exporting' && (
                 <div className='flex flex-col items-center justify-center py-6 gap-4'>
-                  <Loader2 className='h-10 w-10 text-blue-500 animate-spin' />
+                  <Icon
+                    icon={Loading02Icon}
+                    size={40}
+                    className='text-foreground/70 animate-spin'
+                  />
                   <div className='text-center'>
                     <div className='font-semibold text-sm'>
                       Compiling CAD geometries...
                     </div>
-                    <div className='text-xs text-muted-foreground mt-1'>
+                    <div className='text-xs text-foreground/60 mt-1'>
                       Using Replicad and OpenCascade kernel to format shapes
                       into{' '}
                       <span className='font-mono font-bold text-foreground'>
@@ -412,14 +418,18 @@ export function ReplicadExportDialog({
               {status === 'success' && (
                 <div className='flex flex-col items-center justify-center py-6 gap-4'>
                   <div className='relative'>
-                    <CheckCircle2 className='h-12 w-12 text-green-500 animate-in zoom-in-50 duration-300' />
-                    <div className='absolute -inset-0.5 rounded-full bg-green-500/20 animate-ping duration-1000' />
+                    <Icon
+                      icon={CheckmarkCircle02Icon}
+                      size={48}
+                      className='text-success animate-in zoom-in-50 duration-300'
+                    />
+                    <div className='absolute -inset-0.5 rounded-full bg-success/20 animate-ping duration-1000' />
                   </div>
                   <div className='text-center'>
                     <div className='font-bold text-base text-foreground'>
                       Export Complete!
                     </div>
-                    <div className='text-xs text-muted-foreground mt-1'>
+                    <div className='text-xs text-foreground/60 mt-1'>
                       Successfully compiled{' '}
                       <span className='font-semibold text-foreground'>
                         {exportedFiles.length}
@@ -438,7 +448,11 @@ export function ReplicadExportDialog({
               {status === 'error' && (
                 <div className='flex flex-col gap-4 py-2'>
                   <div className='flex items-start gap-3 p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger'>
-                    <AlertTriangle className='h-5 w-5 shrink-0 mt-0.5' />
+                    <Icon
+                      icon={Alert02Icon}
+                      size={20}
+                      className='shrink-0 mt-0.5'
+                    />
                     <div className='flex flex-col gap-1 text-xs'>
                       <span className='font-bold'>Export Failed</span>
                       <span className='leading-relaxed'>{errorMessage}</span>
@@ -453,7 +467,11 @@ export function ReplicadExportDialog({
                 logs.length > 0) && (
                 <div className='bg-zinc-950 dark:bg-black rounded-lg border border-border/80 p-3 font-mono text-[10px] text-zinc-300 mt-2 shadow-inner'>
                   <div className='text-zinc-500 border-b border-zinc-900 pb-1.5 mb-2 flex items-center gap-1.5 select-none'>
-                    <Terminal className='h-3.5 w-3.5 text-zinc-400' />
+                    <Icon
+                      icon={TerminalIcon}
+                      size={14}
+                      className='text-zinc-400'
+                    />
                     <span className='font-semibold'>Export Output Logs</span>
                   </div>
                   <div className='h-28 pr-3 overflow-y-auto'>
@@ -491,10 +509,7 @@ export function ReplicadExportDialog({
                   <Button variant='outline' onPress={onClose}>
                     Cancel
                   </Button>
-                  <Button
-                    onPress={handleStartExport}
-                    className='bg-linear-to-r from-blue-600 to-indigo-600 text-white'
-                  >
+                  <Button variant='primary' onPress={handleStartExport}>
                     Start Export
                   </Button>
                 </div>
@@ -505,7 +520,11 @@ export function ReplicadExportDialog({
                   isDisabled
                   className='bg-default text-default-foreground'
                 >
-                  <Loader2 className='h-4 w-4 animate-spin mr-2' />
+                  <Icon
+                    icon={Loading02Icon}
+                    size={16}
+                    className='animate-spin mr-2'
+                  />
                   Exporting...
                 </Button>
               )}
@@ -517,9 +536,9 @@ export function ReplicadExportDialog({
                   </Button>
                   <Button
                     onPress={handleSaveToDevice}
-                    className='bg-success text-white'
+                    className='bg-success text-success-foreground'
                   >
-                    <Download className='h-4 w-4 mr-1.5' />
+                    <Icon icon={Download04Icon} size={16} className='mr-1.5' />
                     Save to Device
                   </Button>
                 </div>
@@ -530,10 +549,7 @@ export function ReplicadExportDialog({
                   <Button variant='outline' onPress={() => setStatus('idle')}>
                     Back to Settings
                   </Button>
-                  <Button
-                    onPress={handleStartExport}
-                    className='bg-danger text-white'
-                  >
+                  <Button variant='danger' onPress={handleStartExport}>
                     Retry Export
                   </Button>
                 </div>

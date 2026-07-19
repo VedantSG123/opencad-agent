@@ -23,7 +23,7 @@ export function Dashboard() {
     <div className='flex flex-col h-screen w-full overflow-hidden'>
       <header
         className={cn(
-          'h-8 shrink-0 flex items-center px-4 select-none',
+          'h-9 shrink-0 flex items-center px-4 select-none',
           isElectron ? 'electron-drag' : '',
         )}
       >

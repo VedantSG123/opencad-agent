@@ -1,5 +1,6 @@
-import { Check } from 'lucide-react'
+import { Tick01Icon } from '@hugeicons/core-free-icons'
 
+import { Icon } from '@/components/icons/HugeIcon'
 import { KERNEL_INFO } from '@/constants/kernels'
 import { cn } from '@/lib/utils'
 import type { CadKernel } from '@/types/project'
@@ -14,7 +15,7 @@ export function KernelStep({ selected, onSelect }: KernelStepProps) {
     <div className='space-y-4'>
       <div className='text-center'>
         <p className='font-semibold text-base'>Choose a CAD Kernel</p>
-        <p className='text-default-500 text-sm mt-0.5'>
+        <p className='text-foreground/60 text-sm mt-0.5'>
           Select the scripting engine for your project
         </p>
       </div>
@@ -44,13 +45,17 @@ export function KernelStep({ selected, onSelect }: KernelStepProps) {
               />
               {selected === key && (
                 <div className='absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent flex items-center justify-center'>
-                  <Check className='w-3 h-3 text-accent-foreground' />
+                  <Icon
+                    icon={Tick01Icon}
+                    size={12}
+                    className='text-accent-foreground'
+                  />
                 </div>
               )}
             </div>
             <div>
               <p className='font-semibold text-sm'>{info.label}</p>
-              <p className='text-default-500 text-xs mt-0.5 leading-relaxed'>
+              <p className='text-foreground/60 text-xs mt-0.5 leading-relaxed'>
                 {info.description}
               </p>
             </div>

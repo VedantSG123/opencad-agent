@@ -74,8 +74,8 @@ function ProjectLayout({ project }: { project: Project }) {
             elementRef={innerGroupRef}
           >
             <ResizablePanel
-              defaultSize={20}
-              minSize={10}
+              defaultSize={46}
+              minSize={15}
               collapsible
               collapsedSize={0}
               panelRef={codeEditorRef}
@@ -166,9 +166,9 @@ export function ProjectPage() {
   const isOpenSCAD = project.cad_kernel === 'openscad'
 
   const content = (
-    <div className='h-screen flex flex-col bg-background p-2 overflow-hidden'>
+    <div className='h-screen flex flex-col overflow-hidden'>
       <TopBar project={project} />
-      <div className='flex-1 flex overflow-hidden rounded-lg border-2'>
+      <div className='flex-1 flex overflow-hidden rounded-t-lg bg-background border dark:border-border'>
         <ProjectLayout project={project} />
       </div>
     </div>

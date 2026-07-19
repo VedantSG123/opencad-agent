@@ -23,15 +23,6 @@
   max-height: calc(100vh - 8rem) !important;
 }
 
-/* Style Leva buttons to have yellow background and grayish text */
-.Leva-container button {
-  background-color: #fbbf24 !important;
-  color: #27272a !important;
-}
-.Leva-container button:hover {
-  background-color: #f59e0b !important;
-}
-
 .electron-drag {
   -webkit-app-region: drag;
 }

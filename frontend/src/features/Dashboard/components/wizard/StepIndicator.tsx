@@ -1,5 +1,6 @@
-import { Check } from 'lucide-react'
+import { Tick01Icon } from '@hugeicons/core-free-icons'
 
+import { Icon } from '@/components/icons/HugeIcon'
 import { cn } from '@/lib/utils'
 
 const STEP_LABELS = ['Choose Action', 'Select Kernel', 'Project Details']
@@ -24,12 +25,14 @@ export function StepIndicator({ step }: { step: number }) {
                     'border-foreground/40 text-foreground/40 bg-background',
                 )}
               >
-                {isDone ? <Check className='w-4 h-4' /> : num}
+                {isDone ? <Icon icon={Tick01Icon} size={16} /> : num}
               </div>
               <span
                 className={cn(
                   'text-xs whitespace-nowrap',
-                  isActive ? 'text-foreground font-medium' : 'text-default-500',
+                  isActive
+                    ? 'text-foreground font-medium'
+                    : 'text-foreground/60',
                 )}
               >
                 {label}
