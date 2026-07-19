@@ -129,7 +129,7 @@ function startBackend(port: number, vaultPort: number, vaultSecret: string) {
 function createWindow(port: number) {
   const isMac = process.platform === 'darwin'
   const isWin = process.platform === 'win32'
-  // Vertically centered against the same 32px titlebar height used for the
+  // Vertically centered against the same 36px titlebar height used for the
   // Windows/Linux overlay (see getTitleBarOverlay), for a consistent look.
   const macTrafficLightPosition = { x: 14, y: 9 }
 

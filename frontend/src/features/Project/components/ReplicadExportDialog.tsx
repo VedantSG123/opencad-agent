@@ -1,4 +1,4 @@
-import { Button, Modal } from '@heroui/react'
+import { Button, Description, Label, Modal, NumberField } from '@heroui/react'
 import {
   Alert02Icon,
   CheckmarkCircle02Icon,
@@ -339,51 +339,45 @@ export function ReplicadExportDialog({
 
                       {showAdvanced && (
                         <div className='grid grid-cols-2 gap-4 mt-3 p-3 rounded-lg bg-muted/10 border border-border/40 animate-in fade-in slide-in-from-top-1 duration-200'>
-                          <div className='flex flex-col gap-1.5'>
-                            <label
-                              htmlFor='tolerance'
-                              className='text-sm font-semibold'
-                            >
+                          <NumberField
+                            value={tolerance}
+                            onChange={(value) => setTolerance(value ?? 0.01)}
+                            minValue={0.001}
+                            step={0.001}
+                          >
+                            <Label className='text-sm font-semibold'>
                               Linear Tolerance
-                            </label>
-                            <input
-                              id='tolerance'
-                              type='number'
-                              step='0.001'
-                              min='0.001'
-                              className='bg-background border border-border rounded-md px-3 py-1.5 text-sm'
-                              value={String(tolerance)}
-                              onChange={(e) =>
-                                setTolerance(parseFloat(e.target.value))
-                              }
-                            />
-                            <p className='text-xs text-foreground/60'>
+                            </Label>
+                            <NumberField.Group>
+                              <NumberField.DecrementButton />
+                              <NumberField.Input />
+                              <NumberField.IncrementButton />
+                            </NumberField.Group>
+                            <Description className='text-xs text-foreground/60'>
                               Lower is finer/higher triangles (default 0.01)
-                            </p>
-                          </div>
-                          <div className='flex flex-col gap-1.5'>
-                            <label
-                              htmlFor='angularTolerance'
-                              className='text-sm font-semibold'
-                            >
+                            </Description>
+                          </NumberField>
+                          <NumberField
+                            value={angularTolerance}
+                            onChange={(value) =>
+                              setAngularTolerance(value ?? 30)
+                            }
+                            minValue={1}
+                            maxValue={90}
+                            step={1}
+                          >
+                            <Label className='text-sm font-semibold'>
                               Angular Tolerance
-                            </label>
-                            <input
-                              id='angularTolerance'
-                              type='number'
-                              step='1'
-                              min='1'
-                              max='90'
-                              className='bg-background border border-border rounded-md px-3 py-1.5 text-sm'
-                              value={String(angularTolerance)}
-                              onChange={(e) =>
-                                setAngularTolerance(parseInt(e.target.value))
-                              }
-                            />
-                            <p className='text-xs text-foreground/60'>
+                            </Label>
+                            <NumberField.Group>
+                              <NumberField.DecrementButton />
+                              <NumberField.Input />
+                              <NumberField.IncrementButton />
+                            </NumberField.Group>
+                            <Description className='text-xs text-foreground/60'>
                               Max angle deflection in degrees (default 30)
-                            </p>
-                          </div>
+                            </Description>
+                          </NumberField>
                         </div>
                       )}
                     </div>

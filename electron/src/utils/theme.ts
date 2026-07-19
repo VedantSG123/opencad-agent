@@ -14,6 +14,6 @@ export function getTitleBarOverlay(theme: ResolvedTheme) {
           ? '#0a0a0a'
           : '#e9e4d8',
     symbolColor: theme === 'dark' ? '#c2c2c2' : '#1e1e1e',
-    height: 32,
+    height: 36,
   }
 }
