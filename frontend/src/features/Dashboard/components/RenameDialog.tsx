@@ -42,7 +42,7 @@ export function RenameDialog({ project, onClose }: RenameDialogProps) {
         onOpenChange={(open) => !open && onClose()}
       >
         <Modal.Container size='sm'>
-          <Modal.Dialog>
+          <Modal.Dialog className='dark:shadow-none'>
             <Modal.Header>
               <div className='flex flex-col gap-1'>
                 <h3 className='text-lg font-bold'>Rename Project</h3>

@@ -47,7 +47,7 @@ export function DeleteDialog({ project, onClose }: DeleteDialogProps) {
         onOpenChange={(open) => !open && onClose()}
       >
         <Modal.Container>
-          <Modal.Dialog>
+          <Modal.Dialog className='dark:shadow-none'>
             <Modal.Header>
               <div className='flex flex-col gap-1'>
                 <h3 className='text-lg font-bold'>Delete Project</h3>

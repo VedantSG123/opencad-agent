@@ -48,7 +48,7 @@ export function NewProjectDialog({
     <Modal>
       <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
         <Modal.Container>
-          <Modal.Dialog>
+          <Modal.Dialog className='dark:shadow-none'>
             <Modal.CloseTrigger />
             <Modal.Header>
               <div className='flex flex-col gap-1'>

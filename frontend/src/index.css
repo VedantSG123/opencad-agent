@@ -3,7 +3,9 @@
 @import 'tw-animate-css';
 @import '@heroui/styles';
 
-@custom-variant dark (&:is(.dark *));
+@import './theme.css' layer(theme);
+
+@custom-variant dark (&: is(.dark *));
 
 @layer base {
   button:not(:disabled),

@@ -1,6 +1,11 @@
-import { Folder, LayoutDashboard, Settings } from 'lucide-react'
-import { Link, useLocation } from 'react-router'
+import {
+  DashboardCircleIcon,
+  Folder01Icon,
+  Settings01Icon,
+} from '@hugeicons/core-free-icons'
+import { NavLink } from 'react-router'
 
+import { Icon } from '@/components/icons/HugeIcon'
 import { usePlatform } from '@/hooks/usePlatform'
 import { cn } from '@/lib/utils'
 
@@ -9,10 +14,36 @@ interface AppSidebarProps {
   isOpen: boolean
 }
 
-export function AppSidebar({ onSettingsClick, isOpen }: AppSidebarProps) {
-  const location = useLocation()
-  const currentPath = location.pathname
+const sidebarItemClassName =
+  'flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-sm font-medium transition-colors'
+const sidebarItemInactiveClassName =
+  'text-foreground hover:bg-muted/15 hover:text-foreground'
 
+interface SidebarNavLinkProps {
+  to: string
+  icon: Parameters<typeof Icon>[0]['icon']
+  children: React.ReactNode
+}
+
+function SidebarNavLink({ to, icon, children }: SidebarNavLinkProps) {
+  return (
+    <NavLink
+      to={to}
+      end
+      className={({ isActive }) =>
+        cn(
+          sidebarItemClassName,
+          isActive ? 'bg-muted/20' : sidebarItemInactiveClassName,
+        )
+      }
+    >
+      <Icon icon={icon} />
+      <span>{children}</span>
+    </NavLink>
+  )
+}
+
+export function AppSidebar({ onSettingsClick, isOpen }: AppSidebarProps) {
   const { isWin } = usePlatform()
 
   return (
@@ -29,41 +60,27 @@ export function AppSidebar({ onSettingsClick, isOpen }: AppSidebarProps) {
           isOpen ? 'opacity-100 delay-150' : 'opacity-0',
         )}
       >
-        <div className='flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-2'>
-          <nav className='flex flex-col gap-1'>
-            <Link
-              to='/'
-              className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                currentPath === '/'
-                  ? 'bg-accent text-accent-foreground'
-                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
-              )}
-            >
-              <LayoutDashboard className='h-4 w-4' />
-              <span>Dashboard</span>
-            </Link>
-            <Link
-              to='/projects'
-              className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                currentPath === '/projects'
-                  ? 'bg-accent text-accent-foreground'
-                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
-              )}
-            >
-              <Folder className='h-4 w-4' />
-              <span>Projects</span>
-            </Link>
+        <div className='flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-1.5'>
+          <nav className='flex flex-col gap-0.5'>
+            <SidebarNavLink to='/' icon={DashboardCircleIcon}>
+              Dashboard
+            </SidebarNavLink>
+            <SidebarNavLink to='/projects' icon={Folder01Icon}>
+              Projects
+            </SidebarNavLink>
           </nav>
         </div>
 
-        <div className='p-3 border-t border-border'>
+        <div className='p-2 border-t dark:border-border/60'>
           <button
             onClick={onSettingsClick}
-            className='w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer outline-none'
+            className={cn(
+              sidebarItemClassName,
+              sidebarItemInactiveClassName,
+              'w-full cursor-pointer outline-none',
+            )}
           >
-            <Settings className='h-4 w-4' />
+            <Icon icon={Settings01Icon} />
             <span>Settings</span>
           </button>
         </div>

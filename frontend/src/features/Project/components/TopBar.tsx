@@ -1,7 +1,8 @@
-import { Button, Switch } from '@heroui/react'
+import { Switch } from '@heroui/react'
 import { ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router'
 
+import { TitlebarIconButton } from '@/components/custom/TitlebarIconButton'
 import { PanelLeft } from '@/components/icons/PanelLeft'
 import { PanelRight } from '@/components/icons/PanelRight'
 import { KERNEL_INFO } from '@/constants/kernels'
@@ -29,18 +30,16 @@ export function TopBar({ project }: TopBarProps) {
 
   return (
     <header
-      className={`flex items-center h-10 px-0 gap-3 shrink-0 select-none ${
+      className={`flex items-center h-8 px-0 gap-3 shrink-0 select-none ${
         isElectron ? 'electron-drag' : ''
       } ${isMac ? 'pl-[80px] -mt-1' : ''} ${isWinOrLinux ? 'pr-[100px]' : ''}`}
     >
-      <Button
-        variant='ghost'
-        isIconOnly
+      <TitlebarIconButton
         onPress={() => navigate(-1)}
-        className='electron-no-drag shrink-0'
+        className='electron-no-drag'
       >
         <ArrowLeft className='h-4 w-4' />
-      </Button>
+      </TitlebarIconButton>
 
       {project && (
         <img

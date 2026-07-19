@@ -1,6 +1,8 @@
 import { Button, Card, Chip, Dropdown, Skeleton } from '@heroui/react'
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { Delete01Icon, Edit02Icon } from '@hugeicons/core-free-icons'
+import { MoreHorizontal } from 'lucide-react'
 
+import { Icon } from '@/components/icons/HugeIcon'
 import { KERNEL_INFO } from '@/constants/kernels'
 import type { Project } from '@/types/project'
 import { formatRelativeTime, truncatePath } from '@/utils/date'
@@ -28,7 +30,7 @@ export function ProjectCard({
       onClick={onClick}
     >
       <Card.Content>
-        <div className='relative bg-default-100 flex items-center justify-center h-32 border-b border-default-200 -mx-4 -mt-4'>
+        <div className='relative bg-default-100 flex items-center justify-center h-32 border-b -mx-4 -mt-4'>
           <img
             src={kernel.image}
             alt={kernel.label}
@@ -52,8 +54,8 @@ export function ProjectCard({
                   }}
                 >
                   <Dropdown.Item id='rename' textValue='Rename'>
-                    <div className='flex items-center'>
-                      <Pencil className='mr-2 h-4 w-4' />
+                    <div className='flex items-center gap-2'>
+                      <Icon icon={Edit02Icon} size={16} />
                       Rename
                     </div>
                   </Dropdown.Item>
@@ -62,8 +64,8 @@ export function ProjectCard({
                     textValue='Delete'
                     variant='danger'
                   >
-                    <div className='flex items-center'>
-                      <Trash2 className='mr-2 h-4 w-4' />
+                    <div className='flex items-center gap-2'>
+                      <Icon icon={Delete01Icon} size={16} />
                       Delete
                     </div>
                   </Dropdown.Item>

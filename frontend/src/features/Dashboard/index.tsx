@@ -1,7 +1,9 @@
-import { PanelLeft } from 'lucide-react'
+import { LayoutAlignLeftIcon, LayoutLeftIcon } from '@hugeicons/core-free-icons'
 import { useState } from 'react'
 import { Outlet } from 'react-router'
 
+import { TitlebarIconButton } from '@/components/custom/TitlebarIconButton'
+import { Icon } from '@/components/icons/HugeIcon'
 import { usePlatform } from '@/hooks/usePlatform'
 import { cn } from '@/lib/utils'
 
@@ -21,23 +23,22 @@ export function Dashboard() {
     <div className='flex flex-col h-screen w-full overflow-hidden'>
       <header
         className={cn(
-          'h-12.5 shrink-0 flex items-center px-4 select-none',
+          'h-8 shrink-0 flex items-center px-4 select-none',
           isElectron ? 'electron-drag' : '',
         )}
       >
         <div
           className={cn(
-            'flex items-center gap-2 electron-no-drag',
+            'h-full flex items-center electron-no-drag',
             isMac ? 'pl-20' : '',
           )}
         >
-          <button
+          <TitlebarIconButton
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className='p-2 -ml-2 rounded-md hover:bg-muted hover:text-foreground text-muted-foreground transition-all duration-200 cursor-pointer outline-none border-none'
-            title='Toggle Sidebar'
+            className='-ml-2 mt-0.5'
           >
-            <PanelLeft className='h-4 w-4' />
-          </button>
+            <Icon icon={sidebarOpen ? LayoutAlignLeftIcon : LayoutLeftIcon} />
+          </TitlebarIconButton>
         </div>
       </header>
 
@@ -47,7 +48,7 @@ export function Dashboard() {
           isOpen={sidebarOpen}
         />
         <main className='flex-1 flex flex-col overflow-hidden'>
-          <div className='flex-1 flex flex-col overflow-auto bg-background shadow-sm rounded-tl-lg'>
+          <div className='flex-1 flex flex-col overflow-auto shadow bg-background rounded-tl-xl border-t border-l dark:border-border/60'>
             <Outlet />
           </div>
         </main>

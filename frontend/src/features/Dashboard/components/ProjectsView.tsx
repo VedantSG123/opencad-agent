@@ -1,8 +1,14 @@
 import { Button, Input, ListBox, Select, Skeleton } from '@heroui/react'
-import { AlertCircle, Plus, RefreshCw, Search } from 'lucide-react'
+import {
+  Alert02Icon,
+  PlusSignIcon,
+  Refresh01Icon,
+  Search01Icon,
+} from '@hugeicons/core-free-icons'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
+import { Icon } from '@/components/icons/HugeIcon'
 import { useProjects } from '@/hooks/useProjects'
 import type { Project } from '@/types/project'
 
@@ -62,7 +68,7 @@ export function ProjectsView() {
     <div className='max-w-7xl w-full mx-auto px-6 py-6 flex-1 flex flex-col'>
       {isError && (
         <div className='flex flex-col items-center justify-center flex-1 gap-4 text-center select-none'>
-          <AlertCircle className='w-10 h-10 text-danger' />
+          <Icon icon={Alert02Icon} size={40} className='text-danger' />
           <div>
             <p className='font-semibold text-lg'>Failed to load projects</p>
             <p className='text-default-500 text-sm mt-1'>
@@ -70,7 +76,7 @@ export function ProjectsView() {
             </p>
           </div>
           <Button variant='outline' onPress={() => refetch()}>
-            <RefreshCw className='mr-2 h-4 w-4' />
+            <Icon icon={Refresh01Icon} size={16} />
             Retry
           </Button>
         </div>
@@ -113,7 +119,11 @@ export function ProjectsView() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className='w-full pl-9'
                 />
-                <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-default-400 pointer-events-none' />
+                <Icon
+                  icon={Search01Icon}
+                  size={16}
+                  className='absolute left-3 top-1/2 -translate-y-1/2 text-default-400 pointer-events-none'
+                />
               </div>
 
               {/* Kernel Filter Dropdown */}
@@ -175,7 +185,7 @@ export function ProjectsView() {
 
             {/* New Project Button */}
             <Button size='sm' onPress={() => setNewProjectOpen(true)}>
-              <Plus className='h-4 w-4' />
+              <Icon icon={PlusSignIcon} size={16} />
               New Project
             </Button>
           </div>
@@ -214,7 +224,11 @@ export function ProjectsView() {
             </div>
           ) : (
             <div className='flex flex-col items-center justify-center py-16 text-center select-none bg-default-100 rounded-xl border border-dashed border-default-200'>
-              <Search className='h-8 w-8 text-default-400 mb-3' />
+              <Icon
+                icon={Search01Icon}
+                size={32}
+                className='text-default-400 mb-3'
+              />
               <p className='font-medium text-default-500'>No projects found</p>
               <p className='text-xs text-default-400 mt-1 max-w-xs'>
                 Try adjusting your search query or kernel filter settings.
