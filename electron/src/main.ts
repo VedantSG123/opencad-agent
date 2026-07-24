@@ -19,6 +19,7 @@ import { registerDialogIpc } from './ipc/dialog.js'
 import { registerFsIpc } from './ipc/fs.js'
 import { registerOpenSCADIpc } from './ipc/openscad.js'
 import { registerSettingsIpc } from './ipc/settings.js'
+import { registerShellIpc } from './ipc/shell.js'
 import { registerWorkspaceIpc } from './ipc/workspace.js'
 import { createHandler } from './utils/ipc-utils.js'
 import { findFreePort } from './utils/network.js'
@@ -211,11 +212,12 @@ app.whenReady().then(async () => {
     registerWorkspaceIpc(ipcMain, backendPort)
     registerOpenSCADIpc(ipcMain)
     registerSettingsIpc(ipcMain, () => mainWindow)
+    registerShellIpc(ipcMain)
 
     // Secure credentials IPC handlers for frontend
     ipcMain.handle(
       'credentials:store',
-      createHandler((_event, providerId: string, auth: VaultAuth) => {
+      createHandler((providerId: string, auth: VaultAuth) => {
         storeCredentialInVault(providerId, auth)
       }),
     )

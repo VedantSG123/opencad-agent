@@ -1,13 +1,14 @@
 import { Label, ListBox, Modal } from '@heroui/react'
-import { PaintBrush02Icon } from '@hugeicons/core-free-icons'
+import { Key01Icon, PaintBrush02Icon } from '@hugeicons/core-free-icons'
 import { useState } from 'react'
 
 import { Icon } from '@/components/icons/HugeIcon'
+import { ProvidersPanel } from '@/features/Providers/components/ProvidersPanel'
 import { cn } from '@/lib/utils'
 
 import { AppearanceSettings } from './settings/AppearanceSettings'
 
-type SettingsCategory = 'appearance'
+type SettingsCategory = 'appearance' | 'providers'
 
 interface SettingsCategoryItem {
   id: SettingsCategory
@@ -17,6 +18,7 @@ interface SettingsCategoryItem {
 
 const SETTINGS_CATEGORIES: SettingsCategoryItem[] = [
   { id: 'appearance', label: 'Appearance', icon: PaintBrush02Icon },
+  { id: 'providers', label: 'Providers', icon: Key01Icon },
 ]
 
 interface SettingsDialogProps {
@@ -68,6 +70,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
               <div className='min-w-0 flex-1 overflow-y-auto p-6'>
                 {category === 'appearance' && <AppearanceSettings />}
+                {category === 'providers' && <ProvidersPanel />}
               </div>
             </div>
           </Modal.Dialog>

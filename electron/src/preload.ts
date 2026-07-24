@@ -40,6 +40,7 @@ export interface ElectronAPI {
   pingBackend: () => Promise<Result<string>>
   storeCredential: (providerId: string, auth: unknown) => Promise<Result<void>>
   isEncryptionAvailable: () => Promise<Result<boolean>>
+  openExternal: (url: string) => Promise<Result<void>>
   openFileDialog: (options: {
     mode: 'file' | 'directory'
     extension?: string
@@ -214,6 +215,7 @@ const api: ElectronAPI = {
     ipcRenderer.invoke('credentials:store', providerId, auth),
   isEncryptionAvailable: () =>
     ipcRenderer.invoke('credentials:is-encryption-available'),
+  openExternal: (url) => ipcRenderer.invoke('shell:open-external', url),
 }
 
 contextBridge.exposeInMainWorld('electron', api)

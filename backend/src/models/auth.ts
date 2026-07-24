@@ -91,6 +91,9 @@ const store = createLazyStore(loadFromFile)
 
 export const all = () => store.get()
 
+/** Forces a fresh reload, bypassing the lazy cache. Use sparingly. */
+export const refresh = () => store.refresh()
+
 async function _persist(state: Record<string, Auth>) {
   await Bun.write(AUTH_FILE, JSON.stringify(state, null, 2))
 }

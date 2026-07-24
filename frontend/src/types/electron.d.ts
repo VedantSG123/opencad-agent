@@ -87,6 +87,9 @@ export interface ElectronAPI {
     request: OpenSCADRequest,
   ) => Promise<Result<OpenSCADIpcResult>>
   onMetrics: (handler: (metrics: PerfMetrics) => void) => () => void
+  storeCredential: (providerId: string, auth: unknown) => Promise<Result<void>>
+  isEncryptionAvailable: () => Promise<Result<boolean>>
+  openExternal: (url: string) => Promise<Result<void>>
 }
 
 declare global {

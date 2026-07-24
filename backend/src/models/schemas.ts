@@ -53,6 +53,11 @@ export const Provider = z.object({
   env: z.array(z.string()).optional(),
   options: z.record(z.string(), z.any()),
   models: z.record(z.string(), Model),
+  oauth: z
+    .object({
+      description: z.string(),
+    })
+    .optional(),
 })
 
 export type Provider = z.infer<typeof Provider>
