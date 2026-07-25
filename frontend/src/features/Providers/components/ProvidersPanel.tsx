@@ -1,4 +1,4 @@
-import { Button } from '@heroui/react'
+import { Button, ScrollShadow, Skeleton } from '@heroui/react'
 import { Alert02Icon, Refresh01Icon } from '@hugeicons/core-free-icons'
 import { useMemo, useState } from 'react'
 
@@ -12,6 +12,18 @@ import { ConnectProviderView } from './ConnectProviderView'
 
 interface ProvidersPanelProps {
   className?: string
+}
+
+function ProviderRowSkeleton() {
+  return (
+    <div className='flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2'>
+      <div className='flex items-center gap-2.5'>
+        <Skeleton className='h-4 w-4 rounded-full' />
+        <Skeleton className='h-4 w-28 rounded' />
+      </div>
+      <Skeleton className='h-8 w-24 rounded-lg' />
+    </div>
+  )
 }
 
 export function ProvidersPanel({ className }: ProvidersPanelProps) {
@@ -89,8 +101,32 @@ export function ProvidersPanel({ className }: ProvidersPanelProps) {
 
   if (isLoading) {
     return (
-      <div className={cn('flex flex-col gap-6', className)}>
-        <p className='text-sm text-muted-foreground'>Loading providers…</p>
+      <div className={cn('flex flex-col gap-6 h-full', className)}>
+        <div className='flex flex-col gap-1'>
+          <h3 className='text-base font-semibold text-foreground'>Providers</h3>
+          <p className='text-sm text-muted-foreground'>
+            Connect an AI provider to use its models.
+          </p>
+        </div>
+
+        <div className='flex-1 min-h-0 flex flex-col gap-6 px-8 -mx-6'>
+          <div className='flex flex-col gap-2'>
+            <Skeleton className='h-4 w-20 rounded' />
+            <div className='flex flex-col gap-1.5'>
+              <ProviderRowSkeleton />
+            </div>
+          </div>
+
+          <div className='flex flex-col gap-2'>
+            <Skeleton className='h-4 w-20 rounded' />
+            <Skeleton className='h-9 w-full rounded-lg' />
+            <div className='flex flex-col gap-1.5'>
+              <ProviderRowSkeleton />
+              <ProviderRowSkeleton />
+              <ProviderRowSkeleton />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -106,7 +142,7 @@ export function ProvidersPanel({ className }: ProvidersPanelProps) {
   }
 
   return (
-    <div className={cn('flex flex-col gap-6', className)}>
+    <div className={cn('flex flex-col gap-6 h-full', className)}>
       <div className='flex flex-col gap-1'>
         <h3 className='text-base font-semibold text-foreground'>Providers</h3>
         <p className='text-sm text-muted-foreground'>
@@ -114,12 +150,13 @@ export function ProvidersPanel({ className }: ProvidersPanelProps) {
         </p>
       </div>
 
-      <ConnectedProvidersSection providers={connectedProviders} />
-
-      <AvailableProvidersSection
-        providers={availableProviders}
-        onConnect={setActiveProviderId}
-      />
+      <ScrollShadow className='flex-1 min-h-0 overflow-y-auto px-8 -mx-6 flex flex-col gap-6'>
+        <ConnectedProvidersSection providers={connectedProviders} />
+        <AvailableProvidersSection
+          providers={availableProviders}
+          onConnect={setActiveProviderId}
+        />
+      </ScrollShadow>
     </div>
   )
 }

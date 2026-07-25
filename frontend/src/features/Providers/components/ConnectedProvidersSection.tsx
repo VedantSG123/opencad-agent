@@ -1,5 +1,5 @@
 import { Button, Label } from '@heroui/react'
-import { Key01Icon, Logout03Icon } from '@hugeicons/core-free-icons'
+import { Logout03Icon } from '@hugeicons/core-free-icons'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -10,6 +10,8 @@ import {
   useInvalidateProviders,
 } from '@/hooks/useProviders'
 import type { Provider } from '@/types/provider'
+
+import { ProviderLogo } from './ProviderLogo'
 
 interface ConnectedProvidersSectionProps {
   providers: Provider[]
@@ -53,11 +55,7 @@ export function ConnectedProvidersSection({
             className='flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2'
           >
             <div className='flex items-center gap-2.5 min-w-0'>
-              <Icon
-                icon={Key01Icon}
-                size={16}
-                className='text-muted-foreground shrink-0'
-              />
+              <ProviderLogo providerId={provider.id} size={16} />
               <span className='text-sm font-medium truncate'>
                 {provider.name}
               </span>

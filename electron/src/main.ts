@@ -3,34 +3,22 @@
 import { fileURLToPath } from 'node:url'
 
 import { spawn } from 'child_process'
-import {
-  app,
-  BrowserWindow,
-  dialog,
-  ipcMain,
-  nativeTheme,
-  safeStorage,
-} from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 
 import { registerBackendIpc } from './ipc/backend.js'
+import { registerCredentialsIpc } from './ipc/credentials.js'
 import { registerDialogIpc } from './ipc/dialog.js'
 import { registerFsIpc } from './ipc/fs.js'
 import { registerOpenSCADIpc } from './ipc/openscad.js'
 import { registerSettingsIpc } from './ipc/settings.js'
 import { registerShellIpc } from './ipc/shell.js'
 import { registerWorkspaceIpc } from './ipc/workspace.js'
-import { createHandler } from './utils/ipc-utils.js'
 import { findFreePort } from './utils/network.js'
 import { getSettings } from './utils/settings.js'
 import { getResolvedTheme, getTitleBarOverlay } from './utils/theme.js'
-import {
-  startVaultServer,
-  stopVaultServer,
-  storeCredentialInVault,
-  type VaultAuth,
-} from './utils/vault.js'
+import { startVaultServer, stopVaultServer } from './utils/vault.js'
 import { stopWatcher } from './utils/watcher.js'
 import { loadAllowedWorkspaceRoots } from './utils/workspace.js'
 
@@ -213,21 +201,7 @@ app.whenReady().then(async () => {
     registerOpenSCADIpc(ipcMain)
     registerSettingsIpc(ipcMain, () => mainWindow)
     registerShellIpc(ipcMain)
-
-    // Secure credentials IPC handlers for frontend
-    ipcMain.handle(
-      'credentials:store',
-      createHandler((providerId: string, auth: VaultAuth) => {
-        storeCredentialInVault(providerId, auth)
-      }),
-    )
-
-    ipcMain.handle(
-      'credentials:is-encryption-available',
-      createHandler(() => {
-        return safeStorage.isEncryptionAvailable()
-      }),
-    )
+    registerCredentialsIpc(ipcMain)
 
     // Broadcast performance metrics every second
     setInterval(() => {

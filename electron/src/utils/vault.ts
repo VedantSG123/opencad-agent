@@ -1,8 +1,9 @@
 import * as crypto from 'crypto'
-import { app, safeStorage } from 'electron'
+import { safeStorage } from 'electron'
 import * as fs from 'fs'
 import * as http from 'http'
 import * as path from 'path'
+import { DATA_DIR } from 'shared'
 
 import { findFreePort } from './network.js'
 
@@ -22,7 +23,7 @@ interface OAuthAuth {
 export type VaultAuth = APIKeyAuth | OAuthAuth
 
 function getStoragePath(): string {
-  return path.join(app.getPath('userData'), 'secure_vault.json')
+  return path.join(DATA_DIR, 'secure_vault.json')
 }
 
 function encryptString(text: string): string {

@@ -1,6 +1,6 @@
 import { Button, Input } from '@heroui/react'
 import { Alert02Icon } from '@hugeicons/core-free-icons'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Icon } from '@/components/icons/HugeIcon'
@@ -23,6 +23,7 @@ export function ApiKeyConnectForm({
     boolean | null
   >(null)
   const { invalidateProviders } = useInvalidateProviders()
+  const firstInputRef = useRef<HTMLInputElement>(null)
 
   const isElectron = !!window.electron
 
@@ -31,6 +32,14 @@ export function ApiKeyConnectForm({
     void window.electron.isEncryptionAvailable().then((res) => {
       if (res.success) setEncryptionAvailable(res.data)
     })
+  }, [])
+
+  // autoFocus alone loses the focus race when this form mounts as the
+  // result of a tab switch (the tab trigger keeps focus from the click) —
+  // grab it explicitly once the browser has settled.
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => firstInputRef.current?.focus())
+    return () => cancelAnimationFrame(raf)
   }, [])
 
   const isComplete = envVars.every((envVar) => values[envVar]?.trim())
@@ -83,7 +92,7 @@ export function ApiKeyConnectForm({
         </div>
       )}
 
-      {envVars.map((envVar) => (
+      {envVars.map((envVar, index) => (
         <div key={envVar} className='flex flex-col gap-1.5'>
           <label
             htmlFor={`api-key-${envVar}`}
@@ -92,6 +101,7 @@ export function ApiKeyConnectForm({
             API Key
           </label>
           <Input
+            ref={index === 0 ? firstInputRef : undefined}
             id={`api-key-${envVar}`}
             type='password'
             placeholder={`Enter your ${envVar}`}
@@ -99,7 +109,7 @@ export function ApiKeyConnectForm({
             onChange={(e) =>
               setValues((prev) => ({ ...prev, [envVar]: e.target.value }))
             }
-            autoFocus
+            autoFocus={index === 0}
           />
           <p className='text-xs text-muted-foreground'>
             Stored as the {envVar} environment variable.

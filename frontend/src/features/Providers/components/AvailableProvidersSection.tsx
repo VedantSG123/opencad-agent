@@ -5,6 +5,8 @@ import { useState } from 'react'
 import { Icon } from '@/components/icons/HugeIcon'
 import type { Provider } from '@/types/provider'
 
+import { ProviderLogo } from './ProviderLogo'
+
 interface AvailableProvidersSectionProps {
   providers: Provider[]
   onConnect: (providerId: string) => void
@@ -50,9 +52,12 @@ export function AvailableProvidersSection({
               key={provider.id}
               className='flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2'
             >
-              <span className='text-sm font-medium truncate'>
-                {provider.name}
-              </span>
+              <div className='flex items-center gap-2.5 min-w-0'>
+                <ProviderLogo providerId={provider.id} size={16} />
+                <span className='text-sm font-medium truncate'>
+                  {provider.name}
+                </span>
+              </div>
               <Button
                 variant='outline'
                 size='sm'

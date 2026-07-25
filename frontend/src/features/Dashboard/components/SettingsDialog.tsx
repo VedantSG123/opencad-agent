@@ -33,7 +33,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     <Modal>
       <Modal.Backdrop isOpen={open} onOpenChange={onOpenChange}>
         <Modal.Container size='lg'>
-          <Modal.Dialog className='min-h-112 max-w-3xl w-full overflow-hidden p-0 dark:shadow-none'>
+          <Modal.Dialog className='max-h-144 h-full max-w-3xl w-full overflow-hidden p-0 dark:shadow-none'>
             <Modal.CloseTrigger />
 
             <div className='flex h-full min-h-0'>
