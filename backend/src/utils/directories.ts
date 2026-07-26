@@ -1,15 +1,10 @@
 import os from 'node:os'
 
-import envPaths from 'env-paths'
 import fs from 'fs'
 import path from 'path'
+import { CACHE_DIR, CONFIG_DIR, DATA_DIR, LOGS_DIR } from 'shared'
 
-const paths = envPaths('opencad-agent', { suffix: '' })
-
-export const DATA_DIR = paths.data
-export const CACHE_DIR = paths.cache
-export const LOGS_DIR = paths.log
-export const CONFIG_DIR = paths.config
+export { CACHE_DIR, CONFIG_DIR, DATA_DIR, LOGS_DIR }
 
 export const DB_PATH = path.join(DATA_DIR, 'opencad.sqlite')
 

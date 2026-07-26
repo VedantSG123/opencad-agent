@@ -1,5 +1,10 @@
-import { ArrowLeftRight, Code2 } from 'lucide-react'
+import {
+  ArrowDataTransferHorizontalIcon,
+  SourceCodeIcon,
+} from '@hugeicons/core-free-icons'
 import * as THREE from 'three'
+
+import { Icon } from '@/components/icons/HugeIcon'
 
 import { usePanelContext } from '../context/PanelContext'
 import { useEditor } from './editor/context'
@@ -18,18 +23,22 @@ export function ViewportPanel() {
   return (
     <div
       id='viewport-panel-container'
-      className='h-full flex flex-col bg-card overflow-hidden'
+      className='h-full flex flex-col bg-background-secondary overflow-hidden'
     >
       <div className='w-full flex justify-end'>
         {isFocusMode && (
           <div className='flex items-center gap-1 border-b px-1 h-10 shrink-0'>
             <button
               onClick={() => setFocusedPanel('editor')}
-              className='flex items-center gap-2 px-2 h-7 text-xs rounded-md text-muted-foreground group hover:text-foreground hover:bg-accent/50 transition-colors'
+              className='flex items-center gap-2 px-2 h-7 text-xs rounded-md shrink-0 text-foreground/60 group hover:text-foreground hover:bg-muted/15 transition-colors'
             >
-              <ArrowLeftRight className='h-4 w-4 group-hover:text-blue-500' />
+              <Icon
+                icon={ArrowDataTransferHorizontalIcon}
+                size={16}
+                className='group-hover:text-blue-500'
+              />
               <div className='flex items-center gap-1'>
-                <Code2 className='h-3.5 w-3.5' />
+                <Icon icon={SourceCodeIcon} size={14} />
                 <span>Code Editor</span>
               </div>
             </button>
@@ -41,7 +50,7 @@ export function ViewportPanel() {
         {isOpenSCAD && <OpenSCADViewport />}
         {!isReplicad && !isOpenSCAD && (
           <div className='h-full flex items-center justify-center'>
-            <span className='text-sm text-muted-foreground'>3D Viewport</span>
+            <span className='text-sm text-foreground/60'>3D Viewport</span>
           </div>
         )}
       </div>

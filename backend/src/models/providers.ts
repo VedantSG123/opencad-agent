@@ -1,9 +1,16 @@
-import { all as getAllAuth } from './auth'
+import { all as getAllAuth, refresh as refreshAuth } from './auth'
 import type { ModelsDevModel, ModelsDevProvider } from './modelsDev'
 import { getModelsDev } from './modelsDev'
-import { loadProviderWithOAuth } from './oauth'
+import {
+  loadProviderWithOAuth,
+  OAUTH_SUPPORTED_PROVIDERS,
+  oauthProviderRegistry,
+  type OAuthSupportedProviderIds,
+} from './oauth'
 import type { Model, Provider } from './schemas'
 import { SDKConfig, SUPPORTED_PROVIDERS } from './sdkConfig'
+
+const GOOGLE_ENV = ['GEMINI_API_KEY']
 
 function transformModelsDevModel(
   provider: ModelsDevProvider,
@@ -51,17 +58,35 @@ function transformModelsDevModel(
 }
 
 function transformModelsDevProvider(provider: ModelsDevProvider): Provider {
+  const models = Object.fromEntries(
+    Object.entries(provider.models)
+      .map(
+        ([modelId, model]) =>
+          [modelId, transformModelsDevModel(provider, model)] as const,
+      )
+      .filter(
+        ([, model]) =>
+          model.capabilities.input.text && model.capabilities.output.text,
+      ),
+  )
+
+  const oauth = (OAUTH_SUPPORTED_PROVIDERS as readonly string[]).includes(
+    provider.id,
+  )
+    ? {
+        description:
+          oauthProviderRegistry[provider.id as OAuthSupportedProviderIds]
+            .description,
+      }
+    : undefined
+
   return {
     id: provider.id,
     name: provider.name,
-    env: provider.env || [],
+    env: provider.id === 'google' ? GOOGLE_ENV : provider.env || [],
     options: {},
-    models: Object.fromEntries(
-      Object.entries(provider.models).map(([modelId, model]) => [
-        modelId,
-        transformModelsDevModel(provider, model),
-      ]),
-    ),
+    models,
+    ...(oauth && { oauth }),
   }
 }
 
@@ -201,7 +226,12 @@ export async function getAvailableProviders(): Promise<
 export async function getAuthenticatedStatus(): Promise<
   Record<string, { authenticated: boolean; method?: 'api_key' | 'oauth' }>
 > {
-  const allAuth = await getAllAuth()
+  // Credentials written directly via the Electron IPC vault bypass this
+  // module's set()/remove(), so the lazy auth cache can go stale. Force a
+  // fresh read here (and recompute the provider cache from it) so a
+  // just-connected key shows up immediately without an app restart.
+  const allAuth = await refreshAuth()
+  invalidateProviderCache()
   const cache = await getProviderCache()
 
   const status: Record<

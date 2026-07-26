@@ -1,5 +1,14 @@
 import type { IpcRendererEvent } from 'electron'
 import { contextBridge, ipcRenderer } from 'electron'
+// Preload compiles to CommonJS but 'shared' ships ESM only — import types
+// only here (fully erased at compile time) so no runtime require() happens.
+import type {
+  AppSettings,
+  ResolvedTheme,
+  ThemeSetting,
+  UserPreferences,
+  UserPreferencesPatch,
+} from 'shared'
 
 export interface WatchEvent {
   event: 'fs:watch'
@@ -26,10 +35,22 @@ export interface ElectronAPI {
   isElectron: boolean
   backendPort: number
   platform: string
-  updateTheme: (theme: 'dark' | 'light') => void
+  // Theme preference and its OS-resolved value at window-creation time,
+  // passed synchronously via additionalArguments to avoid a flash of the
+  // wrong theme while the async settings IPC call resolves.
+  initialTheme: ThemeSetting
+  initialResolvedTheme: ResolvedTheme
+  getSettings: () => Promise<Result<AppSettings>>
+  setTheme: (theme: ThemeSetting) => Promise<Result<ResolvedTheme>>
+  onThemeUpdated: (handler: (theme: ResolvedTheme) => void) => () => void
+  getUserPreferences: () => Promise<Result<UserPreferences>>
+  updateUserPreferences: (
+    patch: UserPreferencesPatch,
+  ) => Promise<Result<UserPreferences>>
   pingBackend: () => Promise<Result<string>>
   storeCredential: (providerId: string, auth: unknown) => Promise<Result<void>>
   isEncryptionAvailable: () => Promise<Result<boolean>>
+  openExternal: (url: string) => Promise<Result<void>>
   openFileDialog: (options: {
     mode: 'file' | 'directory'
     extension?: string
@@ -114,11 +135,37 @@ export interface ElectronAPI {
 const portArg = process.argv.find((arg) => arg.startsWith('--backend-port='))
 const backendPort = portArg ? parseInt(portArg.split('=')[1], 10) : 3000
 
+const themeArg = process.argv.find((arg) => arg.startsWith('--initial-theme='))
+const initialTheme = (
+  themeArg ? themeArg.split('=')[1] : 'system'
+) as ThemeSetting
+
+const resolvedThemeArg = process.argv.find((arg) =>
+  arg.startsWith('--initial-resolved-theme='),
+)
+const initialResolvedTheme = (
+  resolvedThemeArg ? resolvedThemeArg.split('=')[1] : 'light'
+) as ResolvedTheme
+
 const api: ElectronAPI = {
   isElectron: true,
   backendPort,
   platform: process.platform,
-  updateTheme: (theme) => ipcRenderer.send('theme:change', theme),
+  initialTheme,
+  initialResolvedTheme,
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setTheme: (theme) => ipcRenderer.invoke('theme:set', theme),
+  getUserPreferences: () => ipcRenderer.invoke('preferences:get'),
+  updateUserPreferences: (patch) =>
+    ipcRenderer.invoke('preferences:update', patch),
+  onThemeUpdated: (handler) => {
+    const listener = (_event: IpcRendererEvent, theme: ResolvedTheme) =>
+      handler(theme)
+    ipcRenderer.on('theme:updated', listener)
+    return () => {
+      ipcRenderer.removeListener('theme:updated', listener)
+    }
+  },
   pingBackend: () => ipcRenderer.invoke('backend:ping'),
   openFileDialog: (options) => ipcRenderer.invoke('dialog:open', options),
   readFile: (filePath) => ipcRenderer.invoke('fs:read', filePath),
@@ -181,6 +228,7 @@ const api: ElectronAPI = {
     ipcRenderer.invoke('credentials:store', providerId, auth),
   isEncryptionAvailable: () =>
     ipcRenderer.invoke('credentials:is-encryption-available'),
+  openExternal: (url) => ipcRenderer.invoke('shell:open-external', url),
 }
 
 contextBridge.exposeInMainWorld('electron', api)

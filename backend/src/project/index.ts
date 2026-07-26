@@ -30,6 +30,7 @@ export async function createProject({
     time: {
       created: new Date().toISOString(),
       updated: new Date().toISOString(),
+      accessed: new Date().toISOString(),
     },
   }
   return upsertProject(project)

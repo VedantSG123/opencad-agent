@@ -1,3 +1,11 @@
+import type {
+  AppSettings,
+  ResolvedTheme,
+  ThemeSetting,
+  UserPreferences,
+  UserPreferencesPatch,
+} from 'shared'
+
 export interface WatchEvent {
   event: 'fs:watch'
   type: 'change' | 'add' | 'unlink' | 'addDir' | 'unlinkDir'
@@ -41,7 +49,15 @@ export interface ElectronAPI {
   isElectron: boolean
   backendPort: number
   platform: string
-  updateTheme: (theme: 'dark' | 'light') => void
+  initialTheme: ThemeSetting
+  initialResolvedTheme: ResolvedTheme
+  getSettings: () => Promise<Result<AppSettings>>
+  setTheme: (theme: ThemeSetting) => Promise<Result<ResolvedTheme>>
+  onThemeUpdated: (handler: (theme: ResolvedTheme) => void) => () => void
+  getUserPreferences: () => Promise<Result<UserPreferences>>
+  updateUserPreferences: (
+    patch: UserPreferencesPatch,
+  ) => Promise<Result<UserPreferences>>
   pingBackend: () => Promise<Result<string>>
   openFileDialog: (options: {
     mode: 'file' | 'directory'
@@ -81,6 +97,9 @@ export interface ElectronAPI {
     request: OpenSCADRequest,
   ) => Promise<Result<OpenSCADIpcResult>>
   onMetrics: (handler: (metrics: PerfMetrics) => void) => () => void
+  storeCredential: (providerId: string, auth: unknown) => Promise<Result<void>>
+  isEncryptionAvailable: () => Promise<Result<boolean>>
+  openExternal: (url: string) => Promise<Result<void>>
 }
 
 declare global {

@@ -239,7 +239,7 @@ function waitForOAuthCallback(
 export const openaiOAuthProvider: OAuthProvider = {
   id: 'openai',
   title: 'ChatGPT Pro/Plus',
-  description: 'Sign in with your ChatGPT account to use OpenAI Codex models.',
+  description: 'ChatGPT Pro/Plus',
 
   async authorize(): Promise<Authorization> {
     await startOAuthServer()

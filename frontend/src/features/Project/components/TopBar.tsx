@@ -1,16 +1,13 @@
-import { ArrowLeft } from 'lucide-react'
+import { Switch } from '@heroui/react'
+import { ArrowLeft02Icon } from '@hugeicons/core-free-icons'
 import { useNavigate } from 'react-router'
 
+import { TitlebarIconButton } from '@/components/custom/TitlebarIconButton'
+import { Icon } from '@/components/icons/HugeIcon'
 import { PanelLeft } from '@/components/icons/PanelLeft'
 import { PanelRight } from '@/components/icons/PanelRight'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { KERNEL_INFO } from '@/constants/kernels'
+import { usePlatform } from '@/hooks/usePlatform'
 import type { Project } from '@/types/project'
 
 import { usePanelContext } from '../context/PanelContext'
@@ -30,88 +27,73 @@ export function TopBar({ project }: TopBarProps) {
     toggleFocusMode,
   } = usePanelContext()
 
-  const isElectron = typeof window !== 'undefined' && !!window.electron
-  const isMac = isElectron && window.electron?.platform === 'darwin'
-  const isWinOrLinux = isElectron && window.electron?.platform !== 'darwin'
+  const { isElectron, isMac, isWinOrLinux } = usePlatform()
 
   return (
     <header
-      className={`flex items-center h-10 px-0 gap-3 shrink-0 select-none ${
+      className={`flex items-center h-9 px-2 gap-3 shrink-0 select-none ${
         isElectron ? 'electron-drag' : ''
-      } ${isMac ? 'pl-[80px] -mt-1' : ''} ${isWinOrLinux ? 'pr-[100px]' : ''}`}
+      } ${isMac ? 'pl-20' : ''} ${isWinOrLinux ? 'pr-36' : ''}`}
     >
-      <Button
-        variant='ghost'
-        size='icon'
-        onClick={() => navigate('/')}
-        className='electron-no-drag shrink-0'
+      <TitlebarIconButton
+        onPress={() => navigate(-1)}
+        className='electron-no-drag'
       >
-        <ArrowLeft className='h-4 w-4' />
-      </Button>
+        <Icon icon={ArrowLeft02Icon} size={16} />
+      </TitlebarIconButton>
 
       {project && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <img
-              src={KERNEL_INFO[project.cad_kernel].image}
-              alt={KERNEL_INFO[project.cad_kernel].label}
-              className='h-5 w-5 object-contain shrink-0 cursor-default'
-            />
-          </TooltipTrigger>
-          <TooltipContent>
-            {KERNEL_INFO[project.cad_kernel].label}
-          </TooltipContent>
-        </Tooltip>
+        <img
+          src={KERNEL_INFO[project.cad_kernel].image}
+          alt={KERNEL_INFO[project.cad_kernel].label}
+          title={KERNEL_INFO[project.cad_kernel].label}
+          className='h-4 w-4 object-contain shrink-0 cursor-default'
+        />
       )}
 
-      <span className='font-semibold truncate select-none'>
+      <span className='font-medium text-xs text-foreground/80 truncate select-none'>
         {project?.name ?? '—'}
       </span>
 
-      <div className='ml-auto flex items-center gap-0.5 electron-no-drag'>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className='flex items-center gap-1.5'>
-              <Switch checked={isFocusMode} onCheckedChange={toggleFocusMode} />
-              <span className='text-xs text-muted-foreground select-none'>
-                Focus
-              </span>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            {isFocusMode ? 'Exit focus mode' : 'Focus mode'}
-          </TooltipContent>
-        </Tooltip>
+      <div className='ml-auto flex items-center gap-4 electron-no-drag'>
+        <div
+          className='flex items-center gap-1 cursor-pointer'
+          title={isFocusMode ? 'Exit focus mode' : 'Focus mode'}
+        >
+          <Switch
+            aria-label={isFocusMode ? 'Exit focus mode' : 'Focus mode'}
+            isSelected={isFocusMode}
+            onChange={toggleFocusMode}
+            size='sm'
+          >
+            <Switch.Content>
+              <Switch.Control className='shadow'>
+                <Switch.Thumb />
+              </Switch.Control>
+            </Switch.Content>
+          </Switch>
+          <span className='text-xs text-default-500 select-none'>Focus</span>
+        </div>
 
-        <div className='w-px h-5 bg-border mx-1' />
+        <div className='flex items-center'>
+          <TitlebarIconButton
+            onClick={toggleCodeEditor}
+            aria-label={
+              isCodeEditorCollapsed ? 'Show code editor' : 'Hide code editor'
+            }
+          >
+            <PanelLeft isCollapsed={isCodeEditorCollapsed} size={16} />
+          </TitlebarIconButton>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={toggleCodeEditor}
-              className='p-0.5 rounded-md text-muted-foreground hover:text-foreground transition-colors'
-            >
-              <PanelLeft isCollapsed={isCodeEditorCollapsed} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {isCodeEditorCollapsed ? 'Show code editor' : 'Hide code editor'}
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={toggleAgent}
-              className='p-0.5 rounded-md text-muted-foreground hover:text-foreground transition-colors'
-            >
-              <PanelRight isCollapsed={isAgentCollapsed} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {isAgentCollapsed ? 'Show agent panel' : 'Hide agent panel'}
-          </TooltipContent>
-        </Tooltip>
+          <TitlebarIconButton
+            onClick={toggleAgent}
+            aria-label={
+              isAgentCollapsed ? 'Show agent panel' : 'Hide agent panel'
+            }
+          >
+            <PanelRight isCollapsed={isAgentCollapsed} size={16} />
+          </TitlebarIconButton>
+        </div>
       </div>
     </header>
   )

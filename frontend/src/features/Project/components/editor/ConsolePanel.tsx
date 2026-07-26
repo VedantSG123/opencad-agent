@@ -1,8 +1,10 @@
-import { ChevronDown, Terminal, Trash2 } from 'lucide-react'
+import { Tooltip } from '@heroui/react'
+import { CleanIcon, TerminalIcon } from '@hugeicons/core-free-icons'
 import * as React from 'react'
 
-import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { TitlebarIconButton } from '@/components/custom/TitlebarIconButton'
+import { Icon } from '@/components/icons/HugeIcon'
+import { XIcon } from '@/components/icons/XIcon'
 import { usePanelContext } from '@/features/Project/context/PanelContext'
 import { type LogEntry, useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
 import { useReplicad } from '@/hooks/useReplicad'
@@ -35,44 +37,48 @@ function ConsolePanelBase({ logs, clearLogs, error }: ConsolePanelBaseProps) {
   }, [error, isConsoleCollapsed, toggleConsole])
 
   return (
-    <div className='flex flex-col h-full bg-background text-card-foreground border-t border-border select-text font-sans overflow-hidden'>
+    <div className='flex flex-col h-full bg-background text-foreground border-t border-border select-text font-sans overflow-hidden'>
       {/* Console Header */}
-      <div className='flex items-center justify-between px-3 py-1 bg-muted/40 border-b border-border/50 backdrop-blur-sm shrink-0 select-none h-8'>
-        <div className='flex items-center gap-1.5 text-xs font-semibold text-muted-foreground'>
-          <Terminal className='h-3.5 w-3.5 text-primary' />
+      <div className='flex items-center justify-between px-3 py-1 bg-background-secondary border-b shadow-sm shrink-0 select-none h-8'>
+        <div className='flex items-center gap-1.5 text-xs font-semibold text-foreground/60'>
+          <Icon icon={TerminalIcon} size={14} className='text-accent' />
           <span>Execution Console</span>
           {logs.length > 0 && (
             <span className='inline-flex h-2 w-2 rounded-full bg-blue-500 animate-pulse' />
           )}
         </div>
         <div className='flex items-center gap-1'>
-          <Button
-            variant='ghost'
-            size='icon'
-            onClick={clearLogs}
-            className='h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors'
-            title='Clear console'
-            disabled={logs.length === 0}
-          >
-            <Trash2 className='h-3.5 w-3.5' />
-          </Button>
-          <Button
-            variant='ghost'
-            size='icon'
-            onClick={toggleConsole}
-            className='h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors'
-            title='Minimize console'
-          >
-            <ChevronDown className='h-4 w-4' />
-          </Button>
+          <Tooltip>
+            <TitlebarIconButton
+              onPress={clearLogs}
+              aria-label='Clear console'
+              isDisabled={logs.length === 0}
+            >
+              <Icon icon={CleanIcon} size={14} />
+            </TitlebarIconButton>
+            <Tooltip.Content>
+              <p>Clear console</p>
+            </Tooltip.Content>
+          </Tooltip>
+          <Tooltip>
+            <TitlebarIconButton
+              onPress={toggleConsole}
+              aria-label='Minimize console'
+            >
+              <XIcon size={14} />
+            </TitlebarIconButton>
+            <Tooltip.Content>
+              <p>Minimize console</p>
+            </Tooltip.Content>
+          </Tooltip>
         </div>
       </div>
 
       {/* Console Output Scroll Area */}
-      <ScrollArea ref={scrollRef} className='flex-1 min-h-0'>
+      <div ref={scrollRef} className='flex-1 min-h-0 overflow-y-auto'>
         <div className='p-3 font-mono text-xs leading-relaxed space-y-1.5'>
           {logs.length === 0 ? (
-            <div className='h-full flex items-center justify-center text-muted-foreground italic select-none'>
+            <div className='h-full flex items-center justify-center text-foreground/60 italic select-none'>
               {`No logs yet. Output logs from your code (if any) will appear here.`}
             </div>
           ) : (
@@ -86,15 +92,14 @@ function ConsolePanelBase({ logs, clearLogs, error }: ConsolePanelBaseProps) {
                   key={log.timestamp + '-' + index}
                   className={cn(
                     'px-2 py-1 rounded-sm whitespace-pre-wrap break-all border-l-2 border-transparent animate-in fade-in duration-200 slide-in-from-bottom-1',
-                    isError &&
-                      'bg-destructive/10 text-destructive border-destructive',
+                    isError && 'bg-danger/10 text-danger border-danger',
                     isWarn &&
-                      'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/80',
-                    isInfo && 'text-sky-600 dark:text-sky-400',
+                      'bg-warning/10 text-warning dark:text-warning border-warning/80',
+                    isInfo && 'text-accent',
                     !isError && !isWarn && !isInfo && 'text-foreground',
                   )}
                 >
-                  <span className='text-muted-foreground/60 mr-2 select-none'>
+                  <span className='text-foreground/60 mr-2 select-none'>
                     [{new Date(log.timestamp).toLocaleTimeString()}]
                   </span>
                   {log.text}
@@ -103,7 +108,7 @@ function ConsolePanelBase({ logs, clearLogs, error }: ConsolePanelBaseProps) {
             })
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   )
 }

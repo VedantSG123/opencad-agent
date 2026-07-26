@@ -1,5 +1,4 @@
 import { isBinary } from 'istextorbinary'
-import { File, Folder, FolderOpen } from 'lucide-react'
 import {
   createContext,
   useCallback,
@@ -21,6 +20,11 @@ import { useFileSyncWS } from '@/hooks/useFileSyncWS'
 import { toFsPath } from '@/lib/utils'
 import type { Project } from '@/types/project'
 
+import {
+  FileIconComponent,
+  FolderIconComponent,
+  FolderOpenIconComponent,
+} from './treeIcons'
 import type { DialogState, EditorDialogs } from './useEditorDialogs'
 import { useEditorDialogs } from './useEditorDialogs'
 
@@ -122,12 +126,12 @@ async function buildTree(
       items.push({
         id: entryPath,
         name: entry.name,
-        icon: Folder,
-        openIcon: FolderOpen,
+        icon: FolderIconComponent,
+        openIcon: FolderOpenIconComponent,
         children,
       })
     } else {
-      items.push({ id: entryPath, name: entry.name, icon: File })
+      items.push({ id: entryPath, name: entry.name, icon: FileIconComponent })
     }
   }
 
@@ -433,7 +437,7 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
         return
       }
 
-      const item: TreeDataItem = { id: path, name, icon: File }
+      const item: TreeDataItem = { id: path, name, icon: FileIconComponent }
       setTreeData((prev) => addItemToTree(prev, parentPath, item))
 
       try {
@@ -467,8 +471,8 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
       const item: TreeDataItem = {
         id: path,
         name,
-        icon: Folder,
-        openIcon: FolderOpen,
+        icon: FolderIconComponent,
+        openIcon: FolderOpenIconComponent,
         children: [],
       }
       setTreeData((prev) => addItemToTree(prev, parentPath, item))

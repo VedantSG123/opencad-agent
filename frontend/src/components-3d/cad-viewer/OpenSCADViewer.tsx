@@ -2,8 +2,8 @@ import * as React from 'react'
 import * as THREE from 'three'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 
+import { ErrorBoundary } from '@/components/custom/ErrorBoundary'
 import { OpenSCADSVGViewer } from '@/components/custom/SvgViewer'
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import type { CompileResult } from '@/kernels/openscad/nodeOpenSCADApi'
 
 import type { StageHandle } from '../helpers/Stage'

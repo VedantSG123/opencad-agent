@@ -25,19 +25,6 @@ window.MonacoEnvironment = {
   },
 }
 
-monaco.editor.defineTheme('custom-vs-dark', {
-  base: 'vs-dark',
-  inherit: true,
-  rules: [],
-  colors: { 'editor.background': '#1e1e1e' },
-})
-monaco.editor.defineTheme('custom-vs', {
-  base: 'vs',
-  inherit: true,
-  rules: [],
-  colors: { 'editor.background': '#e9e4d8' },
-})
-
 // Transparent theme variants — #RRGGBBAA, 66 alpha = ~66% opaque
 monaco.editor.defineTheme('custom-vs-dark-transparent', {
   base: 'vs-dark',
@@ -49,7 +36,7 @@ monaco.editor.defineTheme('custom-vs-transparent', {
   base: 'vs',
   inherit: true,
   rules: [],
-  colors: { 'editor.background': '#e9e4d866' },
+  colors: { 'editor.background': '#fffffe66' },
 })
 
 const EXT_TO_LANGUAGE: Record<string, string> = {
@@ -110,7 +97,7 @@ function MonacoEditorBase({
   onContentChange,
   onClearContent,
 }: MonacoEditorBaseProps) {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const { isFocusMode, focusedPanel } = usePanelContext()
   const isTransparent = isFocusMode && focusedPanel === 'editor'
   const containerRef = useRef<HTMLDivElement>(null)
@@ -270,14 +257,14 @@ function MonacoEditorBase({
   useEffect(() => {
     if (isTransparent) {
       monaco.editor.setTheme(
-        theme === 'dark'
+        resolvedTheme === 'dark'
           ? 'custom-vs-dark-transparent'
           : 'custom-vs-transparent',
       )
     } else {
-      monaco.editor.setTheme(theme === 'dark' ? 'custom-vs-dark' : 'custom-vs')
+      monaco.editor.setTheme(resolvedTheme === 'dark' ? 'vs-dark' : 'vs')
     }
-  }, [theme, isTransparent])
+  }, [resolvedTheme, isTransparent])
 
   // ── Switch model and attach change listener when active path changes ───────────
 

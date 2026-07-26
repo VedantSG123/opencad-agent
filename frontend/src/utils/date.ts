@@ -12,6 +12,6 @@ export function formatRelativeTime(dateString: string): string {
   return new Date(dateString).toLocaleDateString()
 }
 
-export function truncatePath(path: string, max = 36): string {
+export function truncatePath(path: string, max = 40): string {
   return path.length > max ? `…${path.slice(-(max - 1))}` : path
 }

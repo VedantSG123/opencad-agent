@@ -1,6 +1,13 @@
 import { createContext, useContext, useRef, useState } from 'react'
-
-import type { PanelImperativeHandle } from '@/components/ui/resizable'
+export type PanelImperativeHandle = {
+  collapse: () => void
+  expand: () => void
+  isCollapsed: () => boolean
+  resize: (size: string | number) => void
+  getId: () => string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getSize: () => any
+}
 
 type FocusedPanel = 'editor' | 'viewport'
 

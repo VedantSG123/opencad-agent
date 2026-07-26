@@ -213,7 +213,7 @@ function waitForOAuthCallback(
 export const xaiOAuthProvider: OAuthProvider = {
   id: 'xai',
   title: 'xAI Grok',
-  description: 'Sign in with your xAI Grok account to use Grok models.',
+  description: 'xAI Grok OAuth (SuperGrok Subscription)',
 
   async authorize(): Promise<Authorization> {
     await startOAuthServer()

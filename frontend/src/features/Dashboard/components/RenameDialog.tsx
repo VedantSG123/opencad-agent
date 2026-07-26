@@ -1,16 +1,7 @@
+import { Button, Input, Modal } from '@heroui/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   extractErrorMessage,
   useInvalidateProjects,
@@ -45,38 +36,56 @@ export function RenameDialog({ project, onClose }: RenameDialogProps) {
   }
 
   return (
-    <Dialog open={!!project} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className='max-w-sm'>
-        <DialogHeader>
-          <DialogTitle>Rename Project</DialogTitle>
-          <DialogDescription>
-            Enter a new name for &quot;{project?.name}&quot;
-          </DialogDescription>
-        </DialogHeader>
-        <div className='space-y-1.5 py-1'>
-          <Label htmlFor='rename-input'>Project Name</Label>
-          <Input
-            id='rename-input'
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
-            autoFocus
-          />
-        </div>
-        <div className='flex justify-end gap-2 pt-1'>
-          <Button variant='outline' onClick={onClose} disabled={isRenaming}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={
-              !name.trim() || name.trim() === project?.name || isRenaming
-            }
-          >
-            {isRenaming ? 'Renaming…' : 'Rename'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <Modal>
+      <Modal.Backdrop
+        isOpen={!!project}
+        onOpenChange={(open) => !open && onClose()}
+      >
+        <Modal.Container size='sm'>
+          <Modal.Dialog className='dark:shadow-none'>
+            <Modal.Header>
+              <div className='flex flex-col gap-1'>
+                <h3 className='text-lg font-bold'>Rename Project</h3>
+                <p className='text-sm font-normal text-default-500'>
+                  Enter a new name for &quot;{project?.name}&quot;
+                </p>
+              </div>
+            </Modal.Header>
+            <Modal.Body>
+              <div className='flex flex-col gap-1.5'>
+                <label htmlFor='rename-input' className='text-sm font-semibold'>
+                  Project Name
+                </label>
+                <Input
+                  id='rename-input'
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
+                  autoFocus
+                />
+              </div>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button
+                variant='outline'
+                onPress={onClose}
+                isDisabled={isRenaming}
+              >
+                Cancel
+              </Button>
+              <Button
+                className='bg-primary text-white'
+                onPress={handleConfirm}
+                isDisabled={
+                  !name.trim() || name.trim() === project?.name || isRenaming
+                }
+              >
+                {isRenaming ? 'Renaming…' : 'Rename'}
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+    </Modal>
   )
 }

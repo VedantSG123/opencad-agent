@@ -1,27 +1,26 @@
 import {
-  Crown,
-  Edit2,
-  File,
-  FilePlus,
-  Folder,
-  FolderOpen,
-  FolderPlus,
-  Trash2,
-} from 'lucide-react'
+  Crown02Icon,
+  Delete01Icon,
+  Edit02Icon,
+  FilePlusIcon,
+  Folder01Icon,
+  FolderAddIcon,
+} from '@hugeicons/core-free-icons'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
+import { Icon } from '@/components/icons/HugeIcon'
 import type { TreeRenderItemParams } from '@/components/tree-view'
 import { type TreeDataItem, TreeView } from '@/components/tree-view'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { cn, toFsPath } from '@/lib/utils'
 
 import { usePanelContext } from '../../context/PanelContext'
 import { useEditor } from './context'
+import {
+  FileIconComponent,
+  FolderIconComponent,
+  FolderOpenIconComponent,
+} from './treeIcons'
 
 const INVALID_NAME_RE = /[/\\?%*:|"<>]/
 const RESERVED_NAMES = new Set(['', '.', '..'])
@@ -76,8 +75,8 @@ function insertPlaceholder(
     const newItem: TreeDataItem = {
       id: 'new-item-placeholder',
       name: '',
-      icon: type === 'file' ? File : Folder,
-      openIcon: type === 'folder' ? FolderOpen : undefined,
+      icon: type === 'file' ? FileIconComponent : FolderIconComponent,
+      openIcon: type === 'folder' ? FolderOpenIconComponent : undefined,
     }
     return [newItem, ...items]
   }
@@ -87,8 +86,8 @@ function insertPlaceholder(
       const newItem: TreeDataItem = {
         id: 'new-item-placeholder',
         name: '',
-        icon: type === 'file' ? File : Folder,
-        openIcon: type === 'folder' ? FolderOpen : undefined,
+        icon: type === 'file' ? FileIconComponent : FolderIconComponent,
+        openIcon: type === 'folder' ? FolderOpenIconComponent : undefined,
       }
       return {
         ...item,
@@ -118,16 +117,16 @@ function useMainFileRenderItem(
   onRenameCancel: () => void,
 ) {
   return useCallback(
-    ({ item, isLeaf, isOpen }: TreeRenderItemParams) => {
+    ({ item, isLeaf }: TreeRenderItemParams) => {
       if (item.id === 'new-item-placeholder') {
-        const Icon = item.icon ?? null
+        const ItemIcon = item.icon ?? null
         return (
           <div
             className='flex items-center w-full min-w-0 pr-2'
             onClick={(e) => e.stopPropagation()}
           >
-            {Icon && (
-              <Icon className='h-4 w-4 shrink-0 mr-2 text-muted-foreground' />
+            {ItemIcon && (
+              <ItemIcon className='h-4 w-4 shrink-0 mr-2 text-foreground/60' />
             )}
             <input
               autoFocus
@@ -136,7 +135,7 @@ function useMainFileRenderItem(
                   setTimeout(() => el.focus(), 50)
                 }
               }}
-              className='text-sm bg-background border border-primary px-1 py-0.5 rounded outline-none w-full min-w-0 h-6'
+              className='text-sm bg-background border border-accent px-1 py-0.5 rounded outline-none w-full min-w-0 h-6'
               defaultValue=''
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -176,14 +175,14 @@ function useMainFileRenderItem(
       }
 
       if (item.id === renamingId) {
-        const Icon = item.icon ?? null
+        const ItemIcon = isLeaf ? (item.icon ?? null) : null
         return (
           <div
             className='flex items-center w-full min-w-0 pr-2'
             onClick={(e) => e.stopPropagation()}
           >
-            {Icon && (
-              <Icon className='h-4 w-4 shrink-0 mr-2 text-muted-foreground' />
+            {ItemIcon && (
+              <ItemIcon className='h-4 w-4 shrink-0 mr-2 text-foreground/60' />
             )}
             <input
               autoFocus
@@ -200,7 +199,7 @@ function useMainFileRenderItem(
                   }, 50)
                 }
               }}
-              className='text-sm bg-background border border-primary px-1 py-0.5 rounded outline-none w-full min-w-0 h-6'
+              className='text-sm bg-background border border-accent px-1 py-0.5 rounded outline-none w-full min-w-0 h-6'
               defaultValue={item.name}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -243,9 +242,7 @@ function useMainFileRenderItem(
         )
       }
 
-      const Icon = isLeaf
-        ? (item.icon ?? null)
-        : ((isOpen ? item.openIcon : null) ?? item.icon ?? null)
+      const ItemIcon = isLeaf ? (item.icon ?? null) : null
 
       const isMain = isLeaf && item.id === mainFileVirtualPath
 
@@ -259,27 +256,24 @@ function useMainFileRenderItem(
           }}
         >
           <div className='flex items-center min-w-0'>
-            {Icon && (
-              <Icon className='h-4 w-4 shrink-0 mr-2 text-muted-foreground' />
+            {ItemIcon && (
+              <ItemIcon className='h-4 w-4 shrink-0 mr-2 text-foreground/60' />
             )}
             {isMain && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Crown className='h-3 w-3 shrink-0 mr-1.5 text-amber-400' />
-                </TooltipTrigger>
-                <TooltipContent>Main entry file</TooltipContent>
-              </Tooltip>
+              <span title='Main entry file' className='flex items-center'>
+                <Icon
+                  icon={Crown02Icon}
+                  size={12}
+                  className='shrink-0 mr-1.5 text-amber-400'
+                />
+              </span>
             )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className={cn('text-sm truncate', isLeaf && 'grow')}>
-                  {item.name}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <span className='font-mono text-xs'>{item.id}</span>
-              </TooltipContent>
-            </Tooltip>
+            <span
+              className={cn('text-sm truncate', isLeaf && 'grow')}
+              title={item.id}
+            >
+              {item.name}
+            </span>
           </div>
         </div>
       )
@@ -531,55 +525,47 @@ export function FileTree() {
       )}
     >
       <div className='w-52 flex flex-col h-full overflow-hidden'>
-        <div className='px-3 py-2 flex items-center justify-between shrink-0 border-b border-muted'>
-          <p className='text-xs font-semibold text-muted-foreground uppercase tracking-wider'>
+        <div className='px-3 py-2 flex items-center justify-between shrink-0 border-b border-border'>
+          <p className='text-xs font-semibold text-foreground/60 uppercase tracking-wider'>
             Files
           </p>
           <div className='flex items-center gap-1.5'>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => startCreation('file')}
-                  className='p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer'
-                  aria-label='New File'
-                >
-                  <FilePlus className='h-3.5 w-3.5' />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>New File</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => startCreation('folder')}
-                  className='p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer'
-                  aria-label='New Folder'
-                >
-                  <FolderPlus className='h-3.5 w-3.5' />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>New Folder</TooltipContent>
-            </Tooltip>
+            <button
+              onClick={() => startCreation('file')}
+              className='p-1 rounded text-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors cursor-pointer'
+              title='New File'
+            >
+              <Icon icon={FilePlusIcon} size={14} />
+            </button>
+            <button
+              onClick={() => startCreation('folder')}
+              className='p-1 rounded text-foreground/60 hover:text-foreground hover:bg-muted/15 transition-colors cursor-pointer'
+              title='New Folder'
+            >
+              <Icon icon={FolderAddIcon} size={14} />
+            </button>
           </div>
         </div>
         <div className='flex-1 overflow-auto'>
           {fsStatus === 'ready' ? (
             rawTreeData.length === 0 ? (
               <div className='flex flex-col items-center justify-center h-full px-4 py-8 text-center'>
-                <Folder className='h-8 w-8 text-muted-foreground/40 mb-2' />
-                <p className='text-xs text-muted-foreground mb-3'>
-                  No files yet
-                </p>
+                <Icon
+                  icon={Folder01Icon}
+                  size={32}
+                  className='text-foreground/40 mb-2'
+                />
+                <p className='text-xs text-foreground/60 mb-3'>No files yet</p>
                 <div className='flex gap-2'>
                   <button
                     onClick={() => startCreation('file')}
-                    className='text-xs px-2.5 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer'
+                    className='text-xs px-2.5 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors cursor-pointer'
                   >
                     New File
                   </button>
                   <button
                     onClick={() => startCreation('folder')}
-                    className='text-xs px-2.5 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer'
+                    className='text-xs px-2.5 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors cursor-pointer'
                   >
                     New Folder
                   </button>
@@ -595,11 +581,9 @@ export function FileTree() {
               />
             )
           ) : fsStatus === 'connecting' ? (
-            <p className='px-3 py-2 text-xs text-muted-foreground'>
-              Connecting…
-            </p>
+            <p className='px-3 py-2 text-xs text-foreground/60'>Connecting…</p>
           ) : (
-            <p className='px-3 py-2 text-xs text-destructive'>
+            <p className='px-3 py-2 text-xs text-danger'>
               {fsError ?? 'Connection closed'}
             </p>
           )}
@@ -608,7 +592,7 @@ export function FileTree() {
 
       {contextMenu && (
         <div
-          className='fixed z-50 min-w-[140px] overflow-hidden rounded-lg border border-muted bg-popover/80 backdrop-blur-md p-1 text-popover-foreground shadow-md animate-in fade-in-80 slide-in-from-top-1 duration-100'
+          className='fixed z-50 min-w-[140px] overflow-hidden rounded-lg border border-border bg-overlay/90 backdrop-blur-md p-1 text-overlay-foreground shadow-md animate-in fade-in-80 slide-in-from-top-1 duration-100'
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -619,9 +603,13 @@ export function FileTree() {
                   setContextMenu(null)
                   startCreation('file', contextMenu.targetId)
                 }}
-                className='relative flex w-full select-none items-center rounded-md px-2.5 py-1.5 text-xs outline-none hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer gap-2'
+                className='relative flex w-full select-none items-center rounded-md px-2.5 py-1.5 text-xs outline-none hover:bg-muted/15 hover:text-foreground transition-colors cursor-pointer gap-2'
               >
-                <FilePlus className='h-3.5 w-3.5 text-muted-foreground' />
+                <Icon
+                  icon={FilePlusIcon}
+                  size={14}
+                  className='text-foreground/60'
+                />
                 <span>New File</span>
               </button>
               <button
@@ -629,12 +617,16 @@ export function FileTree() {
                   setContextMenu(null)
                   startCreation('folder', contextMenu.targetId)
                 }}
-                className='relative flex w-full select-none items-center rounded-md px-2.5 py-1.5 text-xs outline-none hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer gap-2'
+                className='relative flex w-full select-none items-center rounded-md px-2.5 py-1.5 text-xs outline-none hover:bg-muted/15 hover:text-foreground transition-colors cursor-pointer gap-2'
               >
-                <FolderPlus className='h-3.5 w-3.5 text-muted-foreground' />
+                <Icon
+                  icon={FolderAddIcon}
+                  size={14}
+                  className='text-foreground/60'
+                />
                 <span>New Folder</span>
               </button>
-              <div className='my-1 h-px bg-muted' />
+              <div className='my-1 h-px bg-border' />
             </>
           )}
           <button
@@ -647,14 +639,14 @@ export function FileTree() {
             className={cn(
               'relative flex w-full select-none items-center rounded-md px-2.5 py-1.5 text-xs outline-none transition-colors gap-2 cursor-pointer',
               isMainFile
-                ? 'text-muted-foreground opacity-50 cursor-not-allowed'
-                : 'hover:bg-accent hover:text-accent-foreground',
+                ? 'text-foreground/60 opacity-50 cursor-not-allowed'
+                : 'hover:bg-muted/15 hover:text-foreground',
             )}
           >
-            <Edit2 className='h-3.5 w-3.5 text-muted-foreground' />
+            <Icon icon={Edit02Icon} size={14} className='text-foreground/60' />
             <span>Rename</span>
           </button>
-          <div className='my-1 h-px bg-muted' />
+          <div className='my-1 h-px bg-border' />
           <button
             onClick={() => {
               if (isMainFile) return
@@ -665,11 +657,11 @@ export function FileTree() {
             className={cn(
               'relative flex w-full select-none items-center rounded-md px-2.5 py-1.5 text-xs outline-none transition-colors gap-2 font-medium',
               isMainFile
-                ? 'text-muted-foreground opacity-50 cursor-not-allowed'
-                : 'text-destructive hover:bg-destructive/15 cursor-pointer',
+                ? 'text-foreground/60 opacity-50 cursor-not-allowed'
+                : 'text-danger hover:bg-danger/15 cursor-pointer',
             )}
           >
-            <Trash2 className='h-3.5 w-3.5' />
+            <Icon icon={Delete01Icon} size={14} />
             <span>Delete {contextMenu.isFolder ? 'Folder' : 'File'}</span>
           </button>
         </div>
