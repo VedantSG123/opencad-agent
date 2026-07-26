@@ -18,9 +18,17 @@
   "[jsonc]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
-  // oxfmt is still opt-in inside the oxc extension.
-  "oxc.fmt.experimental": true,
-  // css/html are left to VS Code's built-in formatters: oxfmt does not handle them.
+  "[css]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  // The repo's .oxlintrc.json does not set options.typeAware — `bun run lint`
+  // turns it on with --type-aware so that `lint:fast` can skip it. Enable it
+  // here so editor diagnostics match CI. If typing feels laggy, either set
+  // this to false or set "oxc.lint.run": "onSave".
+  "oxc.typeAware": true,
   "editor.codeActionsOnSave": {
     "source.fixAll.oxc": "explicit"
   },

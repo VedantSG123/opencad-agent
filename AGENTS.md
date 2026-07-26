@@ -136,7 +136,7 @@ Three-package monorepo (Bun workspaces) for a desktop CAD application where an A
 
 15. **Backend binary compilation** — `bun build --compile src/index.ts --outfile dist/backend-api` produces a standalone binary. Resources (migrations) are resolved relative to `process.execPath` at runtime.
 
-16. **Single-format `bun run format`** — Must be run from root. Applies to all three packages. oxfmt config at root `.oxfmtrc.json`. oxfmt also sorts imports (`sortImports`), which replaces the old `simple-import-sort` ESLint rule. It does **not** format `.css`/`.html` — those are left to the editor's built-in formatter.
+16. **Single-format `bun run format`** — Must be run from root. Applies to all three packages. oxfmt config at root `.oxfmtrc.json`. oxfmt also sorts imports (`sortImports`), which replaces the old `simple-import-sort` ESLint rule. Coverage is wider than Prettier's old glob: JS/TS/JSX/TSX, JSON/JSONC, CSS/SCSS/Less, HTML, YAML, TOML, GraphQL and more. `*.md` and `*.yml` stay excluded via `ignorePatterns`, carried over from the old `.prettierignore`.
 
 17. **Lint config is a single root `.oxlintrc.json`** — there are no per-workspace lint configs. oxlint discovers the root config by walking upward, so `bun run lint` from root and `cd frontend && bun run lint` both apply the same rules. Type-aware rules require the `oxlint-tsgolint` binary and dominate lint time; `bun run lint:fast` skips them.
 
