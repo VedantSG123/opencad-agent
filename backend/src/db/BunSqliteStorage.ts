@@ -1,4 +1,5 @@
 import type { Database } from 'bun:sqlite'
+
 import { type MigrationParams, type UmzugStorage } from 'umzug'
 
 export class BunSqliteStorage implements UmzugStorage<Database> {

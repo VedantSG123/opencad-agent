@@ -1,7 +1,7 @@
 import path from 'path'
 
-import { logger } from '../utils/logger'
 import { db } from '.'
+import { logger } from '../utils/logger'
 import { umzug } from './migrate'
 
 async function main() {

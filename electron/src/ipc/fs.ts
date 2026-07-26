@@ -1,6 +1,7 @@
-import type { IpcMain } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
+
+import type { IpcMain } from 'electron'
 
 import { AppError, createHandler, validateString } from '../utils/ipc-utils.js'
 import { validatePath } from '../utils/workspace.js'

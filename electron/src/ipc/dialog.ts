@@ -1,6 +1,7 @@
+import * as path from 'path'
+
 import type { IpcMain } from 'electron'
 import { dialog } from 'electron'
-import * as path from 'path'
 
 import { AppError, createHandler, validateObject } from '../utils/ipc-utils.js'
 import { addAllowedRoot } from '../utils/workspace.js'

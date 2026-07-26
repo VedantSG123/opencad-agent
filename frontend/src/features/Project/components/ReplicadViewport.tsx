@@ -5,9 +5,9 @@ import {
 } from '@hugeicons/core-free-icons'
 import * as React from 'react'
 
-import { Icon } from '@/components/icons/HugeIcon'
 import { CadViewer } from '@/components-3d/cad-viewer/ReplicadViewer'
 import type { StageHandle } from '@/components-3d/helpers/Stage'
+import { Icon } from '@/components/icons/HugeIcon'
 import { useReplicad } from '@/hooks/useReplicad'
 import { cn } from '@/lib/utils'
 

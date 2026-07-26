@@ -1,7 +1,7 @@
-import os from 'node:os'
-
 import fs from 'fs'
+import os from 'node:os'
 import path from 'path'
+
 import { CACHE_DIR, CONFIG_DIR, DATA_DIR, LOGS_DIR } from 'shared'
 
 export { CACHE_DIR, CONFIG_DIR, DATA_DIR, LOGS_DIR }

@@ -1,6 +1,7 @@
+import * as path from 'path'
+
 import type { FSWatcher } from 'chokidar' with { 'resolution-mode': 'import' }
 import { BrowserWindow } from 'electron'
-import * as path from 'path'
 
 let dirWatcher: FSWatcher | null = null
 let watchedDirPath: string | null = null
