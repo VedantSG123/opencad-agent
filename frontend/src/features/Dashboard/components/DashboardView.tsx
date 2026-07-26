@@ -1,28 +1,121 @@
-import { Layers01Icon } from '@hugeicons/core-free-icons'
+import { useState } from 'react'
+import { useNavigate } from 'react-router'
+import { toast } from 'sonner'
 
-import { Icon } from '@/components/icons/HugeIcon'
+import {
+  extractErrorMessage,
+  useCreateProject,
+  useInvalidateProjects,
+  useProjects,
+} from '@/hooks/useProjects'
+import { useUserPreferences } from '@/hooks/useUserPreferences'
+import { joinPaths } from '@/lib/utils'
+import type { CadKernel } from '@/types/project'
+
+import { DotGridBackground } from './DotGridBackground'
+import type { SelectedModel } from './onboarding/ModelSelectButton'
+import { PromptBox } from './onboarding/PromptBox'
+import { RenameProjectDialog } from './onboarding/RenameProjectDialog'
+import { getNextProjectName } from './onboarding/utils'
 
 export function DashboardView() {
+  const navigate = useNavigate()
+  const { data: projects } = useProjects()
+  const { mutateAsync: createProject } = useCreateProject()
+  const { invalidateProjects } = useInvalidateProjects()
+  const { preferences, updatePreferences } = useUserPreferences()
+
+  const [prompt, setPrompt] = useState('')
+  const [kernel, setKernel] = useState<CadKernel>('openscad')
+  const [model, setModel] = useState<SelectedModel | null>(null)
+  const [parentDirectory, setParentDirectory] = useState<string | null>(null)
+  const [projectName, setProjectName] = useState('')
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
+  const [defaultName, setDefaultName] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+
+  function handleDirectoryPicked(path: string) {
+    const existingNames = (projects ?? []).map((p) => p.name)
+    setParentDirectory(path)
+    setDefaultName(getNextProjectName(existingNames))
+    setIsRenameDialogOpen(true)
+  }
+
+  function handleRenameConfirm(name: string) {
+    setProjectName(name)
+  }
+
+  function handleModelChange(selected: SelectedModel) {
+    setModel(selected)
+    updatePreferences({ lastUsedModel: selected })
+  }
+
+  const canSubmit = Boolean(
+    parentDirectory && projectName && prompt.trim() && model,
+  )
+
+  async function handleSubmit() {
+    if (!canSubmit || !parentDirectory) return
+
+    setIsCreating(true)
+    try {
+      const created = await createProject({
+        name: projectName,
+        cad_kernel: kernel,
+        directory: joinPaths(parentDirectory, projectName),
+        action: 'create',
+      })
+      await invalidateProjects()
+      if (window.electron) {
+        const res = await window.electron.addProjectRoot(created.directory)
+        if (!res.success) {
+          throw new Error(res.error.message)
+        }
+      }
+      toast.success('Project created successfully')
+      navigate(`/project/${created.id}`, { state: { initialPrompt: prompt } })
+    } catch (error) {
+      toast.error(extractErrorMessage(error, 'Failed to create project'))
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
   return (
-    <div className='flex-1 flex flex-col items-center justify-center p-6 text-center select-none'>
-      <div className='relative group mb-6'>
-        {/* Glow effect */}
-        <div className='absolute -inset-1 rounded-2xl bg-gradient-to-r from-accent/30 to-violet-500/30 blur-lg opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200'></div>
-        <div className='relative w-16 h-16 rounded-2xl bg-accent flex items-center justify-center shadow-xl border border-accent/20'>
-          <Icon
-            icon={Layers01Icon}
-            size={32}
-            className='text-accent-foreground'
-          />
-        </div>
+    <div className='relative flex-1 flex flex-col items-center justify-center p-6'>
+      <DotGridBackground />
+      <div className='relative z-10 flex w-full max-w-3xl flex-col gap-6'>
+        <h1 className='text-4xl font-medium tracking-tight sm:text-5xl'>
+          Welcome to OpenCAD Agent
+        </h1>
+        <PromptBox
+          prompt={prompt}
+          onPromptChange={setPrompt}
+          kernel={kernel}
+          onKernelChange={setKernel}
+          directory={
+            parentDirectory && projectName
+              ? joinPaths(parentDirectory, projectName)
+              : parentDirectory
+          }
+          onDirectoryPicked={handleDirectoryPicked}
+          model={model}
+          onModelChange={handleModelChange}
+          preferredModel={preferences?.lastUsedModel}
+          onSubmit={handleSubmit}
+          canSubmit={canSubmit}
+          isSubmitting={isCreating}
+        />
       </div>
-      <h1 className='text-3xl font-extrabold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/60 bg-clip-text text-transparent sm:text-4xl'>
-        OpenCAD Agent
-      </h1>
-      <p className='max-w-md mt-3 text-foreground/60 text-sm sm:text-base leading-relaxed'>
-        An AI-powered design assistant for programmatic 3D CAD modeling. Toggle
-        the sidebar or head over to the Projects tab to get started.
-      </p>
+      {parentDirectory && (
+        <RenameProjectDialog
+          open={isRenameDialogOpen}
+          onOpenChange={setIsRenameDialogOpen}
+          parentDirectory={parentDirectory}
+          defaultName={defaultName}
+          onConfirm={handleRenameConfirm}
+        />
+      )}
     </div>
   )
 }

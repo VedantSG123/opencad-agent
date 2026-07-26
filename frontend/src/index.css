@@ -30,3 +30,118 @@
 .electron-no-drag {
   -webkit-app-region: no-drag;
 }
+
+.dot-grid-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, currentColor 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.dot-grid-base {
+  color: var(--foreground);
+  opacity: 0.14;
+}
+
+.dot-grid-highlight {
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 0.4s ease-out;
+  mask-image: radial-gradient(
+    circle 200px at var(--dot-mx, 50%) var(--dot-my, 50%),
+    black 0%,
+    transparent 100%
+  );
+  -webkit-mask-image: radial-gradient(
+    circle 200px at var(--dot-mx, 50%) var(--dot-my, 50%),
+    black 0%,
+    transparent 100%
+  );
+}
+
+/* --- Aurora focus effect (prompt box) --- */
+
+.aurora-wrapper {
+  position: relative;
+}
+
+.aurora-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  overflow: hidden;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aurora-wrapper:focus-within .aurora-frame {
+  opacity: 1;
+}
+
+.aurora-border::before,
+.aurora-glow::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150vmax;
+  height: 150vmax;
+  background: conic-gradient(
+    transparent 0%,
+    var(--accent) 10%,
+    oklch(0.6 0.24 302) 16.3%,
+    oklch(0.77 0.13 195) 22.5%,
+    var(--accent) 28.8%,
+    oklch(0.6 0.24 302) 35%,
+    transparent 45%
+  );
+  animation: aurora-spin 10s linear infinite;
+  will-change: transform;
+}
+
+@keyframes aurora-spin {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+.aurora-border {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.aurora-glow {
+  position: absolute;
+  inset: -20px;
+  filter: blur(40px);
+  opacity: 0.25;
+  mask-image:
+    linear-gradient(to bottom, black 0%, transparent 75px),
+    linear-gradient(to top, black 0%, transparent 75px),
+    linear-gradient(to right, black 0%, transparent 75px),
+    linear-gradient(to left, black 0%, transparent 75px);
+  -webkit-mask-image:
+    linear-gradient(to bottom, black 0%, transparent 75px),
+    linear-gradient(to top, black 0%, transparent 75px),
+    linear-gradient(to right, black 0%, transparent 75px),
+    linear-gradient(to left, black 0%, transparent 75px);
+  mask-composite: add;
+  -webkit-mask-composite: source-over;
+}
+
+.dark .aurora-glow,
+[data-theme='dark'] .aurora-glow {
+  opacity: 0.4;
+}

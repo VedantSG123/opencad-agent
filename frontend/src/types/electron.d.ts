@@ -1,4 +1,10 @@
-import type { AppSettings, ResolvedTheme, ThemeSetting } from 'shared'
+import type {
+  AppSettings,
+  ResolvedTheme,
+  ThemeSetting,
+  UserPreferences,
+  UserPreferencesPatch,
+} from 'shared'
 
 export interface WatchEvent {
   event: 'fs:watch'
@@ -48,6 +54,10 @@ export interface ElectronAPI {
   getSettings: () => Promise<Result<AppSettings>>
   setTheme: (theme: ThemeSetting) => Promise<Result<ResolvedTheme>>
   onThemeUpdated: (handler: (theme: ResolvedTheme) => void) => () => void
+  getUserPreferences: () => Promise<Result<UserPreferences>>
+  updateUserPreferences: (
+    patch: UserPreferencesPatch,
+  ) => Promise<Result<UserPreferences>>
   pingBackend: () => Promise<Result<string>>
   openFileDialog: (options: {
     mode: 'file' | 'directory'

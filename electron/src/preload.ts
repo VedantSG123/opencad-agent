@@ -2,7 +2,13 @@ import type { IpcRendererEvent } from 'electron'
 import { contextBridge, ipcRenderer } from 'electron'
 // Preload compiles to CommonJS but 'shared' ships ESM only — import types
 // only here (fully erased at compile time) so no runtime require() happens.
-import type { AppSettings, ResolvedTheme, ThemeSetting } from 'shared'
+import type {
+  AppSettings,
+  ResolvedTheme,
+  ThemeSetting,
+  UserPreferences,
+  UserPreferencesPatch,
+} from 'shared'
 
 export interface WatchEvent {
   event: 'fs:watch'
@@ -37,6 +43,10 @@ export interface ElectronAPI {
   getSettings: () => Promise<Result<AppSettings>>
   setTheme: (theme: ThemeSetting) => Promise<Result<ResolvedTheme>>
   onThemeUpdated: (handler: (theme: ResolvedTheme) => void) => () => void
+  getUserPreferences: () => Promise<Result<UserPreferences>>
+  updateUserPreferences: (
+    patch: UserPreferencesPatch,
+  ) => Promise<Result<UserPreferences>>
   pingBackend: () => Promise<Result<string>>
   storeCredential: (providerId: string, auth: unknown) => Promise<Result<void>>
   isEncryptionAvailable: () => Promise<Result<boolean>>
@@ -145,6 +155,9 @@ const api: ElectronAPI = {
   initialResolvedTheme,
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setTheme: (theme) => ipcRenderer.invoke('theme:set', theme),
+  getUserPreferences: () => ipcRenderer.invoke('preferences:get'),
+  updateUserPreferences: (patch) =>
+    ipcRenderer.invoke('preferences:update', patch),
   onThemeUpdated: (handler) => {
     const listener = (_event: IpcRendererEvent, theme: ResolvedTheme) =>
       handler(theme)
