@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix",
+    "lint": "oxlint .",
     "dev": "NODE_ENV=development bun run --watch src/index.ts",
-    "build": "bun build --compile src/index.ts --outfile dist/backend-api"
+    "build": "bun build --compile src/index.ts --outfile dist/backend-api",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.12",
@@ -30,7 +30,7 @@
   "devDependencies": {
     "bun-types": "latest",
     "jiti": "^2.6.1",
-    "typescript-eslint": "^8.56.0"
+    "typescript": "~7.0.2"
   },
   "module": "src/index.js"
 }

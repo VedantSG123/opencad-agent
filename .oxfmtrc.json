@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "arrowParens": "always",
+  "jsxSingleQuote": true,
+  "tabWidth": 2,
+  "singleQuote": true,
+  "endOfLine": "lf",
+  "semi": false,
+  "printWidth": 80,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "**/dist",
+    "**/dist-packaged",
+    "**/node_modules",
+    "*.md",
+    "*.yml",
+    "bun.lock"
+  ],
+  "sortImports": true
+}

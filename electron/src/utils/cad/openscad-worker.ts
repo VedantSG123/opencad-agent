@@ -1,9 +1,9 @@
 import { fileURLToPath } from 'node:url'
+import * as path from 'path'
+import { Worker } from 'worker_threads'
 
 import { defineProxy } from 'comctx'
 import { app } from 'electron'
-import * as path from 'path'
-import { Worker } from 'worker_threads'
 
 import { NodeAdapter } from '../../workers/openscad/nodeAdapter.js'
 import type { CompileResult } from '../../workers/openscad/OpenSCADWrapper.js'

@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+
 import type { UserPreferences, UserPreferencesPatch } from 'shared'
 import {
   CACHE_DIR,

@@ -1,5 +1,6 @@
-import { tool } from 'ai'
 import { writeFile } from 'fs/promises'
+
+import { tool } from 'ai'
 import { z } from 'zod'
 
 import { SCRIPT_PATH } from '../readScript/getScriptContent.js'

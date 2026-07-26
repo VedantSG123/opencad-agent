@@ -1,11 +1,11 @@
+import { spawn } from 'child_process'
+import * as fs from 'fs'
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { fileURLToPath } from 'node:url'
-
-import { spawn } from 'child_process'
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
-import * as fs from 'fs'
 import * as path from 'path'
+
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
 
 import { registerBackendIpc } from './ipc/backend.js'
 import { registerCredentialsIpc } from './ipc/credentials.js'

@@ -1,8 +1,9 @@
 import path from 'path'
+
 import { Umzug } from 'umzug'
 
-import { logger } from '../utils/logger'
 import { db } from '.'
+import { logger } from '../utils/logger'
 import { BunSqliteStorage } from './BunSqliteStorage'
 
 // When Bun compiles the entrypoint to a binary, process.execPath is the path to the binary.

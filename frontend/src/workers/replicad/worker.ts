@@ -126,7 +126,15 @@ async function init() {
   OC = await initOCC()
 
   loaded = true
-  replicad.setOC(OC)
+  // Performance workaround, not a correctness one: `OC` is assignable to
+  // setOC's parameter without any cast. But structurally comparing
+  // `OpenCascadeInstance` against that parameter type costs ~9s in the
+  // TypeScript 7 Go checker (~0.7s in TS 5.9) and dominated both `tsc` and
+  // oxlint's type-aware pass for the whole frontend. Casting the *function*
+  // rather than the argument keeps the huge parameter type from being
+  // resolved at all, which is what makes both tools fast again.
+  // Revisit when https://github.com/microsoft/typescript-go/issues is fixed.
+  ;(replicad.setOC as (oc: unknown) => void)(OC)
 
   return true
 }

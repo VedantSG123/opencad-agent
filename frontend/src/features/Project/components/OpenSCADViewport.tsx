@@ -5,9 +5,9 @@ import {
 } from '@hugeicons/core-free-icons'
 import * as React from 'react'
 
-import { Icon } from '@/components/icons/HugeIcon'
 import { OpenSCADViewer } from '@/components-3d/cad-viewer/OpenSCADViewer'
 import type { StageHandle } from '@/components-3d/helpers/Stage'
+import { Icon } from '@/components/icons/HugeIcon'
 import { type KernelFilesState, useKernelFiles } from '@/hooks/useKernelFiles'
 import { useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
 import { cn, toFsPath } from '@/lib/utils'

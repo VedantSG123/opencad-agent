@@ -14,9 +14,12 @@ Three-package monorepo (Bun workspaces) for a desktop CAD application where an A
 |---|---|---|
 | `bun run dev` | root | Starts frontend (Vite) + Electron concurrently |
 | `bun run build` | root | Builds all three packages |
-| `bun run lint` | root | ESLint across all packages |
-| `bun run format` | root | Prettier write (no semicolons, single quotes, LF, 2-space) |
-| `bun run format:check` | root | Prettier check only |
+| `bun run lint` | root | oxlint across all packages, including type-aware rules (~10s) |
+| `bun run lint:fast` | root | oxlint without type-aware rules (~0.1s) — use while iterating |
+| `bun run lint:fix` | root | oxlint with autofix |
+| `bun run typecheck` | root | `tsc --noEmit` across all packages (TypeScript 7) |
+| `bun run format` | root | oxfmt write (no semicolons, single quotes, LF, 2-space) |
+| `bun run format:check` | root | oxfmt check only |
 | `bun run package` | root | Full build then electron-builder (Linux AppImage/deb) |
 | `bun run dev` | backend/ | Run backend with `--watch` |
 | `bun run build` | backend/ | Compile backend to standalone binary (`dist/backend-api`) |
@@ -98,7 +101,7 @@ Three-package monorepo (Bun workspaces) for a desktop CAD application where an A
 - **State management**: Zustand for local state (createStore vanilla, useStore React), React Query for server state
 - **Mutation naming**: `useMutation({ mutationFn: ... })` with destructured mutate functions
 - **React compiler**: Babel plugin enabled (`babel-plugin-react-compiler`)
-- **No semicolons**, single quotes, LF line endings (enforced by Prettier)
+- **No semicolons**, single quotes, LF line endings (enforced by oxfmt)
 - **React Router**: `react-router` v7 with `<Routes>` and `<Route>`
 
 ## Key Gotchas & Non-Obvious Patterns
@@ -133,4 +136,8 @@ Three-package monorepo (Bun workspaces) for a desktop CAD application where an A
 
 15. **Backend binary compilation** — `bun build --compile src/index.ts --outfile dist/backend-api` produces a standalone binary. Resources (migrations) are resolved relative to `process.execPath` at runtime.
 
-16. **Single-format `bun run format`** — Must be run from root. Applies to all three packages. Prettier config at root `.prettierrc`.
+16. **Single-format `bun run format`** — Must be run from root. Applies to all three packages. oxfmt config at root `.oxfmtrc.json`. oxfmt also sorts imports (`sortImports`), which replaces the old `simple-import-sort` ESLint rule. Coverage is wider than Prettier's old glob: JS/TS/JSX/TSX, JSON/JSONC, CSS/SCSS/Less, HTML, YAML, TOML, GraphQL and more. `*.md` and `*.yml` stay excluded via `ignorePatterns`, carried over from the old `.prettierignore`.
+
+17. **Lint config is a single root `.oxlintrc.json`** — there are no per-workspace lint configs. oxlint discovers the root config by walking upward, so `bun run lint` from root and `cd frontend && bun run lint` both apply the same rules. Type-aware rules require the `oxlint-tsgolint` binary and dominate lint time; `bun run lint:fast` skips them.
+
+18. **TypeScript 7 (Go compiler)** — `tsc` is the Go-native compiler. Two constraints it enforces that the old compiler did not: `baseUrl` is removed (use `paths` relative to the tsconfig), and `@types/*` packages are no longer auto-discovered, so every tsconfig must list what it needs in `types`. `electron/tsconfig.preload.json` must stay `module: commonjs`, which forces `moduleResolution: bundler` — the only pairing TS 7 accepts.

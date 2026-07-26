@@ -122,6 +122,7 @@ function createBaseInputShapesArray(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         if (!inputShape.shape) {
           return {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             shape: inputShape,
             name: undefined,
           }

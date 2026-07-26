@@ -1,8 +1,9 @@
 import * as crypto from 'crypto'
-import { safeStorage } from 'electron'
 import * as fs from 'fs'
 import * as http from 'http'
 import * as path from 'path'
+
+import { safeStorage } from 'electron'
 import { DATA_DIR } from 'shared'
 
 import { findFreePort } from './network.js'
