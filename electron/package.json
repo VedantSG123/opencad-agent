@@ -51,6 +51,10 @@
         "to": "bin/backend-api"
       },
       {
+        "from": "../backend/dist/assets",
+        "to": "bin/assets"
+      },
+      {
         "from": "../backend/src/db/migrations",
         "to": "bin/migrations"
       },

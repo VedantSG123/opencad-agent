@@ -1,4 +1,4 @@
 export { applyDiff } from './applyDiff'
-export { getApiDocumentation } from './getApiDocumentation'
-export { readScript } from './readScript'
-export { writeScript } from './writeScript'
+export { getApiDocumentation } from './cad/replicad/getApiDocumentation'
+export { createGrepTool } from './grep'
+export type { ToolContext } from './types'

@@ -2,9 +2,10 @@
   "name": "opencad-agent",
   "version": "1.0.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "bun test",
     "lint": "oxlint .",
     "dev": "NODE_ENV=development bun run --watch src/index.ts",
+    "prebuild": "bun run scripts/prebuild.ts",
     "build": "bun build --compile src/index.ts --outfile dist/backend-api",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -17,6 +18,7 @@
     "@opencode-ai/models": "^0.0.9",
     "@openrouter/ai-sdk-provider": "^3.0.0",
     "@opeoginni/github-copilot-openai-compatible": "^1.0.0",
+    "@vscode/ripgrep": "^1.18.0",
     "ai": "^7.0.22",
     "ajv": "^8.18.0",
     "chokidar": "^5.0.0",

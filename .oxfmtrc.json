@@ -12,6 +12,7 @@
     "**/dist",
     "**/dist-packaged",
     "**/node_modules",
+    "**/__tests__/resource",
     "*.md",
     "*.yml",
     "bun.lock"
