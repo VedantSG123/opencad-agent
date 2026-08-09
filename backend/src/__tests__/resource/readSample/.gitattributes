@@ -1,0 +1,6 @@
+# These fixtures exist for their exact bytes, so the repo-wide `text=auto eol=lf`
+# must not touch them: crlf.txt proves the reader strips carriage returns, and
+# blob.dat proves NUL-byte detection. Normalised, both tests would still pass
+# while testing nothing.
+crlf.txt -text
+blob.dat -text

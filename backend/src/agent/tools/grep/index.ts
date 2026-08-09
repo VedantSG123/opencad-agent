@@ -5,6 +5,9 @@ import { tool } from 'ai'
 import { z } from 'zod'
 
 import { logger } from '../../../utils/logger'
+import { isWithin } from '../../../utils/paths'
+import { projectPathGuard } from '../../permissions/pathGuard'
+import type { PathGuard } from '../../permissions/pathGuard'
 import type { ToolContext } from '../types'
 import {
   formatContentResults,
@@ -32,7 +35,7 @@ const MAX_OUTPUT_BYTES = 20 * 1024 * 1024
 
 // Every field is optional rather than defaulted: some providers reject JSON
 // Schema `default` keywords in tool definitions, so defaults are applied below.
-const grepInputSchema = z.object({
+export const grepInputSchema = z.object({
   pattern: z
     .string()
     .min(1)
@@ -107,7 +110,12 @@ export function createGrepTool(context: ToolContext) {
     inputSchema: grepInputSchema,
     execute: async (input, options): Promise<string> => {
       try {
-        return await grep(input, context, options?.abortSignal)
+        return await grep(
+          input,
+          context,
+          options?.abortSignal,
+          options?.toolCallId,
+        )
       } catch (error) {
         logger.error({ error, input }, 'grep tool failed')
         return `Error running search: ${error instanceof Error ? error.message : String(error)}`
@@ -120,6 +128,7 @@ export async function grep(
   input: GrepInput,
   context: ToolContext,
   abortSignal: AbortSignal | undefined,
+  toolCallId?: string,
 ): Promise<string> {
   const outputMode: OutputMode = input.outputMode ?? 'filesWithMatches'
   const headLimit = input.headLimit ?? DEFAULT_HEAD_LIMIT[outputMode]
@@ -129,7 +138,8 @@ export async function grep(
     return `Error: the project directory "${root}" does not exist or is not a directory.`
   }
 
-  const resolved = resolveSearchPath(root, input.path)
+  const guard = context.permissions ?? projectPathGuard(root)
+  const resolved = resolveSearchPath(root, input.path, guard, toolCallId)
   if ('error' in resolved) return resolved.error
 
   const run = await runRipgrep({
@@ -255,6 +265,8 @@ function renderOutput(
 function resolveSearchPath(
   root: string,
   requested: string | undefined,
+  guard: PathGuard,
+  toolCallId?: string,
 ): { searchArg: string | null } | { error: string } {
   if (!requested || requested === '.' || requested === './') {
     return { searchArg: null }
@@ -262,31 +274,31 @@ function resolveSearchPath(
 
   const target = path.resolve(root, requested)
   const relative = path.relative(root, target)
-  const outsideError = {
-    error: `Error: "${requested}" is outside the project directory. Only paths inside the project can be searched.`,
-  }
+  const insideProject = isWithin(root, target)
 
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    return outsideError
-  }
+  const refusal = guard.refusalFor(target, 'read', toolCallId)
+  if (refusal) return { error: `Error: ${refusal}` }
 
   if (relative === '') return { searchArg: null }
 
   if (!existsSync(target)) {
-    return { error: `Error: path not found: ${toPosix(relative)}` }
+    return {
+      error: `Error: path not found: ${insideProject ? toPosix(relative) : target}`,
+    }
   }
 
-  // A symlink inside the project can still point outside it. ripgrep does not
-  // follow symlinks while walking, so this only has to cover the path the
-  // model asked for explicitly.
-  const realRelative = path.relative(realPath(root), realPath(target))
-  if (realRelative.startsWith('..') || path.isAbsolute(realRelative)) {
-    return outsideError
+  // A symlink can carry outside the search root. ripgrep does not follow
+  // symlinks while walking, so this only has to cover the path the model asked
+  // for explicitly.
+  const realTarget = realPath(target)
+  if (realTarget !== target) {
+    const realRefusal = guard.refusalFor(realTarget, 'read', toolCallId)
+    if (realRefusal) return { error: `Error: ${realRefusal}` }
   }
 
-  // Built from the lexical path, not the resolved one, because ripgrep runs
-  // with the project directory as its cwd.
-  return { searchArg: toPosix(relative) }
+  // Inside the project the arg stays relative, because ripgrep runs with the
+  // project directory as its cwd; an approved root elsewhere needs the full path.
+  return { searchArg: insideProject ? toPosix(relative) : target }
 }
 
 function realPath(target: string): string {

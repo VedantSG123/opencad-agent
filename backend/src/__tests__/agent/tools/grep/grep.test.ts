@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import path from 'node:path'
 
+import { createPathGuard } from '../../../../agent/permissions/pathGuard'
+import { buildRule } from '../../../../agent/permissions/rules/buildRule'
 import { grep } from '../../../../agent/tools/grep'
 import type { GrepInput } from '../../../../agent/tools/grep'
 import type { ToolContext } from '../../../../agent/tools/types'
@@ -205,8 +207,35 @@ describe('grep tool', () => {
     test('rejects paths outside the project', async () => {
       const result = await runGrep({ pattern: 'x', path: '../outside' })
       expect(result).toContain(
-        'is outside the project directory. Only paths inside the project can be searched.',
+        'is outside the project directory and has not been approved for read access.',
       )
+    })
+
+    test('searches outside the project once the directory is granted', async () => {
+      const granted = path.join(RESOURCE_DIR, '../readSample')
+      const permissions = createPathGuard({
+        tool: 'grep',
+        projectDirectory: RESOURCE_DIR,
+        sessionId: 'ses_grep_test',
+        currentRules: () => [
+          buildRule(
+            {
+              tool: '*',
+              match: { kind: 'pathPrefix', path: granted, access: 'read' },
+            },
+            'perm_1',
+            '2026-08-09T00:00:00.000Z',
+          ),
+        ],
+      })
+
+      const result = await grep(
+        { pattern: 'makeCylinder', path: '../readSample' },
+        { workingDirectory: RESOURCE_DIR, permissions },
+        undefined,
+      )
+      expect(result).toContain('Found 1 file with matches.')
+      expect(result).toContain('lib/geometry.js')
     })
 
     test('reports a missing search path', async () => {

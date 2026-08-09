@@ -1,6 +1,7 @@
 import { isAbsolute, relative, resolve } from 'node:path'
 
 import { Elysia, t } from 'elysia'
+import { mergeProjectPreferences, projectPreferencesPatchSchema } from 'shared'
 
 import { SUPPORTED_CAD_KERNELS } from '../../cad'
 import { createProject } from '../../project/index'
@@ -24,6 +25,9 @@ const updateProjectBody = t.Object({
   name: t.Optional(t.String({ minLength: 1 })),
   file: t.Optional(t.Union([t.String({ minLength: 1 }), t.Null()])),
   last_accessed_at: t.Optional(t.String()),
+  // Validated with `projectPreferencesPatchSchema` in the handler, so the zod
+  // schema in `shared` stays the single definition of a preferences patch.
+  preferences: t.Optional(t.Unknown()),
 })
 
 export const projectsRoutes = new Elysia({ prefix: '/projects' })
@@ -68,8 +72,25 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
         }
       }
 
+      const preferencesPatch =
+        body.preferences === undefined
+          ? null
+          : projectPreferencesPatchSchema.safeParse(body.preferences)
+
+      if (preferencesPatch && !preferencesPatch.success) {
+        return status(400, { message: 'Invalid project preferences' })
+      }
+
       return upsertProject({
         ...existing,
+        ...(preferencesPatch
+          ? {
+              preferences: mergeProjectPreferences(
+                existing.preferences,
+                preferencesPatch.data,
+              ),
+            }
+          : {}),
         ...(body.name !== undefined ? { name: body.name } : {}),
         ...('file' in body ? { file: body.file ?? null } : {}),
         ...(body.last_accessed_at !== undefined
