@@ -1,10 +1,9 @@
-import '../../../utils/logger'
 import { tool } from 'ai'
 import { z } from 'zod'
 
-import { getChunkById } from '../../../utils/dbUtils/replicadApiDocumentationStore'
-import { API_DOC_CHUNK_ENTITY_TYPES } from '../../../utils/knowledge-base/replicad/generateApiDocsChunks'
-import { logger } from '../../../utils/logger'
+import { getChunkById } from '../../../../../utils/dbUtils/replicadApiDocumentationStore'
+import { API_DOC_CHUNK_ENTITY_TYPES } from '../../../../../utils/knowledge-base/replicad/generateApiDocsChunks'
+import { logger } from '../../../../../utils/logger'
 
 export const getApiDocumentation = tool({
   description:

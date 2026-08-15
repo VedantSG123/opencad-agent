@@ -17,6 +17,8 @@ export type RunPermissionsOptions = {
 }
 
 export type RunPermissions = {
+  /** The boundary every relative path is resolved against, on both layers. */
+  projectDirectory: string
   /** Layer 1: weigh a tool call before it runs. */
   checkToolCall(call: ToolCall): ToolCallVerdict
   /** Layer 2: what a given tool may open, checked at the filesystem. */
@@ -51,6 +53,7 @@ export function createRunPermissions({
     })
 
   return {
+    projectDirectory,
     checkToolCall: check,
     guardFor: (tool) =>
       createPathGuard({ tool, projectDirectory, sessionId, currentRules }),

@@ -10,3 +10,12 @@ export type ToolContext = {
    */
   permissions?: PathGuard
 }
+
+/**
+ * The slice of `RunPermissions` a toolset needs. Narrow on purpose: building
+ * tools must not be able to reach the grant stores, only the guards.
+ */
+export type ToolPermissions = {
+  projectDirectory: string
+  guardFor(tool: string): PathGuard
+}

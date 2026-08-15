@@ -185,6 +185,28 @@ describe('evaluateAccess', () => {
       }
     })
 
+    test('refuses them whatever the case, since Windows and macOS would open the same file', () => {
+      for (const target of ['.ENV', '.Git/config', 'keys/ID_ED25519']) {
+        expect(
+          evaluateAccess(
+            { kind: 'path', path: target, access: 'read' },
+            contextWith(),
+          ),
+        ).toBe('deny')
+      }
+    })
+
+    test('lets sample env files through', () => {
+      for (const target of ['.env.example', '.env.sample', '.env.template']) {
+        expect(
+          evaluateAccess(
+            { kind: 'path', path: target, access: 'read' },
+            contextWith(),
+          ),
+        ).toBe('allow')
+      }
+    })
+
     test("refuses the app's own config directory", () => {
       expect(
         evaluateAccess(
