@@ -1,6 +1,7 @@
+import { describeEditAccess } from '../../tools/edit/permissions'
 import { describeGrepAccess } from '../../tools/grep/permissions'
 import {
-  APPLY_DIFF_TOOL_NAME,
+  EDIT_TOOL_NAME,
   GET_API_DOCUMENTATION_TOOL_NAME,
   GREP_TOOL_NAME,
   READ_TOOL_NAME,
@@ -21,10 +22,10 @@ export function describeToolAccess(
       return describeReadAccess(input)
     case GREP_TOOL_NAME:
       return describeGrepAccess(input)
-    // Neither takes a path from the model: `applyDiff` edits one fixed script,
-    // and the documentation store is read-only and app-owned. Give `applyDiff`
-    // a real descriptor - a `write` access - as soon as it names its target.
-    case APPLY_DIFF_TOOL_NAME:
+    case EDIT_TOOL_NAME:
+      return describeEditAccess(input)
+    // Reaches no path the model chooses: the documentation store is read-only
+    // and owned by the app.
     case GET_API_DOCUMENTATION_TOOL_NAME:
       return []
     default:

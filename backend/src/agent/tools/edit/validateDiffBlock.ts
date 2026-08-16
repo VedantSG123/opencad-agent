@@ -1,4 +1,4 @@
-// Some LLMs append '>' at the end of SEARCH marker, so we account for that here.
+// Some models append '>' to the SEARCH marker, so that is tolerated here.
 const SEARCH_PATTERN = /^<<<<<<< SEARCH>?$/
 const SEARCH_DISPLAY_STRING = '<<<<<<< SEARCH'
 
@@ -13,6 +13,19 @@ const enum ParsingState {
   AFTER_SEPERATOR,
 }
 
+export type DiffValidation =
+  | { success: true }
+  | { success: false; error: string }
+
+const CORRECT_FORMAT = `<<<<<<< SEARCH
+:start_line: (required) The line number of original content where the search block starts.
+-------
+[exact content to find including whitespace]
+=======
+[new content to replace with]
+>>>>>>> REPLACE
+`
+
 const getInvalidDiffErrorMessage = (
   found: string,
   expected: string,
@@ -21,14 +34,7 @@ const getInvalidDiffErrorMessage = (
 
 CORRECT FORMAT:
 
-<<<<<<< SEARCH
-:start_line: (required) The line number of original content where the search block starts.
--------
-[exact content to find including whitespace]
-=======
-[new content to replace with]
->>>>>>> REPLACE
-`
+${CORRECT_FORMAT}`
 
 const getLineMarkerInReplaceContentErrorMessage = (
   marker: string,
@@ -39,31 +45,7 @@ Line Markers (:start_line: and :end_line:) are only allowed in the SEARCH sectio
 
 CORRECT FORMAT:
 
-<<<<<<< SEARCH
-:start_line: (required) The line number of original content where the search block starts.
--------
-[exact content to find including whitespace]
-=======
-[new content to replace with]
->>>>>>> REPLACE
-`
-
-const reportInvalidDiffError = (
-  found: string,
-  expected: string,
-  lineNumber: number,
-) => ({
-  success: false,
-  error: getInvalidDiffErrorMessage(found, expected, lineNumber),
-})
-
-const reportLineMarkerInReplaceContentError = (
-  marker: string,
-  lineNumber: number,
-) => ({
-  success: false,
-  error: getLineMarkerInReplaceContentErrorMessage(marker, lineNumber),
-})
+${CORRECT_FORMAT}`
 
 const getEscapedMarkerErrorMessage = (marker: string, lineNumber: number) =>
   `ERROR: Special marker "${marker}" found in diff content at line ${lineNumber}.
@@ -87,12 +69,36 @@ Escape any marker lines that appear inside the content:
 \\-------
 `
 
-const reportEscapedMarkerError = (marker: string, lineNumber: number) => ({
+const reportInvalidDiffError = (
+  found: string,
+  expected: string,
+  lineNumber: number,
+): DiffValidation => ({
+  success: false,
+  error: getInvalidDiffErrorMessage(found, expected, lineNumber),
+})
+
+const reportLineMarkerInReplaceContentError = (
+  marker: string,
+  lineNumber: number,
+): DiffValidation => ({
+  success: false,
+  error: getLineMarkerInReplaceContentErrorMessage(marker, lineNumber),
+})
+
+const reportEscapedMarkerError = (
+  marker: string,
+  lineNumber: number,
+): DiffValidation => ({
   success: false,
   error: getEscapedMarkerErrorMessage(marker, lineNumber),
 })
 
-export function validateDiffBlock(diffBlock: string): DiffResult {
+/**
+ * Walks the markers before anything is parsed, so a malformed block is reported
+ * as the structural mistake it is rather than as a search that found nothing.
+ */
+export function validateDiffBlock(diffBlock: string): DiffValidation {
   const lines = diffBlock.split('\n')
   if (lines.length === 0 || (lines.length === 1 && lines[0].trim() === '')) {
     return { success: false, error: 'Diff block is empty' }
@@ -206,18 +212,11 @@ export function validateDiffBlock(diffBlock: string): DiffResult {
   }
 
   if (state.current === ParsingState.START) {
-    return {
-      success: true,
-    }
-  } else {
-    return {
-      success: false,
-      error: `ERROR: Diff block is invalid or incomplete. Expected '${state.current === ParsingState.AFTER_SEARCH ? SEPERATOR_STRING : REPLACE_STRING}' at the end of the diff block.`,
-    }
+    return { success: true }
   }
-}
 
-export type DiffResult = {
-  success: boolean
-  error?: string
+  return {
+    success: false,
+    error: `ERROR: Diff block is invalid or incomplete. Expected '${state.current === ParsingState.AFTER_SEARCH ? SEPERATOR_STRING : REPLACE_STRING}' at the end of the diff block.`,
+  }
 }

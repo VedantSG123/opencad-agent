@@ -2,6 +2,11 @@ import { distance } from 'fastest-levenshtein'
 
 import { normalizeString } from '../../../utils/normalizeString'
 
+/**
+ * A search block has to match exactly once normalised - whitespace runs and
+ * smart punctuation are folded first, so "exact" forgives reformatting but not
+ * a wrong line. Lower this and edits start landing on the wrong code.
+ */
 export const FUZZY_THRESHOLD = 1.0
 
 export function getSimilarityScore(original: string, search: string): number {
@@ -22,12 +27,22 @@ export function getSimilarityScore(original: string, search: string): number {
   return 1 - distanceValue / maxLength
 }
 
+export type FuzzyMatch = {
+  bestScore: number
+  bestMatchIndex: number
+  bestMatchContent: string
+}
+
+/**
+ * Scans outwards from the middle of the range, so when a search block appears
+ * more than once the hit nearest the line the model named wins.
+ */
 export function fuzzySearch(
   content: string[],
   searchBlock: string,
   startIndex: number,
   endIndex: number,
-) {
+): FuzzyMatch {
   let bestScore = 0
   let bestMatchIndex = -1
   let bestMatchContent = ''

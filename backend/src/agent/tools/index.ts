@@ -1,8 +1,8 @@
-import { applyDiff } from './applyDiff'
 import { getApiDocumentation } from './cad/replicad/getApiDocumentation'
+import { createEditTool } from './edit'
 import { createGrepTool } from './grep'
 import {
-  APPLY_DIFF_TOOL_NAME,
+  EDIT_TOOL_NAME,
   GET_API_DOCUMENTATION_TOOL_NAME,
   GREP_TOOL_NAME,
   READ_TOOL_NAME,
@@ -11,11 +11,11 @@ import type { ToolName } from './names'
 import { createReadTool } from './read'
 import type { ToolContext, ToolPermissions } from './types'
 
-export { applyDiff } from './applyDiff'
 export { getApiDocumentation } from './cad/replicad/getApiDocumentation'
+export { createEditTool } from './edit'
 export { createGrepTool } from './grep'
 export {
-  APPLY_DIFF_TOOL_NAME,
+  EDIT_TOOL_NAME,
   GET_API_DOCUMENTATION_TOOL_NAME,
   GREP_TOOL_NAME,
   READ_TOOL_NAME,
@@ -43,7 +43,7 @@ export function createTools(permissions: ToolPermissions) {
   return {
     [READ_TOOL_NAME]: createReadTool(contextFor(READ_TOOL_NAME)),
     [GREP_TOOL_NAME]: createGrepTool(contextFor(GREP_TOOL_NAME)),
-    [APPLY_DIFF_TOOL_NAME]: applyDiff,
+    [EDIT_TOOL_NAME]: createEditTool(contextFor(EDIT_TOOL_NAME)),
     [GET_API_DOCUMENTATION_TOOL_NAME]: getApiDocumentation,
   } satisfies Record<ToolName, unknown>
 }

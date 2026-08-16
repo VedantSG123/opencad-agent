@@ -1,15 +1,22 @@
-// Checks if every line in the content has line numbers prefixed (e.g., "1 | content" or "123 | content")
-// Line numbers must be followed by a single pipe character (not double pipes)
+// Models often copy the `<line number> | <text>` gutter that `read` prints
+// straight back into a search block. These strip it off again, and put it back
+// when quoting the file in an error.
+
+const DEFAULT_LINE_NUMBER_REGEX = /^\s*\d+\s+\|(?!\|)\s?(.*)$/
+const AGGRESSIVE_LINE_NUMBER_REGEX = /^\s*(?:\d+\s)?\|\s(.*)$/
+
+/** A number followed by a single pipe - a double pipe is code, not a gutter. */
 export function everyLineHasLineNumbers(content: string): boolean {
-  const lines = content.split(/\r?\n/) // Handles both CRLF (carriage return (\r) + line feed (\n)) and LF (line feed (\n)) line endings
+  const lines = content.split(/\r?\n/)
   return (
     lines.length > 0 && lines.every((line) => /^\s*\d+\s+\|(?!\|)/.test(line))
   )
 }
 
-const DEFAULT_LINE_NUMBER_REGEX = /^\s*\d+\s+\|(?!\|)\s?(.*)$/
-const AGGRESSIVE_LINE_NUMBER_REGEX = /^\s*(?:\d+\s)?\|\s(.*)$/
-
+/**
+ * `aggressive` also strips a bare `| ` gutter, for when the model dropped the
+ * numbers but kept the pipe. It is the last thing tried before giving up.
+ */
 export function extractTextFromLineNumberedContent(
   content: string,
   aggressive: boolean = false,
@@ -20,7 +27,7 @@ export function extractTextFromLineNumberedContent(
       ? AGGRESSIVE_LINE_NUMBER_REGEX
       : DEFAULT_LINE_NUMBER_REGEX
     const match = line.match(regex)
-    return match ? match[1] : line // If the line doesn't match the pattern, return it as is
+    return match ? match[1] : line
   })
 
   const lineEndingCharacter = content.includes('\r\n') ? '\r\n' : '\n'
