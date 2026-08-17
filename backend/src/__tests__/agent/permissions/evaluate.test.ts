@@ -243,11 +243,11 @@ describe('evaluateAccess', () => {
       ).toBe('ask')
     })
 
-    test('allows a command covered by a prefix rule', () => {
+    test('allows a command covered by a head rule', () => {
       const rules = [
         rule({
           tool: 'shell',
-          match: { kind: 'commandPrefix', prefix: 'bun add' },
+          match: { kind: 'commandHead', tokens: ['bun', 'add'] },
         }),
       ]
       const context = { ...contextWith(rules), tool: 'shell' }
@@ -260,17 +260,37 @@ describe('evaluateAccess', () => {
       ).toBe('allow')
     })
 
-    test('does not let a prefix match part of a longer word', () => {
+    test('does not let a head rule match part of a longer token', () => {
       const rules = [
         rule({
           tool: 'shell',
-          match: { kind: 'commandPrefix', prefix: 'bun add' },
+          match: { kind: 'commandHead', tokens: ['bun', 'add'] },
         }),
       ]
       expect(
         evaluateAccess(
           { kind: 'command', command: 'bun adduser root' },
           { ...contextWith(rules), tool: 'shell' },
+        ),
+      ).toBe('ask')
+    })
+
+    test('allows only the command an exact rule names', () => {
+      const rules = [
+        rule({
+          tool: 'shell',
+          match: { kind: 'commandExact', command: 'node -e "go()"' },
+        }),
+      ]
+      const context = { ...contextWith(rules), tool: 'shell' }
+
+      expect(
+        evaluateAccess({ kind: 'command', command: 'node -e "go()"' }, context),
+      ).toBe('allow')
+      expect(
+        evaluateAccess(
+          { kind: 'command', command: 'node -e "other()"' },
+          context,
         ),
       ).toBe('ask')
     })

@@ -10,8 +10,12 @@ export const permissionMatchSchema = z.discriminatedUnion('kind', [
     access: permissionAccessSchema,
   }),
   z.object({
-    kind: z.literal('commandPrefix'),
-    prefix: z.string(),
+    kind: z.literal('commandHead'),
+    tokens: z.array(z.string()).min(1),
+  }),
+  z.object({
+    kind: z.literal('commandExact'),
+    command: z.string(),
   }),
 ])
 export type PermissionMatch = z.infer<typeof permissionMatchSchema>

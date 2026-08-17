@@ -4,7 +4,11 @@ import type { PermissionRule } from 'shared'
 
 import { checkToolCall } from '../../../agent/permissions/request/checkToolCall'
 import type { RunContext } from '../../../agent/permissions/request/checkToolCall'
-import { suggestedCommandPrefix } from '../../../agent/permissions/request/describeRequest'
+import {
+  choiceForScope,
+  describeRequest,
+  suggestedCommandHead,
+} from '../../../agent/permissions/request/describeRequest'
 import { buildRule } from '../../../agent/permissions/rules/buildRule'
 import {
   clearOnceGrants,
@@ -146,15 +150,48 @@ describe('checkToolCall', () => {
   })
 })
 
-describe('suggestedCommandPrefix', () => {
+describe('suggestedCommandHead', () => {
   test('keeps the subcommand when there is one', () => {
-    expect(suggestedCommandPrefix('bun add left-pad')).toBe('bun add')
-    expect(suggestedCommandPrefix('git status --short')).toBe('git status')
+    expect(suggestedCommandHead('bun add left-pad')).toEqual(['bun', 'add'])
+    expect(suggestedCommandHead('git status --short')).toEqual([
+      'git',
+      'status',
+    ])
   })
 
   test('stops at the program when the next word is not a subcommand', () => {
-    expect(suggestedCommandPrefix('rm -rf build')).toBe('rm')
-    expect(suggestedCommandPrefix('ls')).toBe('ls')
-    expect(suggestedCommandPrefix('cat ./notes.txt')).toBe('cat')
+    expect(suggestedCommandHead('rm -rf build')).toEqual(['rm'])
+    expect(suggestedCommandHead('ls')).toEqual(['ls'])
+    expect(suggestedCommandHead('cat ./notes.txt')).toEqual(['cat'])
+  })
+
+  test('offers nothing to generalise for an empty command', () => {
+    expect(suggestedCommandHead('   ')).toBeNull()
+  })
+})
+
+describe('describeRequest for commands', () => {
+  test('offers a head grant when the command generalises', () => {
+    const request = describeRequest(
+      { kind: 'command', command: 'bun add zod' },
+      { tool: 'shell', projectDirectory: PROJECT },
+    )
+
+    expect(choiceForScope(request, 'project')?.rule?.match).toEqual({
+      kind: 'commandHead',
+      tokens: ['bun', 'add'],
+    })
+  })
+
+  test('falls back to an exact grant when it does not', () => {
+    const request = describeRequest(
+      { kind: 'command', command: '  ' },
+      { tool: 'shell', projectDirectory: PROJECT },
+    )
+
+    expect(choiceForScope(request, 'session')?.rule?.match).toEqual({
+      kind: 'commandExact',
+      command: '',
+    })
   })
 })

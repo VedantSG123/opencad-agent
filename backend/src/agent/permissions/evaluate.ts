@@ -6,7 +6,8 @@ import { isWithin } from '../../utils/paths'
 import { deniedPathReason } from './builtin/deniedPaths'
 import type { ToolAccess } from './request/types'
 import {
-  commandRuleCovers,
+  commandExactRuleCovers,
+  commandHeadRuleCovers,
   pathRuleCovers,
   ruleAppliesToTool,
 } from './rules/match'
@@ -81,22 +82,21 @@ function evaluateCommand(
   command: string,
   context: EvaluationContext,
 ): PolicyDecision {
+  // Placeholder until the shell parsers land: quoting and operators are ignored,
+  // so only unquoted single commands tokenize correctly here.
+  const tokens = command.trim().split(/\s+/).filter(Boolean)
+
   const applicable = context.rules.filter((rule) =>
     ruleAppliesToTool(rule, context.tool),
   )
 
-  if (
-    applicable.some(
-      (rule) => rule.decision === 'deny' && commandRuleCovers(rule, command),
-    )
-  ) {
+  const covers = (rule: PermissionRule): boolean =>
+    commandHeadRuleCovers(rule, tokens) || commandExactRuleCovers(rule, command)
+
+  if (applicable.some((rule) => rule.decision === 'deny' && covers(rule))) {
     return 'deny'
   }
-  if (
-    applicable.some(
-      (rule) => rule.decision === 'allow' && commandRuleCovers(rule, command),
-    )
-  ) {
+  if (applicable.some((rule) => rule.decision === 'allow' && covers(rule))) {
     return 'allow'
   }
 

@@ -14,20 +14,21 @@ export function describeRequest(
 }
 
 /**
- * The prefix a command grant should cover: the subcommand when there is one
+ * The tokens a command grant should cover: the subcommand when there is one
  * (`bun add left-pad` → `bun add`), otherwise the program alone. A flag or path
- * as the second word means the first word already is the whole verb.
+ * as the second word means the first word already is the whole verb. `null`
+ * when nothing may be generalised and only the exact command can be granted.
  */
-export function suggestedCommandPrefix(command: string): string {
-  const [program, second] = command.trim().split(/\s+/)
-  if (!program) return command.trim()
+export function suggestedCommandHead(command: string): string[] | null {
+  const [program, second] = command.trim().split(/\s+/).filter(Boolean)
+  if (!program) return null
 
   const isSubcommand =
     second !== undefined &&
     /^[a-z][\w:-]*$/i.test(second) &&
     !second.includes('.')
 
-  return isSubcommand ? `${program} ${second}` : program
+  return isSubcommand ? [program, second] : [program]
 }
 
 export function choiceForScope(
@@ -71,12 +72,16 @@ function describeCommandRequest(
   access: Extract<ToolAccess, { kind: 'command' }>,
   context: { tool: string; projectDirectory: string },
 ): PermissionRequest {
-  const prefix = suggestedCommandPrefix(access.command)
+  const command = access.command.trim()
+  const head = suggestedCommandHead(command)
 
   const rule: RuleTemplate = {
     tool: context.tool,
-    match: { kind: 'commandPrefix', prefix },
+    match: head
+      ? { kind: 'commandHead', tokens: head }
+      : { kind: 'commandExact', command },
   }
+  const granted = head ? `\`${head.join(' ')}\`` : `exactly \`${command}\``
 
   return {
     tool: context.tool,
@@ -85,10 +90,10 @@ function describeCommandRequest(
     subject: access.command,
     choices: [
       { scope: 'once', label: 'Allow once' },
-      { scope: 'session', label: `Allow \`${prefix}\` for this session`, rule },
+      { scope: 'session', label: `Allow ${granted} for this session`, rule },
       {
         scope: 'project',
-        label: `Always allow \`${prefix}\` in this project`,
+        label: `Always allow ${granted} in this project`,
         rule,
       },
     ],
