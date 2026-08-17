@@ -26,10 +26,12 @@
     "fastest-levenshtein": "^1.0.16",
     "logixlysia": "^6.2.0",
     "shared": "workspace:*",
+    "shell-quote": "^1.10.0",
     "umzug": "^3.8.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/shell-quote": "^1.7.5",
     "bun-types": "latest",
     "jiti": "^2.6.1",
     "typescript": "~7.0.2"
