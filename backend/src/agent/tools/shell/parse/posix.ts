@@ -49,7 +49,9 @@ export function tokenizePosixCommand(command: string): ParsedCommand {
   let current: string[] = []
   let sawSubstitution = false
   let sawRedirection = false
+  let sawHeredoc = false
   let previousWasDollar = false
+  let previousWasLessThan = false
 
   const endSegment = (): void => {
     if (current.length > 0) segments.push(current)
@@ -61,6 +63,7 @@ export function tokenizePosixCommand(command: string): ParsedCommand {
       if (containsSubstitution(entry)) sawSubstitution = true
       current.push(entry)
       previousWasDollar = entry === '$'
+      previousWasLessThan = false
       continue
     }
 
@@ -69,6 +72,7 @@ export function tokenizePosixCommand(command: string): ParsedCommand {
     if (entry.op === 'glob') {
       current.push(entry.pattern)
       previousWasDollar = false
+      previousWasLessThan = false
       continue
     }
 
@@ -80,15 +84,26 @@ export function tokenizePosixCommand(command: string): ParsedCommand {
       sawSubstitution = true
     } else if (op.includes('<') || op.includes('>')) {
       sawRedirection = true
+      if (op === '<' && previousWasLessThan) sawHeredoc = true
     } else if (SEGMENT_OPERATORS.has(op)) {
       endSegment()
     }
     previousWasDollar = false
+    previousWasLessThan = op === '<'
   }
 
   endSegment()
 
-  return { segments, sawSubstitution, sawRedirection }
+  const startsWithAssignment = segments.some((segment) =>
+    segment[0]?.includes('='),
+  )
+
+  return {
+    segments,
+    sawSubstitution,
+    sawRedirection,
+    tokensAreFaithful: !sawHeredoc && !startsWithAssignment,
+  }
 }
 
 export function parsePosixCommand(command: string): ParseResult {

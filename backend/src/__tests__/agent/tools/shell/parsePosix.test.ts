@@ -113,6 +113,49 @@ describe('tokenizePosixCommand redirection', () => {
   })
 })
 
+describe('tokenizePosixCommand faithfulness', () => {
+  test('trusts an ordinary command', () => {
+    expect(tokenizePosixCommand('bun add zod').tokensAreFaithful).toBe(true)
+    expect(tokenizePosixCommand('cat a > b').tokensAreFaithful).toBe(true)
+    expect(tokenizePosixCommand('cat <<<hello').tokensAreFaithful).toBe(true)
+  })
+
+  // shell-quote knows nothing about heredocs, so it tokenizes the body as
+  // though it were shell - inventing segments that no shell will ever run.
+  test('distrusts a heredoc', () => {
+    const heredoc = `cat <<'PY'
+import os; os.system('rm -rf /')
+PY`
+
+    const parsed = tokenizePosixCommand(heredoc)
+
+    expect(parsed.tokensAreFaithful).toBe(false)
+  })
+
+  // The leading token is the assignment, not the program, so a rule minted
+  // from it would name something that is never run.
+  test('distrusts an assignment in command position', () => {
+    expect(
+      tokenizePosixCommand('PATH=/tmp/evil:$PATH cat notes.txt')
+        .tokensAreFaithful,
+    ).toBe(false)
+  })
+
+  test('distrusts an assignment in any segment of a chain', () => {
+    expect(
+      tokenizePosixCommand('ls && PATH=/tmp/evil cat notes.txt')
+        .tokensAreFaithful,
+    ).toBe(false)
+  })
+
+  test('does not mistake an argument containing = for an assignment', () => {
+    expect(tokenizePosixCommand('make CC=gcc').tokensAreFaithful).toBe(true)
+    expect(
+      tokenizePosixCommand('./configure --prefix=/usr').tokensAreFaithful,
+    ).toBe(true)
+  })
+})
+
 describe('posixSyntaxError', () => {
   test.skipIf(!BASH_AVAILABLE)('accepts valid syntax', () => {
     expect(posixSyntaxError('echo foo')).toBeNull()
@@ -154,5 +197,6 @@ describe('parsePosixCommand', () => {
     ])
     expect(result.parsed.sawSubstitution).toBe(false)
     expect(result.parsed.sawRedirection).toBe(false)
+    expect(result.parsed.tokensAreFaithful).toBe(true)
   })
 })
