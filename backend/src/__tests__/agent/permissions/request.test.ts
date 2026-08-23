@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import path from 'node:path'
 
 import type { PermissionRule } from 'shared'
 
@@ -48,9 +49,9 @@ describe('checkToolCall', () => {
   test('denies a tool nobody registered', async () => {
     const verdict = await checkToolCall(
       {
-        toolName: 'shell',
+        toolName: 'httpRequest',
         toolCallId: 'call_1',
-        input: { command: 'rm -rf /' },
+        input: { url: 'https://example.com' },
       },
       runContext(),
     )
@@ -82,7 +83,9 @@ describe('checkToolCall', () => {
     expect(verdict.decision).toBe('ask')
     if (verdict.decision !== 'ask') return
 
-    expect(verdict.request.subject).toBe('/elsewhere/lib/gears.scad')
+    expect(verdict.request.subject).toBe(
+      path.resolve('/elsewhere/lib/gears.scad'),
+    )
     expect(verdict.request.choices.map((choice) => choice.scope)).toEqual([
       'once',
       'session',
@@ -91,7 +94,7 @@ describe('checkToolCall', () => {
     // The rule covers the containing directory, not the single file.
     expect(verdict.request.choices[1].rule?.match).toEqual({
       kind: 'pathPrefix',
-      path: '/elsewhere/lib',
+      path: path.resolve('/elsewhere/lib'),
       access: 'read',
     })
     expect(verdict.request.choices[0].rule).toBeUndefined()

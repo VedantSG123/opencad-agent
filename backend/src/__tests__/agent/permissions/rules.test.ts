@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import path from 'node:path'
 
 import type { PermissionRule } from 'shared'
 
@@ -51,9 +52,11 @@ describe('buildRule', () => {
       CREATED_AT,
     )
 
+    // Resolved rather than written out: an absolute path is whatever this
+    // platform makes of it, and on Windows that carries a drive letter.
     expect(rule.match).toEqual({
       kind: 'pathPrefix',
-      path: '/elsewhere/lib',
+      path: path.resolve('/elsewhere/lib'),
       access: 'read',
     })
     expect(rule.decision).toBe('allow')

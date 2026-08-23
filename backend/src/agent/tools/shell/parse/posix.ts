@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process'
 
 import { type ParseEntry, parse } from 'shell-quote'
 
+import { resolveBashPath } from '../shellEnvironment'
 import type { ParsedCommand, ParseResult } from './types'
 
 const SEGMENT_OPERATORS = new Set(['&&', '||', ';', ';;', '|', '|&', '&'])
@@ -17,10 +18,9 @@ const SYNTAX_CHECK_TIMEOUT_MS = 5000
  * cannot escape into the check itself.
  */
 export function posixSyntaxError(command: string): string | null {
-  // On Windows, PATH's `bash` is often the WSL launcher rather than a real
-  // shell; OPENCAD_BASH_PATH pins the one to use, mirroring OPENCAD_RIPGREP_PATH.
-  const bash = process.env.OPENCAD_BASH_PATH || 'bash'
-  const result = spawnSync(bash, ['-n', '-c', command], {
+  // The same bash the tool will run the command with, so the check and the
+  // execution can never be reading different shells.
+  const result = spawnSync(resolveBashPath(), ['-n', '-c', command], {
     encoding: 'utf-8',
     timeout: SYNTAX_CHECK_TIMEOUT_MS,
   })
