@@ -17,7 +17,10 @@ const SYNTAX_CHECK_TIMEOUT_MS = 5000
  * cannot escape into the check itself.
  */
 export function posixSyntaxError(command: string): string | null {
-  const result = spawnSync('bash', ['-n', '-c', command], {
+  // On Windows, PATH's `bash` is often the WSL launcher rather than a real
+  // shell; OPENCAD_BASH_PATH pins the one to use, mirroring OPENCAD_RIPGREP_PATH.
+  const bash = process.env.OPENCAD_BASH_PATH || 'bash'
+  const result = spawnSync(bash, ['-n', '-c', command], {
     encoding: 'utf-8',
     timeout: SYNTAX_CHECK_TIMEOUT_MS,
   })

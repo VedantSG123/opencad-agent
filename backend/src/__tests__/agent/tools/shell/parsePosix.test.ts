@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 
 import {
   parsePosixCommand,
@@ -7,8 +8,41 @@ import {
   tokenizePosixCommand,
 } from '../../../../agent/tools/shell/parse/posix'
 
-const BASH_AVAILABLE =
-  spawnSync('bash', ['-c', 'exit 0'], { encoding: 'utf-8' }).status === 0
+/**
+ * On Windows, `bash` on PATH usually resolves to System32's WSL launcher, which
+ * exits non-zero unless a distro is installed - even when Git Bash is present.
+ * Probe Git Bash's install locations first, then fall back to PATH, so the
+ * syntax tests run wherever a working bash exists.
+ */
+const GIT_BASH_PATHS = [
+  'C:\\Program Files\\Git\\bin\\bash.exe',
+  'C:\\Program Files\\Git\\usr\\bin\\bash.exe',
+  'C:\\Program Files (x86)\\Git\\bin\\bash.exe',
+  `${process.env.LOCALAPPDATA}\\Programs\\Git\\bin\\bash.exe`,
+]
+
+const BASH_PATH = (() => {
+  const candidates =
+    process.platform === 'win32'
+      ? [...GIT_BASH_PATHS.filter(existsSync), 'bash']
+      : ['bash']
+
+  return (
+    candidates.find(
+      (candidate) =>
+        spawnSync(candidate, ['-c', 'exit 0'], { encoding: 'utf-8' }).status ===
+        0,
+    ) ?? null
+  )
+})()
+
+// The production check reads this override, so the tests run against the same
+// bash they proved usable rather than whatever PATH resolves to.
+if (BASH_PATH && BASH_PATH !== 'bash') {
+  process.env.OPENCAD_BASH_PATH = BASH_PATH
+}
+
+const BASH_AVAILABLE = BASH_PATH !== null
 
 const segments = (command: string): string[][] =>
   tokenizePosixCommand(command).segments
@@ -64,7 +98,6 @@ describe('tokenizePosixCommand', () => {
 
 describe('tokenizePosixCommand substitution', () => {
   test('reports a bare substitution', () => {
-    console.log(tokenizePosixCommand('echo $(rm -rf /)'))
     expect(tokenizePosixCommand('echo $(rm -rf /)').sawSubstitution).toBe(true)
   })
 
