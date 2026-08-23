@@ -24,10 +24,10 @@ export type ToolCallVerdict =
   | { decision: 'deny'; reason: string }
   | { decision: 'ask'; request: PermissionRequest }
 
-export function checkToolCall(
+export async function checkToolCall(
   call: ToolCall,
   context: RunContext,
-): ToolCallVerdict {
+): Promise<ToolCallVerdict> {
   if (hasOnceGrant(context.sessionId, call.toolCallId)) {
     return { decision: 'allow' }
   }
@@ -47,17 +47,15 @@ export function checkToolCall(
     rules: context.rules,
   }
 
-  const decision = evaluateAccesses(accesses, evaluationContext)
-  if (decision === 'allow') return { decision: 'allow' }
+  // One pass: the verdict carries the access that settled it, so nothing has
+  // to be weighed twice - and weighing a command twice would parse it twice.
+  const verdict = await evaluateAccesses(accesses, evaluationContext)
+  if (verdict.decision === 'allow') return { decision: 'allow' }
 
-  // With several accesses, the one that forced the decision is the one to
-  // report or ask about.
-  const culprit =
-    accesses.find(
-      (access) => evaluateAccesses([access], evaluationContext) === decision,
-    ) ?? accesses[0]
+  const culprit = verdict.access ?? accesses[0]
+  if (culprit === undefined) return { decision: 'allow' }
 
-  if (decision === 'deny') {
+  if (verdict.decision === 'deny') {
     return {
       decision: 'deny',
       reason:
@@ -69,6 +67,6 @@ export function checkToolCall(
 
   return {
     decision: 'ask',
-    request: describeRequest(culprit, evaluationContext),
+    request: describeRequest(culprit, evaluationContext, verdict),
   }
 }
