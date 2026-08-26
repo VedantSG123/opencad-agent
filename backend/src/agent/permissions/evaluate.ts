@@ -4,6 +4,10 @@ import type { PermissionAccess, PermissionRule } from 'shared'
 
 import { isWithin } from '../../utils/paths'
 import { parseCommand } from '../tools/shell/parse'
+import {
+  deniedPathArgumentReason,
+  outsideProjectArgument,
+} from './builtin/commandPaths'
 import { dangerousCommandReason } from './builtin/dangerousCommands'
 import { deniedPathReason } from './builtin/deniedPaths'
 import { isKnownSafeCommand } from './builtin/safeCommands'
@@ -193,7 +197,12 @@ export async function evaluateCommand(
   let mayBeRemembered = parseConcern === undefined
 
   for (const segment of segments) {
-    const verdict = evaluateSegment(segment, applicable, coveredExactly)
+    const verdict = evaluateSegment(
+      segment,
+      applicable,
+      coveredExactly,
+      context.projectDirectory,
+    )
     mayBeRemembered = mayBeRemembered && verdict.mayBeRemembered
 
     if (SEVERITY[verdict.decision] > SEVERITY[decision]) {
@@ -251,7 +260,8 @@ export function headWouldAllowEverything(
 
   return segments.every(
     (segment) =>
-      evaluateSegment(segment, applicable, false).decision === 'allow',
+      evaluateSegment(segment, applicable, false, context.projectDirectory)
+        .decision === 'allow',
   )
 }
 
@@ -276,6 +286,7 @@ function evaluateSegment(
   segment: string[],
   applicable: PermissionRule[],
   coveredExactly: boolean,
+  projectDirectory: string,
 ): SegmentVerdict {
   if (
     applicable.some(
@@ -290,7 +301,13 @@ function evaluateSegment(
     }
   }
 
-  // Checked before any allow rule, so a broad grant cannot reach past it.
+  // Both of the next two are checked before any allow rule, so a broad grant
+  // cannot reach past them.
+  const deniedPath = deniedPathArgumentReason(segment, projectDirectory)
+  if (deniedPath) {
+    return { decision: 'deny', reason: deniedPath, mayBeRemembered: false }
+  }
+
   const dangerous = dangerousCommandReason(segment)
   if (dangerous) {
     return { decision: 'ask', reason: dangerous, mayBeRemembered: false }
@@ -307,7 +324,21 @@ function evaluateSegment(
   }
 
   if (isKnownSafeCommand(segment)) {
-    return { decision: 'allow', mayBeRemembered: true }
+    // The safe list is the policy's own guess that a command is harmless, and
+    // that guess only holds inside the project: `cat` never writes anything,
+    // but `cat ../other-project/notes.md` still reads a file the user was
+    // never asked about. A rule naming the program is the user's own judgment
+    // about it, and is left to stand above.
+    const outside = outsideProjectArgument(segment, projectDirectory)
+    if (outside === null) {
+      return { decision: 'allow', mayBeRemembered: true }
+    }
+
+    return {
+      decision: 'ask',
+      reason: `it reads ${outside}, which is outside the project directory`,
+      mayBeRemembered: true,
+    }
   }
 
   return { decision: 'ask', mayBeRemembered: true }

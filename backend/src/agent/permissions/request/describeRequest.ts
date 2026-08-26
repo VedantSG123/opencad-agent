@@ -148,8 +148,10 @@ function describeCommandRequest(
     access,
     title: 'Allow the agent to run this command?',
     subject: access.command,
-    explanation:
-      verdict?.mayBeRemembered === false ? verdict.reason : undefined,
+    // Shown whenever there is one, not only when the offer narrowed: a command
+    // stopped for a file it names looks arbitrary without it, and the command
+    // on its own does not say which of its words caused the question.
+    explanation: verdict?.reason,
     choices,
   }
 }

@@ -56,12 +56,18 @@ export async function checkToolCall(
   if (culprit === undefined) return { decision: 'allow' }
 
   if (verdict.decision === 'deny') {
+    const refusal =
+      culprit.kind === 'path'
+        ? `Access to ${culprit.path} is not permitted`
+        : `Running "${culprit.command}" is not permitted`
+
+    // The reason travels with the refusal: a command denied for a path it
+    // names looks arbitrary otherwise, and the model would only try again.
     return {
       decision: 'deny',
-      reason:
-        culprit.kind === 'path'
-          ? `Access to ${culprit.path} is not permitted.`
-          : `Running "${culprit.command}" is not permitted.`,
+      reason: verdict.reason
+        ? `${refusal}: ${verdict.reason}.`
+        : `${refusal}.`,
     }
   }
 

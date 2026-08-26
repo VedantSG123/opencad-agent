@@ -1,5 +1,7 @@
 import { afterAll, afterEach, describe, expect, test } from 'bun:test'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
+import path from 'node:path'
 
 import type { PermissionRule } from 'shared'
 
@@ -139,5 +141,76 @@ describe('approving once stops the next call asking', () => {
     const verdict = await ask('bun add zod; curl https://example.com', rules)
 
     expect(verdict.decision).toBe('ask')
+  })
+})
+
+// The shell tool hands a whole command line to a shell, so layer 2 never sees
+// the files it opens. Without these the path rules would stop at the tools that
+// name a file in their input, and `cat` would walk straight past them.
+describe('the paths a command names are weighed too', () => {
+  const outsideRoot = mkdtempSync(path.join(os.tmpdir(), 'opencad-shell-e2e-'))
+  const outsideFile = path.join(outsideRoot, 'notes.md')
+  writeFileSync(outsideFile, 'notes\n')
+
+  afterAll(() => {
+    rmSync(outsideRoot, { recursive: true, force: true })
+  })
+
+  const catRule: PermissionRule = {
+    id: 'perm_cat',
+    tool: 'shell',
+    decision: 'allow',
+    match: { kind: 'commandHead', tokens: ['cat'] },
+    createdAt: '2026-08-09T00:00:00.000Z',
+  }
+
+  test('a read-only command may not reach a built-in denial', async () => {
+    const verdict = await ask('cat .env')
+
+    expect(verdict.decision).toBe('deny')
+    if (verdict.decision !== 'deny') return
+    expect(verdict.reason).toContain('may hold secrets')
+  })
+
+  // The same guarantee the file tools give: no grant opens these up.
+  test('a grant on the program does not open one up either', async () => {
+    const verdict = await ask('cat .env', [catRule])
+
+    expect(verdict.decision).toBe('deny')
+  })
+
+  test('a denial in the middle of a chain settles the whole line', async () => {
+    const verdict = await ask('git status; cat .git/config')
+
+    expect(verdict.decision).toBe('deny')
+  })
+
+  // `cat` is read-only, so the safe list used to allow this outright - reading
+  // any file on the machine without the user ever being asked.
+  test('reading outside the project is put to the user', async () => {
+    const verdict = await ask(`cat "${outsideFile}"`)
+
+    expect(verdict.decision).toBe('ask')
+    if (verdict.decision !== 'ask') return
+    expect(verdict.request.explanation).toContain('outside the project')
+    // The user may still decide `cat` is a program they trust.
+    expect(verdict.request.choices.map((choice) => choice.scope)).toEqual([
+      'once',
+      'session',
+      'project',
+    ])
+  })
+
+  // A rule naming the program is the user's own judgment about it, unlike the
+  // safe list, which is the policy's guess.
+  test('a grant on the program lets it read outside', async () => {
+    const verdict = await ask(`cat "${outsideFile}"`, [catRule])
+
+    expect(verdict.decision).toBe('allow')
+  })
+
+  test('a path that names nothing is still just a word', async () => {
+    expect((await ask('git diff HEAD~1')).decision).toBe('allow')
+    expect((await ask('cat package.json')).decision).toBe('allow')
   })
 })
