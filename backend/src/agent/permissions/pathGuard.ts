@@ -2,7 +2,7 @@ import type { PermissionAccess, PermissionRule } from 'shared'
 
 import { isWithin } from '../../utils/paths'
 import { deniedPathReason } from './builtin/deniedPaths'
-import { evaluateAccess } from './evaluate'
+import { evaluatePath } from './evaluate'
 import { onceGrantedPaths } from './rules/onceGrants'
 
 export type PathGuard = {
@@ -34,10 +34,11 @@ export function createPathGuard({
 }: PathGuardOptions): PathGuard {
   return {
     refusalFor(absolutePath, access, toolCallId) {
-      const decision = evaluateAccess(
-        { kind: 'path', path: absolutePath, access },
-        { tool, projectDirectory, rules: currentRules() },
-      )
+      const decision = evaluatePath(absolutePath, access, {
+        tool,
+        projectDirectory,
+        rules: currentRules(),
+      })
 
       if (decision === 'allow') return null
       if (decision === 'deny') {

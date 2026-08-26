@@ -37,6 +37,15 @@ export function applyGrant({
     throw new Error(`This request offers no "${scope}" grant.`)
   }
 
+  // Enforced here rather than left to whatever the request offered: an exact
+  // grant exists because the command could not be generalised safely, and the
+  // long tail of those does not belong in a file nobody rereads.
+  if (scope === 'project' && template.match.kind === 'commandExact') {
+    throw new Error(
+      'A grant for one exact command is only kept for the session.',
+    )
+  }
+
   const rule = buildRule(
     template,
     generateIdWithPrefix('permission'),

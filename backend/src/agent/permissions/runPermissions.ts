@@ -20,14 +20,14 @@ export type RunPermissions = {
   /** The boundary every relative path is resolved against, on both layers. */
   projectDirectory: string
   /** Layer 1: weigh a tool call before it runs. */
-  checkToolCall(call: ToolCall): ToolCallVerdict
+  checkToolCall(call: ToolCall): Promise<ToolCallVerdict>
   /** Layer 2: what a given tool may open, checked at the filesystem. */
   guardFor(tool: string): PathGuard
   toolApproval(
     onRequest: (toolCallId: string, request: PermissionRequest) => void,
   ): (call: {
     toolCall: { toolName: string; toolCallId: string; input: unknown }
-  }) => ToolApprovalStatus
+  }) => Promise<ToolApprovalStatus>
 }
 
 /**
@@ -45,7 +45,7 @@ export function createRunPermissions({
     ...getSessionRules(sessionId),
   ]
 
-  const check = (call: ToolCall): ToolCallVerdict =>
+  const check = (call: ToolCall): Promise<ToolCallVerdict> =>
     checkToolCall(call, {
       sessionId,
       projectDirectory,

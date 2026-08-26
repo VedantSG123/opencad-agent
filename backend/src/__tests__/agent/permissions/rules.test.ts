@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import path from 'node:path'
 
 import type { PermissionRule } from 'shared'
 
 import { buildRule } from '../../../agent/permissions/rules/buildRule'
+import {
+  commandExactRuleCovers,
+  commandHeadRuleCovers,
+} from '../../../agent/permissions/rules/match'
 import {
   clearOnceGrants,
   grantOnce,
@@ -47,23 +52,103 @@ describe('buildRule', () => {
       CREATED_AT,
     )
 
+    // Resolved rather than written out: an absolute path is whatever this
+    // platform makes of it, and on Windows that carries a drive letter.
     expect(rule.match).toEqual({
       kind: 'pathPrefix',
-      path: '/elsewhere/lib',
+      path: path.resolve('/elsewhere/lib'),
       access: 'read',
     })
     expect(rule.decision).toBe('allow')
   })
 
-  test('leaves a command prefix untouched', () => {
+  test('leaves a command head untouched', () => {
     const rule = buildRule(
-      { tool: 'shell', match: { kind: 'commandPrefix', prefix: 'bun add' } },
+      { tool: 'shell', match: { kind: 'commandHead', tokens: ['bun', 'add'] } },
       'perm_1',
       CREATED_AT,
     )
-    expect(rule.match).toEqual({ kind: 'commandPrefix', prefix: 'bun add' })
+    expect(rule.match).toEqual({ kind: 'commandHead', tokens: ['bun', 'add'] })
   })
 })
+
+describe('commandHeadRuleCovers', () => {
+  const headRule = (tokens: string[]): PermissionRule =>
+    buildRule(
+      { tool: 'shell', match: { kind: 'commandHead', tokens } },
+      'perm_1',
+      CREATED_AT,
+    )
+
+  test('covers the head itself and anything extending it', () => {
+    const rule = headRule(['bun', 'add'])
+
+    expect(commandHeadRuleCovers(rule, ['bun', 'add'])).toBe(true)
+    expect(commandHeadRuleCovers(rule, ['bun', 'add', 'zod'])).toBe(true)
+  })
+
+  test('does not cover a token that merely starts with a granted one', () => {
+    expect(
+      commandHeadRuleCovers(headRule(['bun', 'add']), ['bun', 'adduser']),
+    ).toBe(false)
+    expect(commandHeadRuleCovers(headRule(['bun']), ['bunx', 'oxlint'])).toBe(
+      false,
+    )
+  })
+
+  test('does not cover a shorter command than the head', () => {
+    expect(commandHeadRuleCovers(headRule(['bun', 'add']), ['bun'])).toBe(false)
+  })
+
+  test('does not cover a different subcommand', () => {
+    expect(
+      commandHeadRuleCovers(headRule(['bun', 'add']), ['bun', 'remove', 'zod']),
+    ).toBe(false)
+  })
+
+  test('ignores rules of another kind', () => {
+    expect(commandHeadRuleCovers(ruleFor('/elsewhere'), ['bun', 'add'])).toBe(
+      false,
+    )
+  })
+})
+
+describe('commandExactRuleCovers', () => {
+  const exactRule = (command: string): PermissionRule =>
+    buildRule(
+      { tool: 'shell', match: { kind: 'commandExact', command } },
+      'perm_1',
+      CREATED_AT,
+    )
+
+  test('covers only the command it names', () => {
+    const rule = exactRule('node -e "console.log(1)"')
+
+    expect(commandExactRuleCovers(rule, 'node -e "console.log(1)"')).toBe(true)
+    expect(commandExactRuleCovers(rule, 'node -e "console.log(2)"')).toBe(false)
+  })
+
+  test('tolerates surrounding whitespace only', () => {
+    const rule = exactRule('bun run build')
+
+    expect(commandExactRuleCovers(rule, '  bun run build  ')).toBe(true)
+    expect(commandExactRuleCovers(rule, 'bun  run build')).toBe(false)
+  })
+
+  test('ignores rules of another kind', () => {
+    expect(commandExactRuleCovers(headRuleForOtherKind(), 'bun add zod')).toBe(
+      false,
+    )
+  })
+})
+
+function headRuleForOtherKind(): PermissionRule {
+  return buildRule(
+    { tool: 'shell', match: { kind: 'commandHead', tokens: ['bun', 'add'] } },
+    'perm_1',
+    CREATED_AT,
+  )
+}
 
 describe('addRule', () => {
   test('ignores a duplicate of a rule already stored', () => {

@@ -6,9 +6,11 @@ import {
   GET_API_DOCUMENTATION_TOOL_NAME,
   GREP_TOOL_NAME,
   READ_TOOL_NAME,
+  SHELL_TOOL_NAME,
 } from './names'
 import type { ToolName } from './names'
 import { createReadTool } from './read'
+import { createShellTool } from './shell'
 import type { ToolContext, ToolPermissions } from './types'
 
 export { getApiDocumentation } from './cad/replicad/getApiDocumentation'
@@ -19,10 +21,12 @@ export {
   GET_API_DOCUMENTATION_TOOL_NAME,
   GREP_TOOL_NAME,
   READ_TOOL_NAME,
+  SHELL_TOOL_NAME,
   TOOL_NAMES,
 } from './names'
 export type { ToolName } from './names'
 export { createReadTool } from './read'
+export { createShellTool } from './shell'
 export type { ToolContext, ToolPermissions } from './types'
 
 /**
@@ -44,6 +48,7 @@ export function createTools(permissions: ToolPermissions) {
     [READ_TOOL_NAME]: createReadTool(contextFor(READ_TOOL_NAME)),
     [GREP_TOOL_NAME]: createGrepTool(contextFor(GREP_TOOL_NAME)),
     [EDIT_TOOL_NAME]: createEditTool(contextFor(EDIT_TOOL_NAME)),
+    [SHELL_TOOL_NAME]: createShellTool(contextFor(SHELL_TOOL_NAME)),
     [GET_API_DOCUMENTATION_TOOL_NAME]: getApiDocumentation,
   } satisfies Record<ToolName, unknown>
 }

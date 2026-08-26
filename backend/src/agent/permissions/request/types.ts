@@ -21,5 +21,7 @@ export type PermissionRequest = {
   title: string
   /** What is being asked about, resolved: an absolute path, or the full command. */
   subject: string
+  /** Why the offer is narrower than usual, when it is. */
+  explanation?: string
   choices: PermissionChoice[]
 }

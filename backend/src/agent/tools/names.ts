@@ -9,6 +9,7 @@ export const READ_TOOL_NAME = 'read'
 export const GREP_TOOL_NAME = 'grep'
 export const EDIT_TOOL_NAME = 'edit'
 export const GET_API_DOCUMENTATION_TOOL_NAME = 'getApiDocumentation'
+export const SHELL_TOOL_NAME = 'shell'
 
 /** Every tool the agent may be handed. `createTools` must return all of them. */
 export const TOOL_NAMES = [
@@ -16,6 +17,7 @@ export const TOOL_NAMES = [
   GREP_TOOL_NAME,
   EDIT_TOOL_NAME,
   GET_API_DOCUMENTATION_TOOL_NAME,
+  SHELL_TOOL_NAME,
 ] as const
 
 export type ToolName = (typeof TOOL_NAMES)[number]

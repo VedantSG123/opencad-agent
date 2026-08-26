@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import path from 'node:path'
 
 import type { PermissionRule } from 'shared'
 
 import { checkToolCall } from '../../../agent/permissions/request/checkToolCall'
 import type { RunContext } from '../../../agent/permissions/request/checkToolCall'
-import { suggestedCommandPrefix } from '../../../agent/permissions/request/describeRequest'
+import { suggestedCommandHead } from '../../../agent/permissions/request/describeRequest'
 import { buildRule } from '../../../agent/permissions/rules/buildRule'
 import {
   clearOnceGrants,
@@ -25,16 +26,16 @@ afterEach(() => {
 })
 
 describe('checkToolCall', () => {
-  test('allows a read inside the project', () => {
-    const verdict = checkToolCall(
+  test('allows a read inside the project', async () => {
+    const verdict = await checkToolCall(
       { toolName: 'read', toolCallId: 'call_1', input: { path: 'main.scad' } },
       runContext(),
     )
     expect(verdict.decision).toBe('allow')
   })
 
-  test('treats a grep with no path as the project itself', () => {
-    const verdict = checkToolCall(
+  test('treats a grep with no path as the project itself', async () => {
+    const verdict = await checkToolCall(
       {
         toolName: 'grep',
         toolCallId: 'call_1',
@@ -45,12 +46,12 @@ describe('checkToolCall', () => {
     expect(verdict.decision).toBe('allow')
   })
 
-  test('denies a tool nobody registered', () => {
-    const verdict = checkToolCall(
+  test('denies a tool nobody registered', async () => {
+    const verdict = await checkToolCall(
       {
-        toolName: 'shell',
+        toolName: 'httpRequest',
         toolCallId: 'call_1',
-        input: { command: 'rm -rf /' },
+        input: { url: 'https://example.com' },
       },
       runContext(),
     )
@@ -59,8 +60,8 @@ describe('checkToolCall', () => {
     expect(verdict.reason).toContain('no permission descriptor')
   })
 
-  test('denies a built-in denial with a reason naming the path', () => {
-    const verdict = checkToolCall(
+  test('denies a built-in denial with a reason naming the path', async () => {
+    const verdict = await checkToolCall(
       { toolName: 'read', toolCallId: 'call_1', input: { path: '.env' } },
       runContext(),
     )
@@ -69,8 +70,8 @@ describe('checkToolCall', () => {
     expect(verdict.reason).toContain('.env')
   })
 
-  test('asks about a read outside the project, offering all three scopes', () => {
-    const verdict = checkToolCall(
+  test('asks about a read outside the project, offering all three scopes', async () => {
+    const verdict = await checkToolCall(
       {
         toolName: 'read',
         toolCallId: 'call_1',
@@ -82,7 +83,9 @@ describe('checkToolCall', () => {
     expect(verdict.decision).toBe('ask')
     if (verdict.decision !== 'ask') return
 
-    expect(verdict.request.subject).toBe('/elsewhere/lib/gears.scad')
+    expect(verdict.request.subject).toBe(
+      path.resolve('/elsewhere/lib/gears.scad'),
+    )
     expect(verdict.request.choices.map((choice) => choice.scope)).toEqual([
       'once',
       'session',
@@ -91,14 +94,14 @@ describe('checkToolCall', () => {
     // The rule covers the containing directory, not the single file.
     expect(verdict.request.choices[1].rule?.match).toEqual({
       kind: 'pathPrefix',
-      path: '/elsewhere/lib',
+      path: path.resolve('/elsewhere/lib'),
       access: 'read',
     })
     expect(verdict.request.choices[0].rule).toBeUndefined()
   })
 
   describe('grants', () => {
-    test('a once warrant settles the call it names', () => {
+    test('a once warrant settles the call it names', async () => {
       const call = {
         toolName: 'read',
         toolCallId: 'call_1',
@@ -106,12 +109,12 @@ describe('checkToolCall', () => {
       }
 
       grantOnce(SESSION, 'call_1', ['/elsewhere/gears.scad'])
-      expect(checkToolCall(call, runContext()).decision).toBe('allow')
+      expect((await checkToolCall(call, runContext())).decision).toBe('allow')
     })
 
-    test('a once warrant does not cover a different call', () => {
+    test('a once warrant does not cover a different call', async () => {
       grantOnce(SESSION, 'call_1', ['/elsewhere/gears.scad'])
-      const verdict = checkToolCall(
+      const verdict = await checkToolCall(
         {
           toolName: 'read',
           toolCallId: 'call_2',
@@ -122,7 +125,7 @@ describe('checkToolCall', () => {
       expect(verdict.decision).toBe('ask')
     })
 
-    test('a recorded rule keeps later calls from asking again', () => {
+    test('a recorded rule keeps later calls from asking again', async () => {
       const rule = buildRule(
         {
           tool: 'read',
@@ -132,29 +135,70 @@ describe('checkToolCall', () => {
         '2026-08-09T00:00:00.000Z',
       )
 
-      expect(
-        checkToolCall(
-          {
-            toolName: 'read',
-            toolCallId: 'call_9',
-            input: { path: '/elsewhere/other.scad' },
-          },
-          runContext([rule]),
-        ).decision,
-      ).toBe('allow')
+      const verdict = await checkToolCall(
+        {
+          toolName: 'read',
+          toolCallId: 'call_9',
+          input: { path: '/elsewhere/other.scad' },
+        },
+        runContext([rule]),
+      )
+      expect(verdict.decision).toBe('allow')
     })
   })
 })
 
-describe('suggestedCommandPrefix', () => {
+describe('suggestedCommandHead', () => {
   test('keeps the subcommand when there is one', () => {
-    expect(suggestedCommandPrefix('bun add left-pad')).toBe('bun add')
-    expect(suggestedCommandPrefix('git status --short')).toBe('git status')
+    expect(suggestedCommandHead(['bun', 'add', 'left-pad'])).toEqual([
+      'bun',
+      'add',
+    ])
+    expect(suggestedCommandHead(['git', 'status', '--short'])).toEqual([
+      'git',
+      'status',
+    ])
   })
 
   test('stops at the program when the next word is not a subcommand', () => {
-    expect(suggestedCommandPrefix('rm -rf build')).toBe('rm')
-    expect(suggestedCommandPrefix('ls')).toBe('ls')
-    expect(suggestedCommandPrefix('cat ./notes.txt')).toBe('cat')
+    expect(suggestedCommandHead(['ls'])).toEqual(['ls'])
+    expect(suggestedCommandHead(['pwd'])).toEqual(['pwd'])
+    expect(suggestedCommandHead(['cat', './notes.txt'])).toEqual(['cat'])
+  })
+
+  // Two words, never three: recording `bun add left-pad` would ask again for
+  // the next package and grant nothing worth keeping.
+  test('stops at two words', () => {
+    expect(suggestedCommandHead(['bun', 'add', 'zod'])).toEqual(['bun', 'add'])
+  })
+
+  // `git -C /tmp status` must never reduce to `git`: the flag is taking a
+  // value and the real verb is further along, so a rule naming the program
+  // alone would cover every git command there is.
+  test('refuses to guess when a flag may be hiding the subcommand', () => {
+    expect(suggestedCommandHead(['git', '-C', '/tmp', 'status'])).toBeNull()
+    expect(suggestedCommandHead(['git', '--no-pager', 'log'])).toBeNull()
+    expect(
+      suggestedCommandHead(['git', '-c', 'core.pager=x', 'status']),
+    ).toBeNull()
+  })
+
+  // No plain word follows, so the program really is the whole verb.
+  test('keeps the program when nothing could be a subcommand', () => {
+    expect(suggestedCommandHead(['ls', '-la'])).toEqual(['ls'])
+    expect(suggestedCommandHead(['ls', '-la', '/tmp'])).toEqual(['ls'])
+    expect(suggestedCommandHead(['tsc', '--noEmit'])).toEqual(['tsc'])
+    expect(suggestedCommandHead(['cat', './notes.txt'])).toEqual(['cat'])
+  })
+
+  test('keeps a program reached by path, rather than widening it', () => {
+    expect(suggestedCommandHead(['./node_modules/.bin/tsc', '-b'])).toEqual([
+      './node_modules/.bin/tsc',
+    ])
+  })
+
+  test('offers nothing for a program named by a variable', () => {
+    expect(suggestedCommandHead(['$CMD', 'add'])).toBeNull()
+    expect(suggestedCommandHead([])).toBeNull()
   })
 })

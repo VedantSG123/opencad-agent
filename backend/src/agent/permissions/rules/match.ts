@@ -24,19 +24,27 @@ export function pathRuleCovers(
     : rule.match.access === requested || rule.match.access === 'read'
 }
 
-export function commandRuleCovers(
+/**
+ * Compares whole tokens, so a rule for `bun add` cannot stretch to cover
+ * `bun adduser`, and one for `bun` cannot cover `bunx`.
+ */
+export function commandHeadRuleCovers(
+  rule: PermissionRule,
+  tokens: readonly string[],
+): boolean {
+  if (rule.match.kind !== 'commandHead') return false
+
+  const head = rule.match.tokens
+  if (head.length === 0 || head.length > tokens.length) return false
+
+  return head.every((token, index) => token === tokens[index])
+}
+
+export function commandExactRuleCovers(
   rule: PermissionRule,
   command: string,
 ): boolean {
-  if (rule.match.kind !== 'commandPrefix') return false
+  if (rule.match.kind !== 'commandExact') return false
 
-  const prefix = rule.match.prefix.trim()
-  if (prefix === '') return false
-
-  const normalized = command.trim()
-  return (
-    normalized === prefix ||
-    normalized.startsWith(`${prefix} `) ||
-    normalized.startsWith(`${prefix}\t`)
-  )
+  return rule.match.command.trim() === command.trim()
 }

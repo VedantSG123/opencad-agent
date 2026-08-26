@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import { lstatSync } from 'node:fs'
 import {
   mkdtemp,
   readFile,
@@ -28,6 +29,24 @@ const SESSION = 'ses_read_test'
 const context: ToolContext = {
   workingDirectory: RESOURCE_DIR,
 }
+
+// Creating a symlink needs developer mode or admin rights on Windows, and a
+// clone made without symlink support checks the fixture out as a plain file.
+const CAN_CREATE_SYMLINKS = await (async () => {
+  const base = await mkdtemp(path.join(tmpdir(), 'symlink-probe-'))
+  try {
+    await symlink(path.join(base, 'target'), path.join(base, 'link'))
+    return true
+  } catch {
+    return false
+  } finally {
+    await rm(base, { recursive: true, force: true })
+  }
+})()
+
+const ESCAPE_FIXTURE_IS_LINK = lstatSync(
+  path.join(RESOURCE_DIR, 'escape.js'),
+).isSymbolicLink()
 
 /** A guard for this project that also allows `granted`, if given. */
 function guardAllowing(granted?: string): PathGuard {
@@ -194,25 +213,28 @@ describe('read tool', () => {
 
     // The name the model asked for is harmless; only the resolved path shows
     // that it lands on a file the policy blocks outright.
-    test('refuses a symlink whose target is blocked by name', async () => {
-      const base = await realpath(
-        await mkdtemp(path.join(tmpdir(), 'opencad-read-')),
-      )
-      await writeFile(path.join(base, '.env'), 'API_KEY=secret\n')
-      await symlink(path.join(base, '.env'), path.join(base, 'notes.txt'))
-
-      try {
-        const result = await read(
-          { path: 'notes.txt' },
-          { workingDirectory: base },
-          undefined,
+    test.skipIf(!CAN_CREATE_SYMLINKS)(
+      'refuses a symlink whose target is blocked by name',
+      async () => {
+        const base = await realpath(
+          await mkdtemp(path.join(tmpdir(), 'opencad-read-')),
         )
-        expect(result).toContain('cannot be accessed')
-        expect(result).not.toContain('API_KEY')
-      } finally {
-        await rm(base, { recursive: true, force: true })
-      }
-    })
+        await writeFile(path.join(base, '.env'), 'API_KEY=secret\n')
+        await symlink(path.join(base, '.env'), path.join(base, 'notes.txt'))
+
+        try {
+          const result = await read(
+            { path: 'notes.txt' },
+            { workingDirectory: base },
+            undefined,
+          )
+          expect(result).toContain('cannot be accessed')
+          expect(result).not.toContain('API_KEY')
+        } finally {
+          await rm(base, { recursive: true, force: true })
+        }
+      },
+    )
 
     test('refuses a directory and points at grep', async () => {
       const result = await runRead({ path: 'lib' })
@@ -233,10 +255,13 @@ describe('read tool', () => {
       expect(result).toContain('is outside the project directory')
     })
 
-    test('rejects a symlink that escapes the project', async () => {
-      const result = await runRead({ path: 'escape.js' })
-      expect(result).toContain('is outside the project directory')
-    })
+    test.skipIf(!ESCAPE_FIXTURE_IS_LINK)(
+      'rejects a symlink that escapes the project',
+      async () => {
+        const result = await runRead({ path: 'escape.js' })
+        expect(result).toContain('is outside the project directory')
+      },
+    )
 
     test('reads outside the project once the directory is granted', async () => {
       const granted = path.join(RESOURCE_DIR, '../grepSample')
@@ -249,17 +274,22 @@ describe('read tool', () => {
       expect(result).toContain('makeCylinder')
     })
 
-    test('follows a symlink into a granted directory', async () => {
-      const result = await read(
-        { path: 'escape.js' },
-        {
-          workingDirectory: RESOURCE_DIR,
-          permissions: guardAllowing(path.join(RESOURCE_DIR, '../grepSample')),
-        },
-        undefined,
-      )
-      expect(result).toContain('makeCylinder')
-    })
+    test.skipIf(!ESCAPE_FIXTURE_IS_LINK)(
+      'follows a symlink into a granted directory',
+      async () => {
+        const result = await read(
+          { path: 'escape.js' },
+          {
+            workingDirectory: RESOURCE_DIR,
+            permissions: guardAllowing(
+              path.join(RESOURCE_DIR, '../grepSample'),
+            ),
+          },
+          undefined,
+        )
+        expect(result).toContain('makeCylinder')
+      },
+    )
 
     test('a granted directory does not open up its neighbours', async () => {
       const result = await read(

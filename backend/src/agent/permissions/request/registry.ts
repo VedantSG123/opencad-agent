@@ -5,8 +5,10 @@ import {
   GET_API_DOCUMENTATION_TOOL_NAME,
   GREP_TOOL_NAME,
   READ_TOOL_NAME,
+  SHELL_TOOL_NAME,
 } from '../../tools/names'
 import { describeReadAccess } from '../../tools/read/permissions'
+import { describeShellAccess } from '../../tools/shell/permissions'
 import type { ToolAccess } from './types'
 
 /**
@@ -24,6 +26,8 @@ export function describeToolAccess(
       return describeGrepAccess(input)
     case EDIT_TOOL_NAME:
       return describeEditAccess(input)
+    case SHELL_TOOL_NAME:
+      return describeShellAccess(input)
     // Reaches no path the model chooses: the documentation store is read-only
     // and owned by the app.
     case GET_API_DOCUMENTATION_TOOL_NAME:

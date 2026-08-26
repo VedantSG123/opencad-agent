@@ -14,6 +14,6 @@ describe('permission coverage', () => {
   })
 
   test('a name nobody registered is still refused', () => {
-    expect(describeToolAccess('shell', {})).toBeNull()
+    expect(describeToolAccess('httpRequest', {})).toBeNull()
   })
 })

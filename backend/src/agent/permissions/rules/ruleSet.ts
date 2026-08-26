@@ -23,11 +23,19 @@ export function isSameRule(
       left.match.access === right.match.access
     )
   }
+  if (left.match.kind === 'commandHead' && right.match.kind === 'commandHead') {
+    const leftTokens = left.match.tokens
+    const rightTokens = right.match.tokens
+    return (
+      leftTokens.length === rightTokens.length &&
+      leftTokens.every((token, index) => token === rightTokens[index])
+    )
+  }
   if (
-    left.match.kind === 'commandPrefix' &&
-    right.match.kind === 'commandPrefix'
+    left.match.kind === 'commandExact' &&
+    right.match.kind === 'commandExact'
   ) {
-    return left.match.prefix === right.match.prefix
+    return left.match.command === right.match.command
   }
 
   return false

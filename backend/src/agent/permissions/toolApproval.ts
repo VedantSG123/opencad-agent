@@ -13,11 +13,11 @@ type ApprovalCall = {
  * room for the question the user has to answer.
  */
 export function createToolApproval(
-  check: (call: ToolCall) => ToolCallVerdict,
+  check: (call: ToolCall) => Promise<ToolCallVerdict>,
   onRequest: (toolCallId: string, request: PermissionRequest) => void,
-): (call: ApprovalCall) => ToolApprovalStatus {
-  return ({ toolCall }) => {
-    const verdict = check({
+): (call: ApprovalCall) => Promise<ToolApprovalStatus> {
+  return async ({ toolCall }) => {
+    const verdict = await check({
       toolName: toolCall.toolName,
       toolCallId: toolCall.toolCallId,
       input: toolCall.input,
