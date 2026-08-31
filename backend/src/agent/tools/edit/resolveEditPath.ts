@@ -41,7 +41,7 @@ export async function resolveEditPath(
   const stats = await statOrNull(target)
   if (!stats) {
     return {
-      error: `Error: file not found: ${displayPath}. Edit changes an existing file; it cannot create one.`,
+      error: `Error: file not found: ${displayPath}. Edit changes an existing file; use create to make a new one.`,
     }
   }
   if (stats.isDirectory()) {

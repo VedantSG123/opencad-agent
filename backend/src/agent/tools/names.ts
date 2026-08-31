@@ -8,6 +8,7 @@
 export const READ_TOOL_NAME = 'read'
 export const GREP_TOOL_NAME = 'grep'
 export const EDIT_TOOL_NAME = 'edit'
+export const CREATE_TOOL_NAME = 'create'
 export const GET_API_DOCUMENTATION_TOOL_NAME = 'getApiDocumentation'
 export const SHELL_TOOL_NAME = 'shell'
 
@@ -16,6 +17,7 @@ export const TOOL_NAMES = [
   READ_TOOL_NAME,
   GREP_TOOL_NAME,
   EDIT_TOOL_NAME,
+  CREATE_TOOL_NAME,
   GET_API_DOCUMENTATION_TOOL_NAME,
   SHELL_TOOL_NAME,
 ] as const

@@ -1,4 +1,4 @@
-export const prompt = `Make precise, targeted changes to an existing file by searching for exact sections of content and replacing them. This tool is for surgical edits only - it changes parts of a file, it does not create or rewrite one.
+export const prompt = `Make precise, targeted changes to an existing file by searching for exact sections of content and replacing them. This tool is for surgical edits only - it changes parts of a file, it does not create or rewrite one. Use create for a file that does not exist yet.
 
 Put as many SEARCH/REPLACE blocks in a single call as the change needs; that is cheaper and safer than one call per block, because every block is matched against the same starting file.
 

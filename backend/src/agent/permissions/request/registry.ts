@@ -1,6 +1,8 @@
+import { describeCreateAccess } from '../../tools/create/permissions'
 import { describeEditAccess } from '../../tools/edit/permissions'
 import { describeGrepAccess } from '../../tools/grep/permissions'
 import {
+  CREATE_TOOL_NAME,
   EDIT_TOOL_NAME,
   GET_API_DOCUMENTATION_TOOL_NAME,
   GREP_TOOL_NAME,
@@ -26,6 +28,8 @@ export function describeToolAccess(
       return describeGrepAccess(input)
     case EDIT_TOOL_NAME:
       return describeEditAccess(input)
+    case CREATE_TOOL_NAME:
+      return describeCreateAccess(input)
     case SHELL_TOOL_NAME:
       return describeShellAccess(input)
     // Reaches no path the model chooses: the documentation store is read-only

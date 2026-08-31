@@ -237,7 +237,7 @@ describe('edit tool', () => {
       })
 
       expect(result).toContain('file not found')
-      expect(result).toContain('cannot create one')
+      expect(result).toContain('use create to make a new one')
     })
   })
 
