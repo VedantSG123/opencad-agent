@@ -4,10 +4,10 @@ import { z } from 'zod'
 import { getChunkById } from '../../../../../utils/dbUtils/replicadApiDocumentationStore'
 import { API_DOC_CHUNK_ENTITY_TYPES } from '../../../../../utils/knowledge-base/replicad/generateApiDocsChunks'
 import { logger } from '../../../../../utils/logger'
+import { prompt } from './prompt'
 
 export const getApiDocumentation = tool({
-  description:
-    'Retrieve detailed API documentation for a specific class, function, method, variable, interface, or type alias. For methods, use the format "ClassName.methodName".',
+  description: prompt,
   inputSchema: z.object({
     entityName: z
       .string()
