@@ -27,6 +27,7 @@ Three-package monorepo (Bun workspaces) for a desktop CAD application where an A
 | `bun run dev` | frontend/ | Vite dev server (port 5173) |
 | `bun run dev` | electron/ | TypeScript watch + Electron |
 | `bun test` | backend/ | Run backend tests with Bun's built-in runner |
+| `bun run agent` | backend/ | Interactive CLI driver for the agent loop — picks a project, session and model, then streams a turn (`--project`, `--session`, `--model`, `--help`) |
 | `cd backend && bun run src/db/migrate-cli.ts` | backend/ | Run DB migrations manually (auto-run on startup) |
 
 **Tests**: Backend tests use Bun's built-in runner (`bun test` from `backend/`). Tool tests live in `backend/src/__tests__/agent/tools/<tool>/` and call the underlying tool function directly with a `ToolContext` pointed at sample resources in `backend/src/__tests__/resource/`.
