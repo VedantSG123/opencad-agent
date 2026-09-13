@@ -10,11 +10,32 @@ import { upsertPart } from '../../utils/dbUtils/messageParts'
 import { upsertMessage } from '../../utils/dbUtils/messages'
 import { generateIdWithPrefix } from '../../utils/generateId'
 import type { ModelRef } from '../model'
+import type { PermissionScope } from '../permissions'
 
 export type FileAttachment = {
   mime: string
   url: string
   filename?: string
+}
+
+/**
+ * How a tool call got past the permission layer, kept on the part so the
+ * decision outlives the process. The grant stores cannot answer this later:
+ * `once` warrants live in memory and session rules die with the backend, so
+ * without a record here there is no way to tell afterwards whether a call was
+ * allowed by a standing rule or approved by the user at the time.
+ */
+export type PermissionRecord = {
+  outcome:
+    | 'allowed-by-rules'
+    | 'denied-by-rules'
+    | 'granted-by-user'
+    | 'refused-by-user'
+  /** The scope chosen, when the user was the one who decided. */
+  scope?: PermissionScope
+  /** The path or command the question was about, as the user saw it. */
+  subject?: string
+  at: string
 }
 
 /**
@@ -30,6 +51,7 @@ export type SessionWriter = {
   startTextPart(messageId: string): TextPart
   completeTextPart(part: TextPart, text: string): TextPart
   startToolPart(input: StartToolPartInput): ToolPart
+  notePermission(part: ToolPart, permission: PermissionRecord): ToolPart
   completeToolPart(part: ToolPart, output: string): ToolPart
   failToolPart(part: ToolPart, error: string): ToolPart
   compactionPart(input: CompactionPartInput): CompactionPart
@@ -128,6 +150,13 @@ export function createSessionWriter(
           input,
           time: { started: new Date().toISOString() },
         },
+      }) as ToolPart
+    },
+
+    notePermission(part, permission) {
+      return upsertPart({
+        ...part,
+        metadata: { ...part.metadata, permission },
       }) as ToolPart
     },
 

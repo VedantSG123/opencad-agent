@@ -9,6 +9,7 @@ import { projectPathGuard } from '../../permissions/pathGuard'
 import type { ToolContext } from '../types'
 import { applyReplacements } from './applyReplacements'
 import { formatEditResult } from './formatResult'
+import { normalizeMarkers } from './normalizeMarkers'
 import { NO_REPLACEMENTS_ERROR, parseReplacements } from './parseReplacements'
 import { prompt } from './prompt'
 import { resolveEditPath } from './resolveEditPath'
@@ -61,12 +62,16 @@ export async function edit(
   abortSignal: AbortSignal | undefined,
   toolCallId?: string,
 ): Promise<string> {
-  const validation = validateDiffBlock(input.diff)
+  // Both the check and the parse read the normalised text, so a marker the
+  // model spelled loosely is judged as the marker it meant.
+  const diff = normalizeMarkers(input.diff)
+
+  const validation = validateDiffBlock(diff)
   if (!validation.success) {
     return `Error: ${validation.error}`
   }
 
-  const replacements = parseReplacements(input.diff)
+  const replacements = parseReplacements(diff)
   if (replacements.length === 0) {
     return `Error: ${NO_REPLACEMENTS_ERROR}`
   }

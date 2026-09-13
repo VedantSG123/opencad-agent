@@ -1,7 +1,8 @@
 import path from 'node:path'
 
 import { containingDirectory } from '../../../utils/paths'
-import { isOpaqueHead } from '../builtin/opaqueCommands'
+import { programIdentity } from '../builtin/commandNames'
+import { isOpaqueHead, runsArbitraryCode } from '../builtin/opaqueCommands'
 import type { AccessVerdict, EvaluationContext } from '../evaluate'
 import { headWouldAllowEverything } from '../evaluate'
 import type { RuleTemplate } from '../rules/types'
@@ -151,7 +152,29 @@ function describeCommandRequest(
     // Shown whenever there is one, not only when the offer narrowed: a command
     // stopped for a file it names looks arbitrary without it, and the command
     // on its own does not say which of its words caused the question.
-    explanation: verdict?.reason,
+    explanation: explain(command, verdict),
     choices,
   }
+}
+
+/**
+ * Why the command was stopped, and what approving it would really cover.
+ *
+ * The second half matters because the command on screen can understate itself
+ * by an unbounded amount: `powershell -File build.ps1` reads as one build
+ * step, and is in fact whatever that file says today. The tools that name a
+ * path are weighed against the path rules; a shell is weighed against nothing
+ * but this sentence.
+ */
+function explain(command: string, verdict?: AccessVerdict): string | undefined {
+  const [program] = verdict?.command?.decidingSegment ?? command.split(/\s+/)
+
+  const notes = [
+    verdict?.reason,
+    program && runsArbitraryCode(program)
+      ? `\`${programIdentity(program)}\` runs whatever it is handed, so this approves more than the words shown - including reading or writing files the command does not name.`
+      : undefined,
+  ].filter((note): note is string => note !== undefined)
+
+  return notes.length > 0 ? notes.join(' ') : undefined
 }

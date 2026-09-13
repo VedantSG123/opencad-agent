@@ -31,6 +31,7 @@ export {
 export type { ToolName } from './names'
 export { createReadTool } from './read'
 export { createShellTool } from './shell'
+export { toolFailed } from './types'
 export type { ToolContext, ToolPermissions } from './types'
 
 /**

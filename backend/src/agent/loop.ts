@@ -25,8 +25,13 @@ import { buildSystemPrompt } from './prompt/system'
 import { loadSessionMessages } from './session/history'
 import { toModelMessages } from './session/projector'
 import { createSessionWriter } from './session/writer'
-import type { FileAttachment, SessionWriter } from './session/writer'
+import type {
+  FileAttachment,
+  PermissionRecord,
+  SessionWriter,
+} from './session/writer'
 import { createTools } from './tools'
+import { toolFailed } from './tools/types'
 
 /**
  * A model that keeps calling tools without ever answering is not converging,
@@ -72,6 +77,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   const tools = createTools(permissions)
   const definitions = withoutExecute(tools)
   const writer = createSessionWriter(input.session.id, input.model)
+  const repetition = createRepetitionGuard()
   const system = buildSystemPrompt(input.project)
 
   writer.userMessage(input.prompt, input.files)
@@ -126,6 +132,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
             call,
             tools,
             permissions,
+            repetition,
             writer,
             emit,
             messages,
@@ -256,6 +263,7 @@ type SettleToolCallInput = {
   call: PendingCall
   tools: ToolSet
   permissions: RunPermissions
+  repetition: RepetitionGuard
   writer: SessionWriter
   emit: (event: AgentEvent) => void
   messages: ModelMessage[]
@@ -275,6 +283,7 @@ async function settleToolCall({
   call,
   tools,
   permissions,
+  repetition,
   writer,
   emit,
   messages,
@@ -283,24 +292,32 @@ async function settleToolCall({
   abortSignal,
   onPermissionRequest,
 }: SettleToolCallInput): Promise<ToolResultPart> {
-  const refusal = await approve({
+  const looping = repetition.refusalFor(call)
+  if (looping !== null) {
+    const part = writer.failToolPart(call.part, looping)
+    emit({ type: 'tool-end', part })
+    return toolResult(call, looping)
+  }
+
+  const approval = await approve({
     call,
     permissions,
     projectId,
     sessionId,
     onPermissionRequest,
   })
+  const noted = writer.notePermission(call.part, approval.record)
 
-  if (refusal !== null) {
-    const part = writer.failToolPart(call.part, refusal)
-    emit({ type: 'tool-denied', part, reason: refusal })
-    return toolResult(call, refusal)
+  if (!approval.allowed) {
+    const part = writer.failToolPart(noted, approval.refusal)
+    emit({ type: 'tool-denied', part, reason: approval.refusal })
+    return toolResult(call, approval.refusal)
   }
 
   const execute = tools[call.toolName]?.execute
   if (!execute) {
     const message = `Error: "${call.toolName}" is not a tool this agent has.`
-    emit({ type: 'tool-end', part: writer.failToolPart(call.part, message) })
+    emit({ type: 'tool-end', part: writer.failToolPart(noted, message) })
     return toolResult(call, message)
   }
 
@@ -312,18 +329,29 @@ async function settleToolCall({
       context: undefined,
     })
     const text = typeof output === 'string' ? output : JSON.stringify(output)
-    emit({ type: 'tool-end', part: writer.completeToolPart(call.part, text) })
+    const part = toolFailed(text)
+      ? writer.failToolPart(noted, text)
+      : writer.completeToolPart(noted, text)
+    emit({ type: 'tool-end', part })
     return toolResult(call, text)
   } catch (error) {
     if (isAbort(error, abortSignal)) throw error
     logger.error({ error, tool: call.toolName }, 'tool execution failed')
     const message = `Error: ${error instanceof Error ? error.message : String(error)}`
-    emit({ type: 'tool-end', part: writer.failToolPart(call.part, message) })
+    emit({ type: 'tool-end', part: writer.failToolPart(noted, message) })
     return toolResult(call, message)
   }
 }
 
-/** `null` when the call may run, otherwise what to tell the model instead. */
+type Approval =
+  | { allowed: true; record: PermissionRecord }
+  | { allowed: false; record: PermissionRecord; refusal: string }
+
+/**
+ * Whether the call may run, along with the record of how that was settled.
+ * The two travel together because only one of them can be reconstructed
+ * afterwards, and it is not the record.
+ */
 async function approve({
   call,
   permissions,
@@ -333,19 +361,36 @@ async function approve({
 }: Pick<
   SettleToolCallInput,
   'call' | 'permissions' | 'projectId' | 'sessionId' | 'onPermissionRequest'
->): Promise<string | null> {
+>): Promise<Approval> {
   const verdict = await permissions.checkToolCall({
     toolName: call.toolName,
     toolCallId: call.toolCallId,
     input: call.input,
   })
 
-  if (verdict.decision === 'allow') return null
-  if (verdict.decision === 'deny') return `Error: ${verdict.reason}`
+  const at = new Date().toISOString()
 
+  if (verdict.decision === 'allow') {
+    return { allowed: true, record: { outcome: 'allowed-by-rules', at } }
+  }
+  if (verdict.decision === 'deny') {
+    return {
+      allowed: false,
+      record: { outcome: 'denied-by-rules', at },
+      refusal: `Error: ${verdict.reason}`,
+    }
+  }
+
+  const subject = verdict.request.subject
   const scope = await onPermissionRequest(verdict.request, call.toolCallId)
+
   if (scope === null) {
-    return 'Error: the user did not approve this. Do not attempt it again by another route.'
+    return {
+      allowed: false,
+      record: { outcome: 'refused-by-user', subject, at },
+      refusal:
+        'Error: the user did not approve this. Do not attempt it again by another route.',
+    }
   }
 
   applyGrant({
@@ -355,7 +400,44 @@ async function approve({
     toolCallId: call.toolCallId,
     request: verdict.request,
   })
-  return null
+  return {
+    allowed: true,
+    record: { outcome: 'granted-by-user', scope, subject, at },
+  }
+}
+
+export type RepetitionGuard = {
+  /** What to tell the model instead of running, or `null` to go ahead. */
+  refusalFor(call: PendingCall): string | null
+}
+
+/**
+ * Stops the model retrying a call that has already failed the same way twice.
+ *
+ * Only a run of identical calls counts, never a total: reading the same file
+ * again after editing it is ordinary work, whereas sending byte-for-byte the
+ * same arguments a third time in a row cannot produce a different answer. One
+ * session spent three of its five wasted `edit` calls exactly this way.
+ */
+export function createRepetitionGuard(limit = 3): RepetitionGuard {
+  let signature = ''
+  let seen = 0
+
+  return {
+    refusalFor(call) {
+      const next = `${call.toolName}:${JSON.stringify(call.input)}`
+      if (next !== signature) {
+        signature = next
+        seen = 1
+        return null
+      }
+
+      seen += 1
+      if (seen < limit) return null
+
+      return `Error: this is call ${seen} to \`${call.toolName}\` with byte-for-byte the same arguments, and it was not run. The result will not change. Do not send it again - either establish what is actually wrong (read the file to see its current state, or check the tool's description for the format it expects) or tell the user what is blocking you.`
+    },
+  }
 }
 
 function toolResult(call: PendingCall, text: string): ToolResultPart {

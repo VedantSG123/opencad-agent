@@ -83,15 +83,25 @@ async function repl(context: {
   let running: AbortController | null = null
 
   // Ctrl-C stops the turn, not the process: a long shell command or a model
-  // that has lost the thread should not cost the session.
-  process.on('SIGINT', () => {
+  // that has lost the thread should not cost the session. A second one, with
+  // nothing to stop, exits.
+  const interrupt = () => {
     if (!running) {
-      terminal.close()
+      console.log(style.dim('\nbye'))
+      exit()
       return
     }
     running.abort()
+    running = null
     console.log(style.yellow('\ninterrupted'))
-  })
+  }
+
+  // Both, and it has to be both. While readline holds a TTY it takes Ctrl-C
+  // for itself and emits `SIGINT` on the interface instead of letting the
+  // process signal fire - so a `process` listener alone never runs. Once the
+  // interface is closed the process listener is the only one left.
+  terminal.on('SIGINT', interrupt)
+  process.on('SIGINT', interrupt)
 
   for (;;) {
     const prompt = (await ask(style.cyan('> ')))?.trim()
@@ -243,16 +253,25 @@ function openSession(project: Project, id: string | undefined): Session {
   })
 }
 
+/**
+ * Ends the process rather than letting the event loop drain. The PowerShell
+ * parser is a live child (AGENTS.md #21), and a shell command the agent
+ * started can outlive the run that asked for it - either will keep a CLI that
+ * merely stopped working from ever exiting.
+ */
+function exit(code = 0): never {
+  terminal.close()
+  shutdownPowerShellParsers()
+  process.exit(code)
+}
+
 try {
   await main()
 } catch (error) {
   console.error(
     style.red(error instanceof Error ? error.message : String(error)),
   )
-  process.exitCode = 1
-} finally {
-  terminal.close()
-  // A live child process that would otherwise keep the CLI from exiting
-  // (see AGENTS.md #21).
-  shutdownPowerShellParsers()
+  exit(1)
 }
+
+exit(0)

@@ -20,9 +20,10 @@ USAGE: \`path\` is relative to the project directory and the file must already
 - The SEARCH section must match the existing content exactly, including
   whitespace and indentation. If you are not certain of the exact text, read
   the file first.
-- \`:start_line:\` is required. It is where the search block starts in the file
-  as you last read it; nearby lines are searched too, so an edit still lands if
-  the line has shifted.
+- \`:start_line:\` is where the search block starts in the file as you last read
+  it. Include it: nearby lines are searched too, so an edit still lands if the
+  line has shifted, and without it the whole file is scanned, where a short
+  search block can match somewhere you did not mean.
 - Blocks apply independently. If one fails to match, the others are still
   written and the failure is reported - re-read the file before retrying, since
   the line numbers will have moved.
@@ -33,13 +34,17 @@ USAGE: \`path\` is relative to the project directory and the file must already
 - If the code itself contains \`<<<<<<<\`, \`=======\`, \`>>>>>>> REPLACE\` or
   \`-------\` at the start of a line, escape those lines with a leading
   backslash inside SEARCH/REPLACE content.
+- \`diff\` takes the blocks and nothing else. Do not wrap them in XML tags such
+  as \`<diff>\`, in a markdown code fence, or in any other envelope. Nothing may
+  follow a marker on its line, and the markers are seven characters each:
+  \`<<<<<<< SEARCH\`, \`=======\`, \`>>>>>>> REPLACE\`.
 
 DIFF FORMAT:
 \`\`\`
 <<<<<<< SEARCH
-:start_line: (required) The line number of original content where the search block starts.
+:start_line:<line the search content starts at in the file>
 -------
-[exact content to find including whitespace]
+[exact content to find, including whitespace]
 =======
 [new content to replace with]
 >>>>>>> REPLACE

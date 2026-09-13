@@ -76,6 +76,21 @@ const OPAQUE_ALONE = new Set([
 ])
 
 /**
+ * Whether the program hands whatever follows it to something else, no matter
+ * what its arguments say.
+ *
+ * Distinct from `isOpaqueHead`, which weighs the words a *grant* would record
+ * and so treats `node` and `bun` as opaque only when they stand alone. This
+ * asks a narrower question - is the thing being run a shell or a launcher -
+ * and it is asked to warn the user, not to withhold a grant. Approving
+ * `powershell -Command <script>` approves far more than the words on screen,
+ * and the question has to say so.
+ */
+export function runsArbitraryCode(program: string): boolean {
+  return ALWAYS_OPAQUE.has(programIdentity(program))
+}
+
+/**
  * Whether a stored rule may never be built from these words, though the user
  * may still approve the command once or exactly as written.
  *

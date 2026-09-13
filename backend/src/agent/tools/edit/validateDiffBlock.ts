@@ -18,11 +18,11 @@ export type DiffValidation =
   | { success: false; error: string }
 
 const CORRECT_FORMAT = `<<<<<<< SEARCH
-:start_line: (required) The line number of original content where the search block starts.
+:start_line:<line the search content starts at in the file>
 -------
-[exact content to find including whitespace]
+[exact content to find, including whitespace]
 =======
-[new content to replace with]
+[new content to replace it with]
 >>>>>>> REPLACE
 `
 
@@ -48,26 +48,27 @@ CORRECT FORMAT:
 ${CORRECT_FORMAT}`
 
 const getEscapedMarkerErrorMessage = (marker: string, lineNumber: number) =>
-  `ERROR: Special marker "${marker}" found in diff content at line ${lineNumber}.
+  `ERROR: Line ${lineNumber} starts like a diff marker but is not one: "${marker}".
 
-When the actual code contains diff markers, escape them with a leading backslash in SEARCH or REPLACE content.
+There are two reasons this happens, and they need opposite fixes.
+
+1. You meant it as a marker. Then write it exactly, with nothing before or
+   after it on the line - no XML tag, no code fence, no extra brackets:
+
+     <<<<<<< SEARCH
+     =======
+     >>>>>>> REPLACE
+     -------
+
+2. It is content from the file that happens to start with those characters.
+   Then escape it with a leading backslash, and it will reach the file
+   without the backslash:
+
+     \\${marker}
 
 CORRECT FORMAT:
 
-<<<<<<< SEARCH
-content before
-\\${marker}
-content after
-=======
-replacement content
->>>>>>> REPLACE
-
-Escape any marker lines that appear inside the content:
-\\<<<<<<< SEARCH
-\\=======
-\\>>>>>>> REPLACE
-\\-------
-`
+${CORRECT_FORMAT}`
 
 const reportInvalidDiffError = (
   found: string,
