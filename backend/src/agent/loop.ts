@@ -111,7 +111,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
         onError: () => {},
       })
 
-      const step = await consumeStream({
+      const { calls: pendingToolCalls } = await consumeStream({
         stream: result.stream,
         messageId: assistant.id,
         writer,
@@ -123,10 +123,10 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
       usage = addUsage(usage, await result.usage)
       emit({ type: 'step-end', finishReason, usage })
 
-      if (finishReason !== 'tool-calls' || step.calls.length === 0) break
+      if (finishReason !== 'tool-calls' || pendingToolCalls.length === 0) break
 
       const results: ToolResultPart[] = []
-      for (const call of step.calls) {
+      for (const call of pendingToolCalls) {
         results.push(
           await settleToolCall({
             call,
