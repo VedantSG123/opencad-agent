@@ -1,0 +1,5 @@
+# ripgrep honours .ignore the same way it honours .gitignore, but git does not.
+# That is the only way to keep an "excluded from search" fixture file committed:
+# listing vendor/ in .gitignore would stop vendor/dep/index.js from ever being
+# checked in, and the includeIgnored tests would fail on a fresh clone.
+vendor/

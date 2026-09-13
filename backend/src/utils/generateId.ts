@@ -46,6 +46,7 @@ export const ID_PREFIX_MAP = {
   session: 'ses',
   message: 'msg',
   part: 'prt',
+  permission: 'perm',
 } as const
 
 export function generateIdWithPrefix(
