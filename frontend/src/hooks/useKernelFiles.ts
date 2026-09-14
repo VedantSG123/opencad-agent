@@ -9,6 +9,7 @@ export type KernelFilesState = {
   files: Record<string, FileEntry>
   setFileContent: (path: string, content: string) => void
   clearFile: (path: string) => void
+  clearAll: () => void
 }
 
 /**
@@ -18,6 +19,11 @@ export type KernelFilesState = {
  *
  * This is a vanilla Zustand store so that CAD kernels can subscribe to it
  * outside of the React lifecycle.
+ *
+ * Keys are project-relative virtual paths (`/main.js`), so two projects collide
+ * on the same entries — the map must be emptied via `clearAll` whenever a
+ * project workspace is torn down, or the next project reads the previous
+ * project's code.
  */
 export const kernelFilesStore = createStore<KernelFilesState>((set) => ({
   files: {},
@@ -33,6 +39,7 @@ export const kernelFilesStore = createStore<KernelFilesState>((set) => ({
       const { [path]: _removed, ...rest } = state.files
       return { files: rest }
     }),
+  clearAll: () => set({ files: {} }),
 }))
 
 /**

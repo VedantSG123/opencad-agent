@@ -7,6 +7,7 @@ import { useEditor } from './editor/context'
 export function FileSync() {
   const { readFile, onWatch, dirtyTabs } = useEditor()
   const setFileContent = useKernelFiles((state) => state.setFileContent)
+  const clearAll = useKernelFiles((state) => state.clearAll)
 
   const readFileRef = useRef(readFile)
   const setFileContentRef = useRef(setFileContent)
@@ -21,6 +22,10 @@ export function FileSync() {
   useEffect(() => {
     dirtyTabsRef.current = dirtyTabs
   }, [dirtyTabs])
+
+  useEffect(() => {
+    return () => clearAll()
+  }, [clearAll])
 
   useEffect(() => {
     return onWatch((event) => {
