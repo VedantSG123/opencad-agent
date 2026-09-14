@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 
 import { NodeOpenSCADProvider } from '@/hooks/useNodeOpenSCAD'
 import { useProjects, useUpdateProjectAccess } from '@/hooks/useProjects'
+import { ReplicadProvider } from '@/hooks/useReplicad'
 import { cn } from '@/lib/utils'
 import type { Project } from '@/types/project'
 
@@ -174,12 +175,16 @@ export function ProjectPage() {
     </div>
   )
 
+  // Keying by project id discards the whole workspace — kernel store, editor
+  // state, file watchers — when switching projects. Without it the incoming
+  // project renders the outgoing one's compiled shapes and parameters until its
+  // own build lands.
   return (
     <PanelProvider>
       {isOpenSCAD ? (
-        <NodeOpenSCADProvider>{content}</NodeOpenSCADProvider>
+        <NodeOpenSCADProvider key={project.id}>{content}</NodeOpenSCADProvider>
       ) : (
-        content
+        <ReplicadProvider key={project.id}>{content}</ReplicadProvider>
       )}
     </PanelProvider>
   )
