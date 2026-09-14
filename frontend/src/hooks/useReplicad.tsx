@@ -1,4 +1,6 @@
-import { create } from 'zustand'
+import * as React from 'react'
+import { useStore } from 'zustand'
+import { createStore } from 'zustand/vanilla'
 
 import { getBuilderApi } from '@/kernels/replicad/builderApi'
 import { inSeries } from '@/kernels/replicad/inSeries'
@@ -65,13 +67,24 @@ const main = (replicad, params) => {
 };
 `
 
-export const useReplicad = create<ReplicadState & ReplicadActions>(
-  (set, get) => {
-    const builderApi = getBuilderApi()
+/**
+ * The OCC worker behind `getBuilderApi()` is a singleton that outlives any
+ * single store, so a store created for a newly opened project usually inherits
+ * an already-initialized worker. Seeding `workerReady` from this avoids
+ * flashing "Initializing Replicad..." on every project switch.
+ */
+let workerInitialized = false
 
+export type ReplicadStore = ReturnType<typeof createReplicadStore>
+
+export function createReplicadStore() {
+  const builderApi = getBuilderApi()
+
+  return createStore<ReplicadState & ReplicadActions>((set, get) => {
     const initWorker = async () => {
       try {
         const workerReady = await builderApi.init()
+        workerInitialized = workerReady
         set({ workerReady })
       } catch (e) {
         console.error('Error initializing replicad worker:', e)
@@ -131,7 +144,7 @@ export const useReplicad = create<ReplicadState & ReplicadActions>(
 
     return {
       code: DEFAULT_SCRIPT.trim(),
-      workerReady: false,
+      workerReady: workerInitialized,
       isCompiling: false,
       shapes: null,
       error: null,
@@ -142,5 +155,29 @@ export const useReplicad = create<ReplicadState & ReplicadActions>(
       initWorker,
       clearLogs: () => set({ logs: [] }),
     }
-  },
-)
+  })
+}
+
+const ReplicadContext = React.createContext<ReplicadStore | null>(null)
+
+export function ReplicadProvider({ children }: { children: React.ReactNode }) {
+  const [store] = React.useState(createReplicadStore)
+
+  return (
+    <ReplicadContext.Provider value={store}>
+      {children}
+    </ReplicadContext.Provider>
+  )
+}
+
+export function useReplicad<T>(
+  selector: (state: ReplicadState & ReplicadActions) => T,
+): T {
+  const store = React.useContext(ReplicadContext)
+
+  if (!store) {
+    throw new Error('useReplicad must be used within ReplicadProvider')
+  }
+
+  return useStore(store, selector)
+}
