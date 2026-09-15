@@ -11,24 +11,31 @@ export type AgentUsage = {
 }
 
 /**
- * What a run reports as it happens. Everything here is already persisted by
- * the time it is emitted, so a listener that drops an event loses a live
- * update, never a record.
+ * Events emitted by the main stream in the loop, we choose only the events which
+ * we think the agent will emit as per our implementation. These events are exactly
+ * same as the stream chunk type signatures defined in the ai-sdkm so we can easily
+ * integrate it with the UI stream.
  */
-export type AgentEvent =
-  | { type: 'assistant-start'; message: AssistantMessage }
-  | { type: 'text-start'; partId: string }
-  | { type: 'text-delta'; partId: string; text: string }
-  | { type: 'text-end'; partId: string; text: string }
-  | { type: 'reasoning-delta'; text: string }
-  | { type: 'tool-start'; part: ToolPart }
-  | { type: 'tool-end'; part: ToolPart }
-  | { type: 'tool-denied'; part: ToolPart; reason: string }
-  | { type: 'step-end'; finishReason: FinishReason; usage: AgentUsage }
-  | { type: 'assistant-end'; message: AssistantMessage }
+export type AgentStreamEvent =
+  | { type: 'start'; message: AssistantMessage }
+  | { type: 'start-step' }
+  | { type: 'text-start'; id: string }
+  | { type: 'text-delta'; id: string; delta: string }
+  | { type: 'text-end'; id: string }
+  | { type: 'reasoning-start'; id: string }
+  | { type: 'reasoning-delta'; id: string; delta: string }
+  | { type: 'reasoning-end'; id: string }
+  | { type: 'tool-input-start'; toolCallId: string; toolName: string }
+  | { type: 'tool-input-delta'; toolCallId: string; inputTextDelta: string }
+  | { type: 'tool-input-available'; part: ToolPart }
+  | { type: 'tool-output-available'; part: ToolPart }
+  | { type: 'tool-output-error'; part: ToolPart; errorText: string }
+  | { type: 'finish-step'; finishReason: FinishReason; usage: AgentUsage }
+  | { type: 'finish'; message: AssistantMessage }
+  | { type: 'abort' }
 
 export type AgentCallbacks = {
-  onEvent?: (event: AgentEvent) => void
+  onEvent?: (event: AgentStreamEvent) => void
   /**
    * Puts the permission question to whoever is driving the run. Resolving to
    * a scope grants it; resolving to `null` denies the call, and the model is

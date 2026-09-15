@@ -1,4 +1,4 @@
-import type { AgentEvent } from '../agent/events'
+import type { AgentStreamEvent } from '../agent/events'
 import {
   CREATE_TOOL_NAME,
   EDIT_TOOL_NAME,
@@ -41,36 +41,49 @@ export function createRenderer() {
   }
 
   return {
-    onEvent: (event: AgentEvent): void => {
+    onEvent: (event: AgentStreamEvent): void => {
       switch (event.type) {
         case 'text-start':
           breakLine()
           break
         case 'text-delta':
-          write(event.text)
+          write(event.delta)
           break
         case 'text-end':
           breakLine()
           break
-        case 'tool-start':
+
+        case 'reasoning-start':
+          breakLine()
+          write(style.dim('  thinking  '))
+          break
+        case 'reasoning-delta':
+          write(style.dim(event.delta))
+          break
+        case 'reasoning-end':
+          breakLine()
+          break
+
+        case 'tool-input-available':
           breakLine()
           write(
             `  ${style.cyan('*')} ${style.bold(event.part.tool)} ${style.dim(describeToolCall(event.part.tool, event.part.state.input))}\n`,
           )
           break
-        case 'tool-end':
-          if (event.part.state.state === 'error') {
-            write(`    ${style.red(firstLine(event.part.state.error))}\n`)
-            break
-          }
+        case 'tool-output-available':
           if (event.part.state.state === 'completed') {
             write(`    ${style.dim(summarise(event.part.state.output))}\n`)
           }
           break
-        case 'tool-denied':
-          write(`    ${style.yellow(firstLine(event.reason))}\n`)
+        case 'tool-output-error':
+          write(`    ${style.red(firstLine(event.errorText))}\n`)
           break
-        case 'assistant-end':
+
+        case 'abort':
+          breakLine()
+          write(style.yellow('  aborted\n'))
+          break
+        case 'finish':
           breakLine()
           break
       }

@@ -1,4 +1,7 @@
+export * from './agentUi.js'
+export * from './attachments.js'
 export * from './paths.js'
+export * from './permissions.js'
 export * from './preferences.js'
 export * from './projectPreferences.js'
 export * from './settings.js'

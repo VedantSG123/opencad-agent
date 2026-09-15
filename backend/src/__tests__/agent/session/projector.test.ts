@@ -224,3 +224,35 @@ describe('toModelMessages', () => {
     expect(JSON.stringify(messages)).not.toContain('dropped')
   })
 })
+
+describe('reasoning stays out of the context', () => {
+  test('a stored reasoning part is not replayed to the model', () => {
+    const messages = toModelMessages([
+      user('why is the wall thin?'),
+      assistant((id) => [
+        {
+          ...partBase(id),
+          type: 'reasoning',
+          text: 'The wall variable is 2.4 and the nozzle is 0.4, so…',
+        },
+        text(id, 'Because `wall` is set to 2.4mm.'),
+      ]),
+    ])
+
+    // The answer survives; the working behind it does not. Replaying it would
+    // pay for the model's own scratch notes on every later turn.
+    const replayed = JSON.stringify(messages)
+    expect(replayed).toContain('Because `wall` is set to 2.4mm.')
+    expect(replayed).not.toContain('the nozzle is 0.4')
+  })
+
+  test('a message of nothing but reasoning contributes no turn at all', () => {
+    const messages = toModelMessages([
+      assistant((id) => [
+        { ...partBase(id), type: 'reasoning', text: 'thinking out loud' },
+      ]),
+    ])
+
+    expect(messages).toHaveLength(0)
+  })
+})

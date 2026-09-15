@@ -12,6 +12,18 @@ export const TextPartSchema = PartBaseSchema.extend({
   synthetic: z.boolean().optional(),
 })
 
+/**
+ * The model's working, kept but never replayed. The projector's allowlist
+ * leaves it out of the context sent on the next turn - it is not conversation,
+ * and paying for it again on every turn would be the only effect.
+ */
+export const ReasoningPartSchema = PartBaseSchema.extend({
+  type: z.literal('reasoning'),
+  text: z.string(),
+})
+
+export type ReasoningPart = z.infer<typeof ReasoningPartSchema>
+
 export const FilePartSchema = PartBaseSchema.extend({
   type: z.literal('file'),
   mime: z.string(), // e.g. 'image/png', 'image/jpeg'
@@ -86,6 +98,7 @@ const ToolPartSchema = PartBaseSchema.extend({
 
 export const PartSchema = z.discriminatedUnion('type', [
   TextPartSchema,
+  ReasoningPartSchema,
   FilePartSchema,
   ToolPartSchema,
   CompactionPartSchema,

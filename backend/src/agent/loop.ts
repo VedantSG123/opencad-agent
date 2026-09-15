@@ -11,12 +11,13 @@ import { streamText } from 'ai'
 import type { Project } from '../project/schema'
 import type {
   AssistantMessage,
+  ReasoningPart,
   TextPart,
   ToolPart,
 } from '../session/messageSchema'
 import type { Session } from '../session/schema'
 import { logger } from '../utils/logger'
-import type { AgentCallbacks, AgentEvent, AgentUsage } from './events'
+import type { AgentCallbacks, AgentStreamEvent, AgentUsage } from './events'
 import type { ModelRef } from './model'
 import { resolveModel } from './model'
 import { applyGrant, createRunPermissions } from './permissions'
@@ -24,12 +25,8 @@ import type { RunPermissions } from './permissions'
 import { buildSystemPrompt } from './prompt/system'
 import { loadSessionMessages } from './session/history'
 import { toModelMessages } from './session/projector'
-import { createSessionWriter } from './session/writer'
-import type {
-  FileAttachment,
-  PermissionRecord,
-  SessionWriter,
-} from './session/writer'
+import { SessionWriter } from './session/writer'
+import type { FileAttachment, PermissionRecord } from './session/writer'
 import { createTools } from './tools'
 import { toolFailed } from './tools/types'
 
@@ -66,7 +63,7 @@ export type AgentRunResult = {
  */
 export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   const maxSteps = input.maxSteps ?? DEFAULT_MAX_STEPS
-  const emit = (event: AgentEvent) => input.onEvent?.(event)
+  const emit = (event: AgentStreamEvent) => input.onEvent?.(event)
 
   const resolved = await resolveModel(input.model)
   const permissions = createRunPermissions({
@@ -76,7 +73,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   })
   const tools = createTools(permissions)
   const definitions = withoutExecute(tools)
-  const writer = createSessionWriter(input.session.id, input.model)
+  const writer = new SessionWriter(input.session.id, input.model)
   const repetition = createRepetitionGuard()
   const system = buildSystemPrompt(input.project)
 
@@ -88,7 +85,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   const messages = toModelMessages(loadSessionMessages(input.session.id))
 
   const assistant = writer.startAssistantMessage()
-  emit({ type: 'assistant-start', message: assistant })
+  emit({ type: 'start', message: assistant })
 
   let steps = 0
   let finishReason: FinishReason = 'other'
@@ -121,7 +118,6 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
       messages.push(...(await result.responseMessages))
       finishReason = await result.finishReason
       usage = addUsage(usage, await result.usage)
-      emit({ type: 'step-end', finishReason, usage })
 
       if (finishReason !== 'tool-calls' || pendingToolCalls.length === 0) break
 
@@ -152,7 +148,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   }
 
   const completed = writer.completeAssistantMessage(assistant)
-  emit({ type: 'assistant-end', message: completed })
+  emit({ type: 'finish', message: completed })
 
   return { message: completed, steps, finishReason, usage, aborted }
 }
@@ -182,7 +178,7 @@ type ConsumeStreamInput = {
   stream: AsyncIterable<TextStreamPart<ToolSet>>
   messageId: string
   writer: SessionWriter
-  emit: (event: AgentEvent) => void
+  emit: (event: AgentStreamEvent) => void
 }
 
 /**
@@ -197,39 +193,91 @@ async function consumeStream({
   writer,
   emit,
 }: ConsumeStreamInput): Promise<{ calls: PendingCall[] }> {
-  const open = new Map<string, { part: TextPart; text: string }>()
+  const openText = new Map<string, { part: TextPart; text: string }>()
+  const openReasoning = new Map<string, { part: ReasoningPart; text: string }>()
   const calls: PendingCall[] = []
 
-  const close = (streamId: string) => {
-    const entry = open.get(streamId)
+  const closeText = (streamId: string) => {
+    const entry = openText.get(streamId)
     if (!entry) return
-    open.delete(streamId)
+    openText.delete(streamId)
     writer.completeTextPart(entry.part, entry.text)
-    emit({ type: 'text-end', partId: entry.part.id, text: entry.text })
+    emit({ type: 'text-end', id: entry.part.id })
+  }
+
+  const closeReasoning = (streamId: string) => {
+    const entry = openReasoning.get(streamId)
+    if (!entry) return
+    openReasoning.delete(streamId)
+    writer.completeReasoningPart(entry.part, entry.text)
+    emit({ type: 'reasoning-end', id: entry.part.id })
   }
 
   try {
     for await (const chunk of stream) {
       switch (chunk.type) {
+        case 'start-step':
+          emit({ type: 'start-step' })
+          break
+
         case 'text-start': {
           const part = writer.startTextPart(messageId)
-          open.set(chunk.id, { part, text: '' })
-          emit({ type: 'text-start', partId: part.id })
+          openText.set(chunk.id, { part, text: '' })
+          emit({ type: 'text-start', id: part.id })
           break
         }
         case 'text-delta': {
-          const entry = open.get(chunk.id)
+          const entry = openText.get(chunk.id)
           if (!entry) break
           entry.text += chunk.text
-          emit({ type: 'text-delta', partId: entry.part.id, text: chunk.text })
+          emit({ type: 'text-delta', id: entry.part.id, delta: chunk.text })
           break
         }
         case 'text-end':
-          close(chunk.id)
+          closeText(chunk.id)
           break
-        case 'reasoning-delta':
-          emit({ type: 'reasoning-delta', text: chunk.text })
+
+        // Stored so the panel can show it again later, but kept out of the
+        // context the next turn sends - see `projector.ts`.
+        case 'reasoning-start': {
+          const part = writer.startReasoningPart(messageId)
+          openReasoning.set(chunk.id, { part, text: '' })
+          emit({ type: 'reasoning-start', id: part.id })
           break
+        }
+        case 'reasoning-delta': {
+          const entry = openReasoning.get(chunk.id)
+          if (!entry) break
+          entry.text += chunk.text
+          emit({
+            type: 'reasoning-delta',
+            id: entry.part.id,
+            delta: chunk.text,
+          })
+          break
+        }
+        case 'reasoning-end':
+          closeReasoning(chunk.id)
+          break
+
+        // The arguments as the model types them, before they parse. Worth
+        // forwarding so the panel can name the tool immediately instead of
+        // waiting for a long `edit` payload to finish.
+        case 'tool-input-start':
+          emit({
+            type: 'tool-input-start',
+            toolCallId: chunk.id,
+            toolName: chunk.toolName,
+          })
+          break
+        case 'tool-input-delta':
+          emit({
+            type: 'tool-input-delta',
+            toolCallId: chunk.id,
+            inputTextDelta: chunk.delta,
+          })
+          break
+
         case 'tool-call': {
           const part = writer.startToolPart({
             messageId,
@@ -243,17 +291,32 @@ async function consumeStream({
             input: chunk.input,
             part,
           })
-          emit({ type: 'tool-start', part })
+          emit({ type: 'tool-input-available', part })
           break
         }
+
+        case 'finish-step':
+          emit({
+            type: 'finish-step',
+            finishReason: chunk.finishReason,
+            usage: stepUsage(chunk.usage),
+          })
+          break
+
+        case 'abort':
+          emit({ type: 'abort' })
+          break
+
         case 'error':
           throw chunk.error
       }
     }
   } finally {
-    // An aborted stream never sends `text-end`; the text said so far is still
-    // worth keeping, and an empty part would otherwise sit in the history.
-    for (const streamId of [...open.keys()]) close(streamId)
+    // An aborted stream never sends the closing chunk; what was said so far
+    // is still worth keeping, and an empty part would otherwise sit in the
+    // history.
+    for (const streamId of [...openText.keys()]) closeText(streamId)
+    for (const streamId of [...openReasoning.keys()]) closeReasoning(streamId)
   }
 
   return { calls }
@@ -265,7 +328,7 @@ type SettleToolCallInput = {
   permissions: RunPermissions
   repetition: RepetitionGuard
   writer: SessionWriter
-  emit: (event: AgentEvent) => void
+  emit: (event: AgentStreamEvent) => void
   messages: ModelMessage[]
   projectId: string
   sessionId: string
@@ -295,7 +358,7 @@ async function settleToolCall({
   const looping = repetition.refusalFor(call)
   if (looping !== null) {
     const part = writer.failToolPart(call.part, looping)
-    emit({ type: 'tool-end', part })
+    emit({ type: 'tool-output-error', part, errorText: looping })
     return toolResult(call, looping)
   }
 
@@ -310,14 +373,18 @@ async function settleToolCall({
 
   if (!approval.allowed) {
     const part = writer.failToolPart(noted, approval.refusal)
-    emit({ type: 'tool-denied', part, reason: approval.refusal })
+    emit({ type: 'tool-output-error', part, errorText: approval.refusal })
     return toolResult(call, approval.refusal)
   }
 
   const execute = tools[call.toolName]?.execute
   if (!execute) {
     const message = `Error: "${call.toolName}" is not a tool this agent has.`
-    emit({ type: 'tool-end', part: writer.failToolPart(noted, message) })
+    emit({
+      type: 'tool-output-error',
+      part: writer.failToolPart(noted, message),
+      errorText: message,
+    })
     return toolResult(call, message)
   }
 
@@ -329,16 +396,25 @@ async function settleToolCall({
       context: undefined,
     })
     const text = typeof output === 'string' ? output : JSON.stringify(output)
-    const part = toolFailed(text)
-      ? writer.failToolPart(noted, text)
-      : writer.completeToolPart(noted, text)
-    emit({ type: 'tool-end', part })
+    if (toolFailed(text)) {
+      const part = writer.failToolPart(noted, text)
+      emit({ type: 'tool-output-error', part, errorText: text })
+      return toolResult(call, text)
+    }
+    emit({
+      type: 'tool-output-available',
+      part: writer.completeToolPart(noted, text),
+    })
     return toolResult(call, text)
   } catch (error) {
     if (isAbort(error, abortSignal)) throw error
     logger.error({ error, tool: call.toolName }, 'tool execution failed')
     const message = `Error: ${error instanceof Error ? error.message : String(error)}`
-    emit({ type: 'tool-end', part: writer.failToolPart(noted, message) })
+    emit({
+      type: 'tool-output-error',
+      part: writer.failToolPart(noted, message),
+      errorText: message,
+    })
     return toolResult(call, message)
   }
 }
@@ -449,11 +525,21 @@ function toolResult(call: PendingCall, text: string): ToolResultPart {
   }
 }
 
-function addUsage(left: AgentUsage, right: LanguageModelUsage): AgentUsage {
+/** Every field of the SDK's usage is optional; ours are not. */
+function stepUsage(usage: LanguageModelUsage): AgentUsage {
   return {
-    inputTokens: left.inputTokens + (right.inputTokens ?? 0),
-    outputTokens: left.outputTokens + (right.outputTokens ?? 0),
-    totalTokens: left.totalTokens + (right.totalTokens ?? 0),
+    inputTokens: usage.inputTokens ?? 0,
+    outputTokens: usage.outputTokens ?? 0,
+    totalTokens: usage.totalTokens ?? 0,
+  }
+}
+
+function addUsage(left: AgentUsage, right: LanguageModelUsage): AgentUsage {
+  const step = stepUsage(right)
+  return {
+    inputTokens: left.inputTokens + step.inputTokens,
+    outputTokens: left.outputTokens + step.outputTokens,
+    totalTokens: left.totalTokens + step.totalTokens,
   }
 }
 

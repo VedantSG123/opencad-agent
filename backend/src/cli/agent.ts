@@ -15,8 +15,7 @@ import { umzug } from '../db/migrate'
 import type { Project } from '../project/schema'
 import type { Session } from '../session/schema'
 import { getAllProjects, getProjectById } from '../utils/dbUtils/projects'
-import { getSessionById, upsertSession } from '../utils/dbUtils/sessions'
-import { generateIdWithPrefix } from '../utils/generateId'
+import { createSession, getSessionById } from '../utils/dbUtils/sessions'
 import { createRenderer, style } from './render'
 
 const USAGE = `Usage: bun run src/cli/agent.ts [options]
@@ -245,12 +244,7 @@ function openSession(project: Project, id: string | undefined): Session {
     return session
   }
 
-  return upsertSession({
-    id: generateIdWithPrefix('session'),
-    project_id: project.id,
-    title: `CLI ${new Date().toISOString()}`,
-    time: { created: '', updated: '' },
-  })
+  return createSession(project.id, `CLI ${new Date().toISOString()}`)
 }
 
 /**

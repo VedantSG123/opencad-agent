@@ -2,6 +2,7 @@ import type {
   AssistantMessage,
   CompactionPart,
   FilePart,
+  ReasoningPart,
   TextPart,
   ToolPart,
   UserMessage,
@@ -38,25 +39,6 @@ export type PermissionRecord = {
   at: string
 }
 
-/**
- * The only thing in the agent that writes messages and parts. Every method
- * persists before it returns, so a run that dies mid-turn leaves a history
- * that still projects: the assistant message is simply missing its completed
- * time, and any tool part still says `running`.
- */
-export type SessionWriter = {
-  userMessage(text: string, files?: FileAttachment[]): UserMessage
-  startAssistantMessage(): AssistantMessage
-  completeAssistantMessage(message: AssistantMessage): AssistantMessage
-  startTextPart(messageId: string): TextPart
-  completeTextPart(part: TextPart, text: string): TextPart
-  startToolPart(input: StartToolPartInput): ToolPart
-  notePermission(part: ToolPart, permission: PermissionRecord): ToolPart
-  completeToolPart(part: ToolPart, output: string): ToolPart
-  failToolPart(part: ToolPart, error: string): ToolPart
-  compactionPart(input: CompactionPartInput): CompactionPart
-}
-
 export type StartToolPartInput = {
   messageId: string
   callId: string
@@ -71,141 +53,176 @@ export type CompactionPartInput = {
   tailStartMessageId?: string
 }
 
-export function createSessionWriter(
-  sessionId: string,
-  model: ModelRef,
-): SessionWriter {
-  const stamp = () => ({
-    model_id: model.modelId,
-    provider_id: model.providerId,
-  })
+/**
+ * The only thing in the agent that writes messages and parts. Every method
+ * persists before it returns, so a run that dies mid-turn leaves a history
+ * that still projects: the assistant message is simply missing its completed
+ * time, and any tool part still says `running`.
+ *
+ * One instance per turn, holding the session and the model that every row it
+ * writes is stamped with.
+ */
+export class SessionWriter {
+  constructor(
+    private readonly sessionId: string,
+    private readonly model: ModelRef,
+  ) {}
 
-  const partBase = (messageId: string) => ({
-    id: generateIdWithPrefix('part'),
-    message_id: messageId,
-    session_id: sessionId,
-  })
+  userMessage(text: string, files: FileAttachment[] = []): UserMessage {
+    const message = upsertMessage({
+      id: generateIdWithPrefix('message'),
+      session_id: this.sessionId,
+      role: 'user',
+      model: this.stamp(),
+      time: { created: new Date().toISOString() },
+    }) as UserMessage
 
-  return {
-    userMessage(text, files = []) {
-      const message = upsertMessage({
-        id: generateIdWithPrefix('message'),
-        session_id: sessionId,
-        role: 'user',
-        model: stamp(),
-        time: { created: new Date().toISOString() },
-      }) as UserMessage
+    upsertPart({ ...this.partBase(message.id), type: 'text', text })
+    for (const file of files) {
+      upsertPart({
+        ...this.partBase(message.id),
+        type: 'file',
+        mime: file.mime,
+        url: file.url,
+        ...(file.filename ? { filename: file.filename } : {}),
+      } satisfies FilePart)
+    }
 
-      upsertPart({ ...partBase(message.id), type: 'text', text })
-      for (const file of files) {
-        upsertPart({
-          ...partBase(message.id),
-          type: 'file',
-          mime: file.mime,
-          url: file.url,
-          ...(file.filename ? { filename: file.filename } : {}),
-        } satisfies FilePart)
-      }
-
-      return message
-    },
-
-    startAssistantMessage() {
-      return upsertMessage({
-        id: generateIdWithPrefix('message'),
-        session_id: sessionId,
-        role: 'assistant',
-        model: stamp(),
-        time: { created: new Date().toISOString() },
-      }) as AssistantMessage
-    },
-
-    completeAssistantMessage(message) {
-      return upsertMessage({
-        ...message,
-        time: { ...message.time, completed: new Date().toISOString() },
-      }) as AssistantMessage
-    },
-
-    startTextPart(messageId) {
-      return upsertPart({
-        ...partBase(messageId),
-        type: 'text',
-        text: '',
-      }) as TextPart
-    },
-
-    completeTextPart(part, text) {
-      return upsertPart({ ...part, text }) as TextPart
-    },
-
-    startToolPart({ messageId, callId, tool, input }) {
-      return upsertPart({
-        ...partBase(messageId),
-        type: 'tool',
-        call_id: callId,
-        tool,
-        state: {
-          state: 'running',
-          input,
-          time: { started: new Date().toISOString() },
-        },
-      }) as ToolPart
-    },
-
-    notePermission(part, permission) {
-      return upsertPart({
-        ...part,
-        metadata: { ...part.metadata, permission },
-      }) as ToolPart
-    },
-
-    completeToolPart(part, output) {
-      return upsertPart({
-        ...part,
-        state: {
-          state: 'completed',
-          input: part.state.input,
-          output,
-          time: {
-            started: startedAt(part),
-            completed: new Date().toISOString(),
-          },
-        },
-      }) as ToolPart
-    },
-
-    failToolPart(part, error) {
-      return upsertPart({
-        ...part,
-        state: {
-          state: 'error',
-          input: part.state.input,
-          error,
-          time: {
-            started: startedAt(part),
-            completed: new Date().toISOString(),
-          },
-        },
-      }) as ToolPart
-    },
-
-    compactionPart({ messageId, summary, auto, tailStartMessageId }) {
-      return upsertPart({
-        ...partBase(messageId),
-        type: 'compaction',
-        summary,
-        auto,
-        ...(tailStartMessageId
-          ? { tail_start_message_id: tailStartMessageId }
-          : {}),
-      }) as CompactionPart
-    },
+    return message
   }
-}
 
-function startedAt(part: ToolPart): string {
-  return 'time' in part.state
-    ? part.state.time.started
-    : new Date().toISOString()
+  startAssistantMessage(): AssistantMessage {
+    return upsertMessage({
+      id: generateIdWithPrefix('message'),
+      session_id: this.sessionId,
+      role: 'assistant',
+      model: this.stamp(),
+      time: { created: new Date().toISOString() },
+    }) as AssistantMessage
+  }
+
+  completeAssistantMessage(message: AssistantMessage): AssistantMessage {
+    return upsertMessage({
+      ...message,
+      time: { ...message.time, completed: new Date().toISOString() },
+    }) as AssistantMessage
+  }
+
+  startTextPart(messageId: string): TextPart {
+    return upsertPart({
+      ...this.partBase(messageId),
+      type: 'text',
+      text: '',
+    }) as TextPart
+  }
+
+  completeTextPart(part: TextPart, text: string): TextPart {
+    return upsertPart({ ...part, text }) as TextPart
+  }
+
+  startReasoningPart(messageId: string): ReasoningPart {
+    return upsertPart({
+      ...this.partBase(messageId),
+      type: 'reasoning',
+      text: '',
+    }) as ReasoningPart
+  }
+
+  completeReasoningPart(part: ReasoningPart, text: string): ReasoningPart {
+    return upsertPart({ ...part, text }) as ReasoningPart
+  }
+
+  startToolPart({
+    messageId,
+    callId,
+    tool,
+    input,
+  }: StartToolPartInput): ToolPart {
+    return upsertPart({
+      ...this.partBase(messageId),
+      type: 'tool',
+      call_id: callId,
+      tool,
+      state: {
+        state: 'running',
+        input,
+        time: { started: new Date().toISOString() },
+      },
+    }) as ToolPart
+  }
+
+  notePermission(part: ToolPart, permission: PermissionRecord): ToolPart {
+    return upsertPart({
+      ...part,
+      metadata: { ...part.metadata, permission },
+    }) as ToolPart
+  }
+
+  completeToolPart(part: ToolPart, output: string): ToolPart {
+    return upsertPart({
+      ...part,
+      state: {
+        state: 'completed',
+        input: part.state.input,
+        output,
+        time: {
+          started: SessionWriter.startedAt(part),
+          completed: new Date().toISOString(),
+        },
+      },
+    }) as ToolPart
+  }
+
+  failToolPart(part: ToolPart, error: string): ToolPart {
+    return upsertPart({
+      ...part,
+      state: {
+        state: 'error',
+        input: part.state.input,
+        error,
+        time: {
+          started: SessionWriter.startedAt(part),
+          completed: new Date().toISOString(),
+        },
+      },
+    }) as ToolPart
+  }
+
+  compactionPart({
+    messageId,
+    summary,
+    auto,
+    tailStartMessageId,
+  }: CompactionPartInput): CompactionPart {
+    return upsertPart({
+      ...this.partBase(messageId),
+      type: 'compaction',
+      summary,
+      auto,
+      ...(tailStartMessageId
+        ? { tail_start_message_id: tailStartMessageId }
+        : {}),
+    }) as CompactionPart
+  }
+
+  private stamp() {
+    return {
+      model_id: this.model.modelId,
+      provider_id: this.model.providerId,
+    }
+  }
+
+  private partBase(messageId: string) {
+    return {
+      id: generateIdWithPrefix('part'),
+      message_id: messageId,
+      session_id: this.sessionId,
+    }
+  }
+
+  private static startedAt(part: ToolPart): string {
+    return 'time' in part.state
+      ? part.state.time.started
+      : new Date().toISOString()
+  }
 }
