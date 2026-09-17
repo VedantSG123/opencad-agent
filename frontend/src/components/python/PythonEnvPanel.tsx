@@ -11,10 +11,12 @@ import {
 import * as React from 'react'
 import { PYTHON_INSTALL_STEPS } from 'shared/python'
 
+import { Console } from '@/components/console/Console'
 import { Icon } from '@/components/icons/HugeIcon'
 import { PYTHON_STEP_LABELS } from '@/hooks/usePythonEnv'
 import type { usePythonEnv } from '@/hooks/usePythonEnv'
 import { cn } from '@/lib/utils'
+import type { LogEntry } from '@/types'
 
 // Measured on a cold install: ~210 MB over the wire, ~85s, ~700 MB on disk.
 const DOWNLOAD_SUMMARY = 'about 210 MB, and a minute or two'
@@ -37,33 +39,6 @@ function StepBar({ index, total }: { index: number; total: number }) {
   )
 }
 
-function LogTail({ lines }: { lines: string[] }) {
-  const ref = React.useRef<HTMLDivElement>(null)
-
-  React.useEffect(() => {
-    if (ref.current) {
-      ref.current.scrollTop = ref.current.scrollHeight
-    }
-  }, [lines])
-
-  if (lines.length === 0) {
-    return null
-  }
-
-  return (
-    <div
-      ref={ref}
-      className='max-h-32 overflow-y-auto rounded-lg bg-background-secondary p-2 font-mono text-[11px] leading-relaxed text-foreground/60 select-text'
-    >
-      {lines.map((line, i) => (
-        <div key={i} className='whitespace-pre-wrap break-all'>
-          {line}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 function Versions({ packages }: { packages: Record<string, string> }) {
   return (
     <dl className='grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs text-muted-foreground'>
@@ -74,6 +49,18 @@ function Versions({ packages }: { packages: Record<string, string> }) {
         </React.Fragment>
       ))}
     </dl>
+  )
+}
+
+function SetupLog({ logs }: { logs: LogEntry[] }) {
+  if (logs.length === 0) {
+    return null
+  }
+
+  return (
+    <div className='h-44 overflow-hidden rounded-lg border border-border'>
+      <Console logs={logs} title='Setup log' className='border-t-0' />
+    </div>
   )
 }
 
@@ -97,7 +84,7 @@ function Installing({ env }: { env: PythonEnv }) {
           Cancel
         </Button>
       </div>
-      <LogTail lines={env.log} />
+      <SetupLog logs={env.log} />
     </div>
   )
 }
@@ -189,6 +176,7 @@ export function PythonEnvPanel({ env }: { env: PythonEnv }) {
         <p className='max-h-28 overflow-y-auto rounded-lg bg-background-secondary p-2 font-mono text-[11px] whitespace-pre-wrap text-foreground/60 select-text'>
           {detail}
         </p>
+        <SetupLog logs={env.log} />
         <div>
           <Button size='sm' onPress={() => void env.repair()}>
             <Icon icon={Refresh01Icon} size={14} />

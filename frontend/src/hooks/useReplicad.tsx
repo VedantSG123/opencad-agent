@@ -4,13 +4,7 @@ import { createStore } from 'zustand/vanilla'
 
 import { getBuilderApi } from '@/kernels/replicad/builderApi'
 import { inSeries } from '@/kernels/replicad/inSeries'
-import type { MeshRenderOutput, SvgRenderOutput } from '@/types'
-
-export type LogEntry = {
-  type: 'log' | 'info' | 'warn' | 'error'
-  text: string
-  timestamp: number
-}
+import type { LogEntry, MeshRenderOutput, SvgRenderOutput } from '@/types'
 
 type ReplicadState = {
   code: string

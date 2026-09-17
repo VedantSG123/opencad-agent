@@ -1,14 +1,26 @@
 import * as React from 'react'
 import type { PythonEnvStatus, PythonInstallStep } from 'shared/python'
 
+import type { LogEntry, LogLevel } from '@/types'
 import type { Result } from '@/types/electron'
 
 /** How many uv output lines the setup panel keeps on screen. */
 const LOG_LIMIT = 200
 
+/** uv prefixes its own diagnostics; every other line is ordinary output. */
+function levelOf(line: string): LogLevel {
+  if (line.startsWith('error:')) {
+    return 'error'
+  }
+  if (line.startsWith('warning:')) {
+    return 'warn'
+  }
+  return 'log'
+}
+
 type PythonEnvState = {
   status: PythonEnvStatus | null
-  log: string[]
+  log: LogEntry[]
   step: { step: PythonInstallStep; index: number; total: number } | null
   isBusy: boolean
   error: string | null
@@ -62,9 +74,14 @@ export function usePythonEnv(): PythonEnvState & PythonEnvActions {
     return window.electron?.onPythonProgress((progress) => {
       setState((prev) => {
         if (progress.type === 'log') {
+          const entry: LogEntry = {
+            type: levelOf(progress.line),
+            text: progress.line,
+            timestamp: Date.now(),
+          }
           return {
             ...prev,
-            log: [...prev.log, progress.line].slice(-LOG_LIMIT),
+            log: [...prev.log, entry].slice(-LOG_LIMIT),
           }
         }
         if (progress.type === 'step') {
