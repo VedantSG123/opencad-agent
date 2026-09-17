@@ -1,6 +1,10 @@
 import z from 'zod'
 
-export const SUPPORTED_CAD_KERNELS = z.enum(['replicad', 'openscad'])
+export const SUPPORTED_CAD_KERNELS = z.enum([
+  'replicad',
+  'openscad',
+  'build123d',
+])
 
 export type SupportedCADKernels = z.infer<typeof SUPPORTED_CAD_KERNELS>
 
@@ -19,6 +23,11 @@ export const CADKernels: Record<SupportedCADKernels, KernelInfo> = {
     fileExtension: '.scad',
     description:
       'OpenSCAD is a free software for creating solid 3D CAD models. It uses a scripting language to define models procedurally.',
+  },
+  build123d: {
+    fileExtension: '.py',
+    description:
+      'build123d is a Python CAD library built on OpenCascade. Models are ordinary Python, so they compose with the rest of the language rather than a bespoke scripting dialect.',
   },
 }
 

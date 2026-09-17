@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { Fragment, useEffect, useMemo, useRef } from 'react'
 import {
   Group as ResizablePanelGroup,
   Panel as ResizablePanel,
@@ -164,8 +164,6 @@ export function ProjectPage() {
     )
   }
 
-  const isOpenSCAD = project.cad_kernel === 'openscad'
-
   const content = (
     <div className='h-screen flex flex-col overflow-hidden'>
       <TopBar project={project} />
@@ -181,10 +179,17 @@ export function ProjectPage() {
   // own build lands.
   return (
     <PanelProvider>
-      {isOpenSCAD ? (
-        <NodeOpenSCADProvider key={project.id}>{content}</NodeOpenSCADProvider>
-      ) : (
+      {project.cad_kernel === 'replicad' && (
         <ReplicadProvider key={project.id}>{content}</ReplicadProvider>
+      )}
+      {project.cad_kernel === 'openscad' && (
+        <NodeOpenSCADProvider key={project.id}>{content}</NodeOpenSCADProvider>
+      )}
+      {/* build123d compiles out of process, so it has no kernel store to
+          provide - but it keeps the key, for the remount the comment above
+          describes. */}
+      {project.cad_kernel === 'build123d' && (
+        <Fragment key={project.id}>{content}</Fragment>
       )}
     </PanelProvider>
   )

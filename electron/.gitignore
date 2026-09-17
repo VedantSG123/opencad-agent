@@ -33,3 +33,6 @@ temp
 openscad-libs
 src/lib/openscad/openscad.js
 src/lib/openscad/openscad.wasm
+
+# uv binary
+uv-bin

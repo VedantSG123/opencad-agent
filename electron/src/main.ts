@@ -13,6 +13,7 @@ import { registerDialogIpc } from './ipc/dialog.js'
 import { registerFsIpc } from './ipc/fs.js'
 import { registerOpenSCADIpc } from './ipc/openscad.js'
 import { registerPreferencesIpc } from './ipc/preferences.js'
+import { registerPythonIpc } from './ipc/python.js'
 import { registerSettingsIpc } from './ipc/settings.js'
 import { registerShellIpc } from './ipc/shell.js'
 import { registerWorkspaceIpc } from './ipc/workspace.js'
@@ -204,6 +205,7 @@ app.whenReady().then(async () => {
     registerShellIpc(ipcMain)
     registerCredentialsIpc(ipcMain)
     registerPreferencesIpc(ipcMain)
+    registerPythonIpc(ipcMain, () => mainWindow)
 
     // Broadcast performance metrics every second
     setInterval(() => {

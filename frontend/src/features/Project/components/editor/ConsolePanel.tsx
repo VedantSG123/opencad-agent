@@ -136,5 +136,9 @@ export function ConsolePanel() {
     return <ReplicadConsolePanel />
   }
 
-  return <OpenSCADConsolePanel />
+  if (project?.cad_kernel === 'openscad') {
+    return <OpenSCADConsolePanel />
+  }
+
+  return <ConsolePanelBase logs={[]} clearLogs={() => {}} error={null} />
 }

@@ -5,6 +5,7 @@ import type {
   UserPreferences,
   UserPreferencesPatch,
 } from 'shared'
+import type { PythonEnvStatus, PythonInstallProgress } from 'shared/python'
 
 export interface WatchEvent {
   event: 'fs:watch'
@@ -96,6 +97,16 @@ export interface ElectronAPI {
   executeOpenSCAD: (
     request: OpenSCADRequest,
   ) => Promise<Result<OpenSCADIpcResult>>
+  getPythonStatus: () => Promise<Result<PythonEnvStatus>>
+  installPython: () => Promise<Result<PythonEnvStatus>>
+  repairPython: () => Promise<Result<PythonEnvStatus>>
+  cancelPythonInstall: () => Promise<Result<boolean>>
+  setPythonInterpreter: (
+    interpreter: string | null,
+  ) => Promise<Result<PythonEnvStatus>>
+  onPythonProgress: (
+    handler: (progress: PythonInstallProgress) => void,
+  ) => () => void
   onMetrics: (handler: (metrics: PerfMetrics) => void) => () => void
   storeCredential: (providerId: string, auth: unknown) => Promise<Result<void>>
   isEncryptionAvailable: () => Promise<Result<boolean>>
