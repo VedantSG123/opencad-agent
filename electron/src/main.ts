@@ -8,6 +8,7 @@ import * as path from 'path'
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
 
 import { registerBackendIpc } from './ipc/backend.js'
+import { registerBuild123dIpc } from './ipc/build123d.js'
 import { registerCredentialsIpc } from './ipc/credentials.js'
 import { registerDialogIpc } from './ipc/dialog.js'
 import { registerFsIpc } from './ipc/fs.js'
@@ -206,6 +207,7 @@ app.whenReady().then(async () => {
     registerCredentialsIpc(ipcMain)
     registerPreferencesIpc(ipcMain)
     registerPythonIpc(ipcMain, () => mainWindow)
+    registerBuild123dIpc(ipcMain)
 
     // Broadcast performance metrics every second
     setInterval(() => {

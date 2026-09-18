@@ -7,6 +7,7 @@ import PerfMonitor from './components/custom/PerfMonitor'
 import { ThemeProvider } from './contexts/theme-context'
 import Dashboard, { DashboardView, ProjectsView } from './features/Dashboard'
 import { usePlatform } from './hooks/usePlatform'
+import Build123dTest from './pages/Build123dTest'
 import CadTest from './pages/CadTest'
 import NotFound from './pages/NotFound'
 import OpenSCADTest from './pages/OpenSCADTest'
@@ -37,6 +38,7 @@ export default function App() {
           <Route path='/project/:id' element={<ProjectPage />} />
           <Route path='/cad-test' element={<CadTest />} />
           <Route path='/openscad-test' element={<OpenSCADTest />} />
+          <Route path='/build123d-test' element={<Build123dTest />} />
           <Route path='*' element={<NotFound />} />
         </Routes>
         <Toaster />

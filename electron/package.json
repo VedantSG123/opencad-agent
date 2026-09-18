@@ -65,6 +65,10 @@
       {
         "from": "uv-bin",
         "to": "uv-bin"
+      },
+      {
+        "from": "python",
+        "to": "python"
       }
     ],
     "linux": {
