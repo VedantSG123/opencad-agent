@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import {
   Group as ResizablePanelGroup,
   Panel as ResizablePanel,
@@ -7,6 +7,7 @@ import {
 import { useParams } from 'react-router'
 import { toast } from 'sonner'
 
+import { Build123dProvider } from '@/hooks/useBuild123d'
 import { NodeOpenSCADProvider } from '@/hooks/useNodeOpenSCAD'
 import { useProjects, useUpdateProjectAccess } from '@/hooks/useProjects'
 import { ReplicadProvider } from '@/hooks/useReplicad'
@@ -185,11 +186,8 @@ export function ProjectPage() {
       {project.cad_kernel === 'openscad' && (
         <NodeOpenSCADProvider key={project.id}>{content}</NodeOpenSCADProvider>
       )}
-      {/* build123d compiles out of process, so it has no kernel store to
-          provide - but it keeps the key, for the remount the comment above
-          describes. */}
       {project.cad_kernel === 'build123d' && (
-        <Fragment key={project.id}>{content}</Fragment>
+        <Build123dProvider key={project.id}>{content}</Build123dProvider>
       )}
     </PanelProvider>
   )

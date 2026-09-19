@@ -112,7 +112,13 @@ def run_script(path):
         "show": show,
         "show_object": show_object,
     }
+    # The script's own directory goes on first so that the host's entries end
+    # up ahead of it: the shadow directory holding unsaved buffers has to lead,
+    # or an edited module loses to the copy still on disk.
     sys.path.insert(0, os.path.dirname(os.path.abspath(path)))
+    for entry in reversed(os.environ.get("OPENCAD_SYS_PATH", "").split(os.pathsep)):
+        if entry:
+            sys.path.insert(0, entry)
 
     exec(compile(source, path, "exec"), script_globals)  # noqa: S102
     return shown

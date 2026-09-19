@@ -2,6 +2,7 @@ import * as React from 'react'
 
 import { Console } from '@/components/console/Console'
 import { usePanelContext } from '@/features/Project/context/PanelContext'
+import { useBuild123d } from '@/hooks/useBuild123d'
 import { useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
 import { useReplicad } from '@/hooks/useReplicad'
 import type { LogEntry } from '@/types'
@@ -31,6 +32,20 @@ function KernelConsole({ logs, clearLogs, error }: KernelConsoleProps) {
   return <Console logs={logs} onClear={clearLogs} onClose={toggleConsole} />
 }
 
+function Build123dConsolePanel() {
+  const logs = useBuild123d((state) => state.logs)
+  const clearLogs = useBuild123d((state) => state.clearLogs)
+  const error = useBuild123d((state) => state.error)
+
+  return (
+    <KernelConsole
+      logs={logs}
+      clearLogs={clearLogs}
+      error={error ? new Error(error) : null}
+    />
+  )
+}
+
 function OpenSCADConsolePanel() {
   const logs = useNodeOpenSCAD((state) => state.logs)
   const clearLogs = useNodeOpenSCAD((state) => state.clearLogs)
@@ -56,6 +71,10 @@ export function ConsolePanel() {
 
   if (project?.cad_kernel === 'openscad') {
     return <OpenSCADConsolePanel />
+  }
+
+  if (project?.cad_kernel === 'build123d') {
+    return <Build123dConsolePanel />
   }
 
   return <KernelConsole logs={[]} clearLogs={() => {}} error={null} />

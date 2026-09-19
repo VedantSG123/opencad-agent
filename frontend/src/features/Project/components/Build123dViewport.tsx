@@ -1,35 +1,79 @@
+import * as React from 'react'
+import type { ShapeNode } from 'shared/build123d'
+
+import { Build123dViewer } from '@/components-3d/cad-viewer/Build123dViewer'
+import { PartTreePanel } from '@/components/build123d/PartTreePanel'
 import {
   PythonEnvHeading,
   PythonEnvPanel,
 } from '@/components/python/PythonEnvPanel'
+import { useBuild123d } from '@/hooks/useBuild123d'
+import { useBuild123dVisibility } from '@/hooks/useBuild123dVisibility'
 import { usePythonEnv } from '@/hooks/usePythonEnv'
+import { leafIds } from '@/kernels/build123d/tree'
+
+import { Build123dCompiler } from './Build123dCompiler'
+
+function Build123dViewportInner() {
+  const model = useBuild123d((state) => state.model)
+  const error = useBuild123d((state) => state.error)
+  const isBuilding = useBuild123d((state) => state.isBuilding)
+
+  const { visibility, setVisible } = useBuild123dVisibility(model?.tree ?? null)
+  const [selectedNode, setSelectedNode] = React.useState<string | null>(null)
+  const [selectedParts, setSelectedParts] = React.useState<string[]>([])
+
+  const select = (node: ShapeNode) => {
+    const same = selectedNode === node.id
+    setSelectedNode(same ? null : node.id)
+    setSelectedParts(same ? [] : leafIds(node))
+  }
+
+  return (
+    <div className='relative h-full w-full'>
+      <Build123dViewer
+        model={model}
+        hasError={Boolean(error)}
+        visibility={visibility}
+        selectedPartIds={selectedParts}
+      />
+
+      {model && (
+        <PartTreePanel
+          tree={model.tree}
+          visibility={visibility}
+          onToggle={setVisible}
+          selectedId={selectedNode}
+          onSelect={select}
+        />
+      )}
+
+      {isBuilding && (
+        <div className='absolute top-3 right-3 rounded-md bg-background/80 px-2 py-1 text-xs text-foreground/60'>
+          Building…
+        </div>
+      )}
+
+      <Build123dCompiler />
+    </div>
+  )
+}
 
 export function Build123dViewport() {
   const env = usePythonEnv()
-  const isReady = env.status?.state === 'ready'
 
-  // The renderer lands in a later phase. Until it does, a ready environment is
-  // all there is to report, and saying so beats an empty canvas that looks
-  // like a failed build.
-  if (isReady) {
+  // Editing needs nothing; only building does. So the environment gates the
+  // viewport rather than the project.
+  if (env.status?.state !== 'ready') {
     return (
-      <div className='h-full flex flex-col items-center justify-center gap-2 px-6 text-center'>
-        <p className='text-sm text-foreground/60'>
-          The build123d environment is ready.
-        </p>
-        <p className='text-xs text-muted-foreground'>
-          The viewport arrives with the renderer.
-        </p>
+      <div className='h-full overflow-y-auto flex items-center justify-center p-6'>
+        <div className='w-full max-w-md flex flex-col gap-4 rounded-xl border border-border bg-surface p-5'>
+          <PythonEnvHeading />
+          <PythonEnvPanel env={env} />
+        </div>
       </div>
     )
   }
 
-  return (
-    <div className='h-full overflow-y-auto flex items-center justify-center p-6'>
-      <div className='w-full max-w-md flex flex-col gap-4 rounded-xl border border-border bg-surface p-5'>
-        <PythonEnvHeading />
-        <PythonEnvPanel env={env} />
-      </div>
-    </div>
-  )
+  return <Build123dViewportInner />
 }

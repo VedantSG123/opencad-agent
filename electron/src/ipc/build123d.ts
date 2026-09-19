@@ -1,19 +1,39 @@
 import type { IpcMain } from 'electron'
 
+import type { Build123dRunRequest } from '../utils/cad/build123d/run.js'
 import {
   cancelBuild123dRun,
-  runBuild123d,
+  runBuild123dProject,
   runBuild123dSource,
 } from '../utils/cad/build123d/run.js'
-import { createHandler, validateString } from '../utils/ipc-utils.js'
+import { AppError, createHandler, validateString } from '../utils/ipc-utils.js'
 import { validatePath } from '../utils/workspace.js'
 
 export function registerBuild123dIpc(ipcMain: IpcMain) {
   ipcMain.handle(
     'build123d:run',
-    createHandler((scriptPath: string) =>
-      runBuild123d(validatePath(validateString(scriptPath, 'scriptPath'))),
-    ),
+    createHandler((request: Build123dRunRequest) => {
+      const mainPath = validatePath(
+        validateString(request.mainPath, 'mainPath'),
+      )
+      const projectDirectory = validatePath(
+        validateString(request.projectDirectory, 'projectDirectory'),
+      )
+
+      // Each override is a path the renderer named, so each is checked against
+      // the sandbox rather than trusted because the main file passed.
+      const overrides: Record<string, string> = {}
+      for (const [filePath, content] of Object.entries(
+        request.overrides ?? {},
+      )) {
+        if (typeof content !== 'string') {
+          throw new AppError('INVALID_INPUT', `${filePath} has no content`)
+        }
+        overrides[validatePath(filePath)] = content
+      }
+
+      return runBuild123dProject({ mainPath, projectDirectory, overrides })
+    }),
   )
 
   ipcMain.handle(

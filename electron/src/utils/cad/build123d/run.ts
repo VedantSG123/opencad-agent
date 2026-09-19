@@ -1,5 +1,6 @@
 import type { ChildProcess } from 'node:child_process'
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
@@ -37,16 +38,29 @@ async function readyInterpreter(): Promise<string> {
   return status.interpreter
 }
 
+type SpawnOptions = {
+  /** Directory the script runs in, so relative asset paths resolve. */
+  cwd: string
+  /** Extra sys.path entries, highest priority first. */
+  searchPath?: string[]
+}
+
 function spawnRunner(
   interpreter: string,
   scriptPath: string,
+  options: SpawnOptions,
 ): Promise<Build123dResult> {
   const runner = resolveRunnerPath()
 
   return new Promise((resolve, reject) => {
     const child = spawn(interpreter, [runner, scriptPath], {
-      cwd: path.dirname(scriptPath),
-      env: { ...process.env, PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' },
+      cwd: options.cwd,
+      env: {
+        ...process.env,
+        PYTHONUNBUFFERED: '1',
+        PYTHONIOENCODING: 'utf-8',
+        OPENCAD_SYS_PATH: (options.searchPath ?? []).join(path.delimiter),
+      },
     })
     current = child
 
@@ -113,13 +127,61 @@ function spawnRunner(
   })
 }
 
-/** Build a script on disk, in its own directory so sibling imports resolve. */
-export async function runBuild123d(
-  scriptPath: string,
-): Promise<Build123dResult> {
+export type Build123dRunRequest = {
+  mainPath: string
+  projectDirectory: string
+  /** Unsaved editor buffers, by absolute path. */
+  overrides?: Record<string, string>
+}
+
+/**
+ * Build a project.
+ *
+ * Unsaved buffers are written into a shadow tree rather than over the user's
+ * files, and that tree leads sys.path - so an edited module wins, an unedited
+ * one still resolves from the project, and nothing is written where the user
+ * did not ask for it. The script runs with the project as its working
+ * directory either way, so a path to a STEP file beside it still opens.
+ */
+export async function runBuild123dProject({
+  mainPath,
+  projectDirectory,
+  overrides,
+}: Build123dRunRequest): Promise<Build123dResult> {
   const interpreter = await readyInterpreter()
   cancelBuild123dRun()
-  return spawnRunner(interpreter, scriptPath)
+
+  const dirty = Object.entries(overrides ?? {})
+  if (dirty.length === 0) {
+    return spawnRunner(interpreter, mainPath, { cwd: projectDirectory })
+  }
+
+  const shadow = path.join(
+    app.getPath('temp'),
+    'opencad-build123d',
+    createHash('sha1').update(projectDirectory).digest('hex').slice(0, 16),
+  )
+  await fs.rm(shadow, { recursive: true, force: true })
+
+  let scriptPath = mainPath
+  for (const [filePath, content] of dirty) {
+    const relative = path.relative(projectDirectory, filePath)
+    // A buffer from outside the project has no place in its shadow tree.
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+      continue
+    }
+    const shadowPath = path.join(shadow, relative)
+    await fs.mkdir(path.dirname(shadowPath), { recursive: true })
+    await fs.writeFile(shadowPath, content, 'utf-8')
+    if (path.resolve(filePath) === path.resolve(mainPath)) {
+      scriptPath = shadowPath
+    }
+  }
+
+  return spawnRunner(interpreter, scriptPath, {
+    cwd: projectDirectory,
+    searchPath: [shadow, projectDirectory],
+  })
 }
 
 /**
@@ -138,5 +200,5 @@ export async function runBuild123dSource(
   await fs.mkdir(scratchDir, { recursive: true })
   await fs.writeFile(scratchPath, source, 'utf-8')
 
-  return spawnRunner(interpreter, scratchPath)
+  return spawnRunner(interpreter, scratchPath, { cwd: scratchDir })
 }

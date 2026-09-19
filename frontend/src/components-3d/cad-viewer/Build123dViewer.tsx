@@ -1,9 +1,16 @@
 import * as React from 'react'
 
+import { activeSelection } from '@/components/cad/activeSelection'
+import { SelectionReadout } from '@/components/cad/SelectionReadout'
 import { ErrorBoundary } from '@/components/custom/ErrorBoundary'
 import { partsBounds } from '@/kernels/build123d/bounds'
 import type { DecodedModel } from '@/kernels/build123d/decode'
+import {
+  curveTypeName,
+  surfaceTypeName,
+} from '@/kernels/build123d/geometryTypes'
 import type { VisibilityMap } from '@/kernels/build123d/tree'
+import type { ComponentKind, SelectedComponent } from '@/types'
 
 import { Build123dPartMesh } from '../build123d-mesh/Build123dPartMesh'
 import { SelectionBox } from '../build123d-mesh/SelectionBox'
@@ -40,11 +47,12 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
 }) => {
   const [face, setFace] = React.useState<Build123dSelection | null>(null)
   const [edge, setEdge] = React.useState<Build123dSelection | null>(null)
+  const [lastKind, setLastKind] = React.useState<ComponentKind | null>(null)
 
   // Clicking the same entity twice clears it, which is how the replicad viewer
   // already behaves and the only way to deselect without a modifier key.
   const toggle = (
-    kind: 'face' | 'edge',
+    kind: ComponentKind,
     set: (value: Build123dSelection | null) => void,
     current: Build123dSelection | null,
   ) => {
@@ -54,6 +62,7 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
           ? null
           : { partId, index }
       set(next)
+      setLastKind(next ? kind : null)
       onSelect?.(kind, next)
     }
   }
@@ -66,6 +75,26 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
     return partsBounds(model.parts.filter((part) => wanted.has(part.id)))
   }, [model, selectedPartIds])
 
+  const readout = React.useMemo((): SelectedComponent | null => {
+    const active = activeSelection(lastKind, face, edge)
+    if (!model || !active) {
+      return null
+    }
+
+    const { kind, value } = active
+    const part = model.parts.find((candidate) => candidate.id === value.partId)
+
+    return {
+      kind,
+      index: value.index,
+      subject: part?.name,
+      geometryType:
+        kind === 'edge'
+          ? curveTypeName(part?.instance.edgeTypes[value.index])
+          : surfaceTypeName(part?.instance.faceTypes[value.index]),
+    }
+  }, [model, face, edge, lastKind])
+
   const selectFace = toggle('face', setFace, face)
   const selectEdge = toggle('edge', setEdge, edge)
 
@@ -77,11 +106,9 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
         </div>
       }
     >
-      <Canvas
-        orthographic
-        onCreated={(state) => (state.gl.localClippingEnabled = true)}
-      >
-        <Scene stageRef={stageRef} enableDamping>
+      <SelectionReadout selection={readout} />
+      <Canvas orthographic>
+        <Scene stageRef={stageRef}>
           {hasError ? (
             <ErrorMesh />
           ) : (

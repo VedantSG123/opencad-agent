@@ -63,7 +63,7 @@ export function ReplicadViewport() {
           }
         }}
         size='sm'
-        className='absolute z-10 bottom-2 left-2 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs text-foreground/60 hover:text-foreground transition-colors min-w-0 h-auto'
+        className='absolute z-10 bottom-2 right-2 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs text-foreground/60 hover:text-foreground transition-colors min-w-0 h-auto'
       >
         Reset View
       </Button>

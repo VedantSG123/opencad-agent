@@ -98,7 +98,11 @@ export interface ElectronAPI {
   executeOpenSCAD: (
     request: OpenSCADRequest,
   ) => Promise<Result<OpenSCADIpcResult>>
-  runBuild123d: (scriptPath: string) => Promise<Result<Build123dResult>>
+  runBuild123d: (request: {
+    mainPath: string
+    projectDirectory: string
+    overrides?: Record<string, string>
+  }) => Promise<Result<Build123dResult>>
   runBuild123dSource: (source: string) => Promise<Result<Build123dResult>>
   cancelBuild123dRun: () => Promise<Result<boolean>>
   getPythonStatus: () => Promise<Result<PythonEnvStatus>>

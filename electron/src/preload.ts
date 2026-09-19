@@ -130,7 +130,11 @@ export interface ElectronAPI {
       parameterSet?: unknown
     }>
   >
-  runBuild123d: (scriptPath: string) => Promise<Result<Build123dResult>>
+  runBuild123d: (request: {
+    mainPath: string
+    projectDirectory: string
+    overrides?: Record<string, string>
+  }) => Promise<Result<Build123dResult>>
   runBuild123dSource: (source: string) => Promise<Result<Build123dResult>>
   cancelBuild123dRun: () => Promise<Result<boolean>>
   getPythonStatus: () => Promise<Result<PythonEnvStatus>>
@@ -223,7 +227,7 @@ const api: ElectronAPI = {
       projectDirectory,
     ),
   executeOpenSCAD: (request) => ipcRenderer.invoke('openscad:execute', request),
-  runBuild123d: (scriptPath) => ipcRenderer.invoke('build123d:run', scriptPath),
+  runBuild123d: (request) => ipcRenderer.invoke('build123d:run', request),
   runBuild123dSource: (source) =>
     ipcRenderer.invoke('build123d:runSource', source),
   cancelBuild123dRun: () => ipcRenderer.invoke('build123d:cancel'),

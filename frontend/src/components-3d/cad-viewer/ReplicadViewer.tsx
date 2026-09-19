@@ -1,8 +1,15 @@
-import type * as React from 'react'
+import * as React from 'react'
 
+import { activeSelection } from '@/components/cad/activeSelection'
+import { SelectionReadout } from '@/components/cad/SelectionReadout'
 import { ErrorBoundary } from '@/components/custom/ErrorBoundary'
 import { ReplicadSVGViewer } from '@/components/custom/SvgViewer'
-import type { MeshRenderOutput, SvgRenderOutput } from '@/types'
+import type {
+  ComponentKind,
+  MeshRenderOutput,
+  SelectedComponent,
+  SvgRenderOutput,
+} from '@/types'
 
 import type { StageHandle } from '../helpers/Stage'
 import { ReplicadCombinedMesh } from '../replicad-mesh/ReplicadCombinedMesh'
@@ -42,6 +49,32 @@ export const CadViewer: React.FC<CadViewerProps> = ({
     'all',
     'edges',
   ])
+  const [lastKind, setLastKind] = React.useState<ComponentKind | null>(null)
+
+  // The handler is still built once per render, so the debounce inside
+  // useSelection keeps its identity across a click.
+  const track = (
+    kind: ComponentKind,
+    select: (shapeId: string) => (event: unknown, index: number) => void,
+  ) => {
+    return (shapeId: string) => {
+      const handler = select(shapeId)
+      return (event: unknown, index: number) => {
+        setLastKind(kind)
+        handler(event, index)
+      }
+    }
+  }
+
+  const trackedFace = track('face', selectFace)
+  const trackedEdge = track('edge', selectEdge)
+
+  const active = activeSelection(lastKind, selectedFace, selectedEdge)
+  const readout: SelectedComponent | null = active && {
+    kind: active.kind,
+    index: active.value.index,
+    subject: active.value.shapeId,
+  }
 
   if (isSvgShapesArray(shapes)) {
     return <ReplicadSVGViewer shapes={shapes} />
@@ -55,11 +88,8 @@ export const CadViewer: React.FC<CadViewerProps> = ({
         </div>
       }
     >
-      <Canvas
-        key='3d'
-        orthographic
-        onCreated={(state) => (state.gl.localClippingEnabled = true)}
-      >
+      <SelectionReadout selection={readout} />
+      <Canvas key='3d' orthographic>
         <Scene stageRef={stageRef} enableDamping>
           {hasError ? (
             <ErrorMesh />
@@ -70,8 +100,8 @@ export const CadViewer: React.FC<CadViewerProps> = ({
 
               return isMeshShape(shape) ? (
                 <ReplicadCombinedMesh
-                  onEdgeClick={selectEdge(shape.name)}
-                  onFaceClick={selectFace(shape.name)}
+                  onEdgeClick={trackedEdge(shape.name)}
+                  onFaceClick={trackedFace(shape.name)}
                   facesHighlight={
                     facesHighlight !== null ? [facesHighlight] : undefined
                   }

@@ -2,11 +2,10 @@ import { Button } from '@heroui/react'
 import * as React from 'react'
 import * as THREE from 'three'
 
-import type { Build123dSelection } from '@/components-3d/cad-viewer/Build123dViewer'
 import { Build123dViewer } from '@/components-3d/cad-viewer/Build123dViewer'
 import { PartTreePanel } from '@/components/build123d/PartTreePanel'
 import { Console } from '@/components/console/Console'
-import { useBuild123d } from '@/hooks/useBuild123d'
+import { Build123dProvider, useBuild123d } from '@/hooks/useBuild123d'
 import { useBuild123dVisibility } from '@/hooks/useBuild123dVisibility'
 import { usePythonEnv } from '@/hooks/usePythonEnv'
 import { leafIds } from '@/kernels/build123d/tree'
@@ -34,25 +33,19 @@ print(f"bracket volume: {plate.volume:.1f}")
 show(plate, boss)
 `
 
-export default function Build123dTest() {
+function Build123dTestInner() {
   const env = usePythonEnv()
-  const { model, error, logs, isBuilding, duration, buildSource, clearLogs } =
-    useBuild123d()
+  const model = useBuild123d((state) => state.model)
+  const error = useBuild123d((state) => state.error)
+  const logs = useBuild123d((state) => state.logs)
+  const isBuilding = useBuild123d((state) => state.isBuilding)
+  const duration = useBuild123d((state) => state.duration)
+  const buildSource = useBuild123d((state) => state.buildSource)
+  const clearLogs = useBuild123d((state) => state.clearLogs)
   const [source, setSource] = React.useState(DEMO_SCRIPT)
-  const [picked, setPicked] = React.useState('nothing selected')
   const [selectedNode, setSelectedNode] = React.useState<string | null>(null)
   const { visibility, setVisible } = useBuild123dVisibility(model?.tree ?? null)
   const [selectedParts, setSelectedParts] = React.useState<string[]>([])
-
-  const describe = (
-    kind: 'face' | 'edge',
-    selection: Build123dSelection | null,
-  ) =>
-    setPicked(
-      selection
-        ? `${kind} ${selection.index} of ${selection.partId}`
-        : 'nothing selected',
-    )
 
   const isReady = env.status?.state === 'ready'
 
@@ -105,7 +98,6 @@ export default function Build123dTest() {
             hasError={!!error}
             visibility={visibility}
             selectedPartIds={selectedParts}
-            onSelect={describe}
           />
           {model && (
             <PartTreePanel
@@ -120,11 +112,16 @@ export default function Build123dTest() {
               }}
             />
           )}
-          <div className='absolute bottom-3 left-3 rounded-md bg-background/80 px-2 py-1 font-mono text-xs text-foreground/70'>
-            {picked}
-          </div>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function Build123dTest() {
+  return (
+    <Build123dProvider>
+      <Build123dTestInner />
+    </Build123dProvider>
   )
 }
