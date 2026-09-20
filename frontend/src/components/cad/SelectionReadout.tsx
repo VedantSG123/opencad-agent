@@ -1,6 +1,8 @@
 import { cn } from '@/lib/utils'
 import type { SelectedComponent } from '@/types'
 
+import { VIEWPORT_PILL } from './ViewportStatusBar'
+
 const KIND_LABEL: Record<SelectedComponent['kind'], string> = {
   face: 'Face',
   edge: 'Edge',
@@ -26,12 +28,7 @@ export function SelectionReadout({
   const { kind, index, subject, geometryType } = selection
 
   return (
-    <div
-      className={cn(
-        'pointer-events-none absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-md border border-border bg-background/85 px-2 py-1 text-xs shadow-sm backdrop-blur-sm select-none',
-        className,
-      )}
-    >
+    <div className={cn(VIEWPORT_PILL, 'gap-1.5 select-none', className)}>
       <span className='font-medium text-foreground'>
         {KIND_LABEL[kind]} {index}
       </span>

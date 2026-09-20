@@ -7,6 +7,7 @@ const Controls: React.FC<ControlsProps> = ({ enableDamping = false }) => {
   const camera = useThree((state) => state.camera)
   const domElement = useThree((state) => state.gl.domElement)
   const invalidate = useThree((state) => state.invalidate)
+  const set = useThree((state) => state.set)
 
   const controls = React.useMemo(
     () => new OrbitControls(camera as PerspectiveCamera | OrthographicCamera),
@@ -17,6 +18,11 @@ const Controls: React.FC<ControlsProps> = ({ enableDamping = false }) => {
     controls.connect(domElement)
     return () => controls.dispose()
   }, [controls, domElement])
+
+  React.useEffect(() => {
+    set({ controls })
+    return () => set({ controls: null })
+  }, [controls, set])
 
   React.useEffect(() => {
     controls.enableDamping = enableDamping

@@ -3,6 +3,7 @@ import type * as THREE from 'three'
 
 import Controls from '../helpers/Controls'
 import Stage, { type StageHandle } from '../helpers/Stage'
+import { ViewHelper } from '../helpers/ViewHelper'
 import { Axes } from './Axes'
 import { Grid } from './Grid'
 import { PickingThreshold } from './PickingThreshold'
@@ -33,6 +34,7 @@ export const Scene: React.FC<SceneProps> = ({
       <Stage ref={stageRef} center={center} onBounds={handleBounds}>
         {children}
       </Stage>
+      <ViewHelper />
       <Grid reach={reach} />
       <Axes size={reach > 0 ? reach * 0.6 : 30} />
     </>

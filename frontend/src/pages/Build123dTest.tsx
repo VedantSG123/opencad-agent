@@ -3,12 +3,18 @@ import * as React from 'react'
 import * as THREE from 'three'
 
 import { Build123dViewer } from '@/components-3d/cad-viewer/Build123dViewer'
+import type { StageHandle } from '@/components-3d/helpers/Stage'
 import { PartTreePanel } from '@/components/build123d/PartTreePanel'
+import { BusyIndicator } from '@/components/cad/BusyIndicator'
+import { ResetViewButton } from '@/components/cad/ResetViewButton'
+import { SelectionReadout } from '@/components/cad/SelectionReadout'
+import { ViewportStatusBar } from '@/components/cad/ViewportStatusBar'
 import { Console } from '@/components/console/Console'
 import { Build123dProvider, useBuild123d } from '@/hooks/useBuild123d'
 import { useBuild123dVisibility } from '@/hooks/useBuild123dVisibility'
 import { usePythonEnv } from '@/hooks/usePythonEnv'
 import { leafIds } from '@/kernels/build123d/tree'
+import type { SelectedComponent } from '@/types'
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1)
 
@@ -46,6 +52,10 @@ function Build123dTestInner() {
   const [selectedNode, setSelectedNode] = React.useState<string | null>(null)
   const { visibility, setVisible } = useBuild123dVisibility(model?.tree ?? null)
   const [selectedParts, setSelectedParts] = React.useState<string[]>([])
+  const [selection, setSelection] = React.useState<SelectedComponent | null>(
+    null,
+  )
+  const stageRef = React.useRef<StageHandle>(null)
 
   const isReady = env.status?.state === 'ready'
 
@@ -98,7 +108,14 @@ function Build123dTestInner() {
             hasError={!!error}
             visibility={visibility}
             selectedPartIds={selectedParts}
+            stageRef={stageRef}
+            onSelect={setSelection}
           />
+          <ViewportStatusBar>
+            <ResetViewButton stageRef={stageRef} />
+            <SelectionReadout selection={selection} />
+            <BusyIndicator active={isBuilding} label='Building...' />
+          </ViewportStatusBar>
           {model && (
             <PartTreePanel
               tree={model.tree}

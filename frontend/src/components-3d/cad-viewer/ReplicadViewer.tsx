@@ -1,7 +1,6 @@
 import * as React from 'react'
 
 import { activeSelection } from '@/components/cad/activeSelection'
-import { SelectionReadout } from '@/components/cad/SelectionReadout'
 import { ErrorBoundary } from '@/components/custom/ErrorBoundary'
 import { ReplicadSVGViewer } from '@/components/custom/SvgViewer'
 import type {
@@ -40,6 +39,7 @@ export const CadViewer: React.FC<CadViewerProps> = ({
   hasError = false,
   selectionMode = 'all',
   stageRef,
+  onSelect,
 }) => {
   const [selectedFace, selectFace] = useSelection(selectionMode, [
     'all',
@@ -69,12 +69,20 @@ export const CadViewer: React.FC<CadViewerProps> = ({
   const trackedFace = track('face', selectFace)
   const trackedEdge = track('edge', selectEdge)
 
-  const active = activeSelection(lastKind, selectedFace, selectedEdge)
-  const readout: SelectedComponent | null = active && {
-    kind: active.kind,
-    index: active.value.index,
-    subject: active.value.shapeId,
-  }
+  const readout = React.useMemo((): SelectedComponent | null => {
+    const active = activeSelection(lastKind, selectedFace, selectedEdge)
+    return (
+      active && {
+        kind: active.kind,
+        index: active.value.index,
+        subject: active.value.shapeId,
+      }
+    )
+  }, [lastKind, selectedFace, selectedEdge])
+
+  React.useEffect(() => {
+    onSelect?.(readout)
+  }, [readout, onSelect])
 
   if (isSvgShapesArray(shapes)) {
     return <ReplicadSVGViewer shapes={shapes} />
@@ -88,7 +96,6 @@ export const CadViewer: React.FC<CadViewerProps> = ({
         </div>
       }
     >
-      <SelectionReadout selection={readout} />
       <Canvas key='3d' orthographic>
         <Scene stageRef={stageRef} enableDamping>
           {hasError ? (
@@ -125,4 +132,5 @@ type CadViewerProps = {
   hasError?: boolean
   selectionMode?: 'all' | 'faces' | 'edges'
   stageRef?: React.Ref<StageHandle>
+  onSelect?: (selection: SelectedComponent | null) => void
 }

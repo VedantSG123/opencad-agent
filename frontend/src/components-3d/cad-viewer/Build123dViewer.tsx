@@ -1,7 +1,6 @@
 import * as React from 'react'
 
 import { activeSelection } from '@/components/cad/activeSelection'
-import { SelectionReadout } from '@/components/cad/SelectionReadout'
 import { ErrorBoundary } from '@/components/custom/ErrorBoundary'
 import { partsBounds } from '@/kernels/build123d/bounds'
 import type { DecodedModel } from '@/kernels/build123d/decode'
@@ -31,10 +30,7 @@ type Build123dViewerProps = {
   visibility?: VisibilityMap
   /** Parts to draw a selection box around, by id. */
   selectedPartIds?: string[]
-  onSelect?: (
-    kind: 'face' | 'edge',
-    selection: Build123dSelection | null,
-  ) => void
+  onSelect?: (selection: SelectedComponent | null) => void
 }
 
 export const Build123dViewer: React.FC<Build123dViewerProps> = ({
@@ -63,7 +59,6 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
           : { partId, index }
       set(next)
       setLastKind(next ? kind : null)
-      onSelect?.(kind, next)
     }
   }
 
@@ -95,6 +90,10 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
     }
   }, [model, face, edge, lastKind])
 
+  React.useEffect(() => {
+    onSelect?.(readout)
+  }, [readout, onSelect])
+
   const selectFace = toggle('face', setFace, face)
   const selectEdge = toggle('edge', setEdge, edge)
 
@@ -106,7 +105,6 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
         </div>
       }
     >
-      <SelectionReadout selection={readout} />
       <Canvas orthographic>
         <Scene stageRef={stageRef}>
           {hasError ? (
