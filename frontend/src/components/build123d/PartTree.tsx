@@ -13,7 +13,7 @@ import type {
   VisibilityKind,
   VisibilityMap,
 } from '@/kernels/build123d/tree'
-import { groupState, isGroup, leafIds } from '@/kernels/build123d/tree'
+import { componentLeafIds, groupState, isGroup } from '@/kernels/build123d/tree'
 import { cn } from '@/lib/utils'
 
 type PartTreeProps = {
@@ -37,23 +37,31 @@ const TOGGLE_LABEL: Record<VisibilityKind, string> = {
 function VisibilityToggle({
   kind,
   state,
+  absent,
   onPress,
 }: {
   kind: VisibilityKind
   state: GroupState
+  absent: boolean
   onPress: () => void
 }) {
   return (
     <button
       type='button'
+      disabled={absent}
       onClick={(event) => {
         event.stopPropagation()
         onPress()
       }}
-      aria-label={`Toggle ${TOGGLE_LABEL[kind]}`}
-      aria-pressed={state !== 'off'}
+      aria-label={
+        absent
+          ? `This shape has no ${TOGGLE_LABEL[kind]}`
+          : `Toggle ${TOGGLE_LABEL[kind]}`
+      }
+      aria-pressed={!absent && state !== 'off'}
       className={cn(
-        'flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors hover:bg-muted/20',
+        'flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors',
+        absent ? 'opacity-20' : 'hover:bg-muted/20',
         state === 'on' && 'text-accent',
         // A group whose children disagree reads as neither on nor off.
         state === 'mixed' && 'text-accent/40',
@@ -74,14 +82,20 @@ function PartTreeNode({
   onSelect,
 }: PartTreeProps & { node: ShapeNode; level: number }) {
   const [open, setOpen] = React.useState(true)
-  const ids = React.useMemo(() => leafIds(node), [node])
   const group = isGroup(node)
 
-  const faces = groupState(ids, visibility, 'faces')
-  const edges = groupState(ids, visibility, 'edges')
+  // A toggle acts on the leaves that have the component, so a Line - which
+  // has no faces at all - neither offers a faces toggle nor drags the tri-
+  // state of a group it sits in.
+  const faceIds = React.useMemo(() => componentLeafIds(node, 'faces'), [node])
+  const edgeIds = React.useMemo(() => componentLeafIds(node, 'edges'), [node])
 
-  const toggle = (kind: VisibilityKind, state: GroupState) => () =>
-    onToggle(ids, kind, state !== 'on')
+  const faces = groupState(faceIds, visibility, 'faces')
+  const edges = groupState(edgeIds, visibility, 'edges')
+
+  const toggle =
+    (kind: VisibilityKind, targets: string[], state: GroupState) => () =>
+      onToggle(targets, kind, state !== 'on')
 
   const color = typeof node.color === 'string' ? node.color : undefined
 
@@ -113,12 +127,14 @@ function PartTreeNode({
         <VisibilityToggle
           kind='faces'
           state={faces}
-          onPress={toggle('faces', faces)}
+          absent={faceIds.length === 0}
+          onPress={toggle('faces', faceIds, faces)}
         />
         <VisibilityToggle
           kind='edges'
           state={edges}
-          onPress={toggle('edges', edges)}
+          absent={edgeIds.length === 0}
+          onPress={toggle('edges', edgeIds, edges)}
         />
 
         <span className='truncate text-foreground/80'>{node.name}</span>

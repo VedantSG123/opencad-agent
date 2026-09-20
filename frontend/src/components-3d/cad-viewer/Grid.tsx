@@ -12,6 +12,15 @@ const MINOR_DIVISIONS = 50
 
 const MAJOR_EVERY = 10
 
+/**
+ * How far past the model the grid runs.
+ *
+ * Sized to the model alone it stops exactly where the model does, which on a
+ * small sketch reads as a grid that has been cut off rather than one that
+ * carries on.
+ */
+const REACH_MARGIN = 4
+
 const DARK = { minor: '#343434', major: '#4a4a4a', axis: '#6a6a6a' }
 const LIGHT = { minor: '#e6e6e6', major: '#d2d2d2', axis: '#b4b4b4' }
 
@@ -72,7 +81,10 @@ export function Grid({ reach = FALLBACK_REACH }: GridProps) {
   const invalidate = useThree((state) => state.invalidate)
   const colors = resolvedTheme === 'dark' ? DARK : LIGHT
 
-  const span = Number.isFinite(reach) && reach > 0 ? reach : FALLBACK_REACH
+  const span =
+    Number.isFinite(reach) && reach > 0
+      ? Math.max(reach * REACH_MARGIN, FALLBACK_REACH)
+      : FALLBACK_REACH
   const geometries = React.useMemo(() => buildGrid(span), [span])
 
   React.useLayoutEffect(() => {
@@ -86,15 +98,27 @@ export function Grid({ reach = FALLBACK_REACH }: GridProps) {
   }, [geometries, invalidate])
 
   return (
-    <group>
+    <group renderOrder={-1}>
       <lineSegments geometry={geometries.minor}>
-        <lineBasicMaterial color={colors.minor} toneMapped={false} />
+        <lineBasicMaterial
+          color={colors.minor}
+          toneMapped={false}
+          depthWrite={false}
+        />
       </lineSegments>
       <lineSegments geometry={geometries.major}>
-        <lineBasicMaterial color={colors.major} toneMapped={false} />
+        <lineBasicMaterial
+          color={colors.major}
+          toneMapped={false}
+          depthWrite={false}
+        />
       </lineSegments>
       <lineSegments geometry={geometries.axis}>
-        <lineBasicMaterial color={colors.axis} toneMapped={false} />
+        <lineBasicMaterial
+          color={colors.axis}
+          toneMapped={false}
+          depthWrite={false}
+        />
       </lineSegments>
     </group>
   )

@@ -19,6 +19,30 @@ export function isGroup(node: ShapeNode): boolean {
  * Only leaves carry geometry and only leaves carry `state`, so a group has no
  * visibility of its own - what it shows is a reading of its descendants.
  */
+/**
+ * Whether a leaf has faces or edges at all.
+ *
+ * ocp_tessellate writes 3 rather than 0 or 1 when the shape has no component
+ * of that kind - a Line has no faces - which is a different thing from one
+ * the user switched off, and the difference is a toggle that would do
+ * nothing.
+ */
+export function nodeHas(node: ShapeNode, kind: VisibilityKind): boolean {
+  const state = node.state?.[kind === 'faces' ? 0 : 1]
+  return state !== 3
+}
+
+/** The leaves under a node that actually have the given component. */
+export function componentLeafIds(
+  node: ShapeNode,
+  kind: VisibilityKind,
+): string[] {
+  if (!node.parts) {
+    return node.shape && nodeHas(node, kind) ? [node.id] : []
+  }
+  return node.parts.flatMap((child) => componentLeafIds(child, kind))
+}
+
 export function leafIds(node: ShapeNode): string[] {
   if (!node.parts) {
     return node.shape ? [node.id] : []

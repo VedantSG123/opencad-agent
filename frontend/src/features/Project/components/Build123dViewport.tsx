@@ -3,6 +3,7 @@ import type { ShapeNode } from 'shared/build123d'
 
 import { Build123dViewer } from '@/components-3d/cad-viewer/Build123dViewer'
 import { PartTreePanel } from '@/components/build123d/PartTreePanel'
+import { BusyIndicator } from '@/components/cad/BusyIndicator'
 import {
   PythonEnvHeading,
   PythonEnvPanel,
@@ -48,11 +49,7 @@ function Build123dViewportInner() {
         />
       )}
 
-      {isBuilding && (
-        <div className='absolute top-3 right-3 rounded-md bg-background/80 px-2 py-1 text-xs text-foreground/60'>
-          Building…
-        </div>
-      )}
+      <BusyIndicator active={isBuilding} label='Building...' />
 
       <Build123dCompiler />
     </div>

@@ -33,6 +33,8 @@ export type DecodedPart = {
   location: ShapeLocation
   color?: string
   alpha?: number
+  /** Draw the far side of the faces too. */
+  renderback: boolean
   visible: { faces: boolean; edges: boolean }
 }
 
@@ -65,6 +67,9 @@ function expectDtype(buffer: EncodedBuffer, dtype: EncodedBuffer['dtype']) {
   }
 }
 
+const NO_FLOATS = new Float32Array(0)
+const NO_INDICES = new Uint32Array(0)
+
 function toFloat32(buffer: EncodedBuffer): Float32Array {
   expectDtype(buffer, 'float32')
   return new Float32Array(decodeBase64(buffer.buffer))
@@ -73,6 +78,14 @@ function toFloat32(buffer: EncodedBuffer): Float32Array {
 function toUint32(buffer: EncodedBuffer): Uint32Array {
   expectDtype(buffer, 'uint32')
   return new Uint32Array(decodeBase64(buffer.buffer))
+}
+
+function optionalFloat32(buffer?: EncodedBuffer): Float32Array {
+  return buffer ? toFloat32(buffer) : NO_FLOATS
+}
+
+function optionalUint32(buffer?: EncodedBuffer): Uint32Array {
+  return buffer ? toUint32(buffer) : NO_INDICES
 }
 
 /**
@@ -91,23 +104,31 @@ function cumulative(counts: Uint32Array): Uint32Array {
 }
 
 function decodeInstance(instance: EncodedInstance): DecodedInstance {
-  const trianglesPerFace = toUint32(instance.triangles_per_face)
-  const segmentsPerEdge = toUint32(instance.segments_per_edge)
+  const trianglesPerFace = optionalUint32(instance.triangles_per_face)
+  const segmentsPerEdge = optionalUint32(instance.segments_per_edge)
 
   return {
-    vertices: toFloat32(instance.vertices),
-    normals: toFloat32(instance.normals),
-    triangles: toUint32(instance.triangles),
-    edges: toFloat32(instance.edges),
-    objVertices: toFloat32(instance.obj_vertices),
-    faceTypes: toUint32(instance.face_types),
-    edgeTypes: toUint32(instance.edge_types),
+    vertices: optionalFloat32(instance.vertices),
+    normals: optionalFloat32(instance.normals),
+    triangles: optionalUint32(instance.triangles),
+    edges: optionalFloat32(instance.edges),
+    objVertices: optionalFloat32(instance.obj_vertices),
+    faceTypes: optionalUint32(instance.face_types),
+    edgeTypes: optionalUint32(instance.edge_types),
     trianglesPerFace,
     segmentsPerEdge,
     uvs: instance.uvs ? toFloat32(instance.uvs) : undefined,
     faceOffsets: cumulative(trianglesPerFace),
     edgeOffsets: cumulative(segmentsPerEdge),
   }
+}
+
+/**
+ * A state of 3 means the shape has no component of that kind, which is not
+ * the same as one the user switched off.
+ */
+function hasComponent(state: number | undefined): boolean {
+  return (state ?? 1) === 1
 }
 
 const IDENTITY: ShapeLocation = [
@@ -136,22 +157,32 @@ function collectParts(
     return
   }
 
-  const ref = node.shape?.ref
-  if (ref === undefined || !instances[ref]) {
+  if (!node.shape) {
+    return
+  }
+
+  // An edge- or vertex-only shape - a Line, a Wire - is tessellated to
+  // nothing, so it never reaches the instance list and carries its buffers
+  // on the node instead.
+  const shape = node.shape
+  const pointer = 'ref' in shape
+  const instance = pointer ? instances[shape.ref] : decodeInstance(shape)
+  if (!instance) {
     return
   }
 
   parts.push({
     id: node.id,
-    instanceRef: ref,
+    instanceRef: pointer ? shape.ref : -1,
     name: node.name,
-    instance: instances[ref],
+    instance,
     location,
     color: typeof node.color === 'string' ? node.color : undefined,
     alpha: node.alpha,
+    renderback: node.renderback === true,
     visible: {
-      faces: (node.state?.[0] ?? 1) === 1,
-      edges: (node.state?.[1] ?? 1) === 1,
+      faces: hasComponent(node.state?.[0]) && instance.triangles.length > 0,
+      edges: hasComponent(node.state?.[1]) && instance.edges.length > 0,
     },
   })
 }

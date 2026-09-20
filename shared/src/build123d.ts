@@ -14,21 +14,27 @@ export type EncodedBuffer = {
   codec: 'b64'
 }
 
-/** One tessellated solid. Parts reference these by index. */
+/**
+ * One tessellated shape.
+ *
+ * Every buffer is optional because not every shape has one: an edge-only
+ * object - a Line or a Wire - carries edges and nothing else, and arrives
+ * inline on its node rather than in the instance list.
+ */
 export type EncodedInstance = {
-  vertices: EncodedBuffer
-  normals: EncodedBuffer
+  vertices?: EncodedBuffer
+  normals?: EncodedBuffer
   /** Flat triangle indices, three per triangle. */
-  triangles: EncodedBuffer
+  triangles?: EncodedBuffer
   /** Line-segment endpoints, already two points per segment. */
-  edges: EncodedBuffer
-  obj_vertices: EncodedBuffer
-  face_types: EncodedBuffer
-  edge_types: EncodedBuffer
+  edges?: EncodedBuffer
+  obj_vertices?: EncodedBuffer
+  face_types?: EncodedBuffer
+  edge_types?: EncodedBuffer
   /** Triangle count per BRep face, which is where the face groups come from. */
-  triangles_per_face: EncodedBuffer
+  triangles_per_face?: EncodedBuffer
   /** Segment count per BRep edge, likewise for the edge groups. */
-  segments_per_edge: EncodedBuffer
+  segments_per_edge?: EncodedBuffer
   uvs?: EncodedBuffer
 }
 
@@ -53,13 +59,18 @@ export type ShapeNode = {
   id: string
   loc?: ShapeLocation | null
   parts?: ShapeNode[]
-  shape?: { ref: number } | null
-  /** Visibility as [faces, edges]. */
+  shape?: { ref: number } | EncodedInstance | null
+  /**
+   * Visibility as [faces, edges], where 3 means the shape has no component
+   * of that kind at all rather than one that is switched off.
+   */
   state?: [number, number]
   type?: string
   subtype?: string
   color?: string | string[]
   alpha?: number
+  /** Draw the far side too. Set for an open shape - a face or a sketch. */
+  renderback?: boolean
   bb?: BoundingBox | null
 }
 

@@ -1,6 +1,6 @@
 import { useThree } from '@react-three/fiber'
 import * as React from 'react'
-import type * as THREE from 'three'
+import * as THREE from 'three'
 import { MeshMatcapNodeMaterial } from 'three/webgpu'
 
 import { highlightColors } from './nodes'
@@ -19,6 +19,8 @@ type FaceHighlightOptions = {
   componentCount: number
   opacity?: number
   transparent: boolean
+  /** Draw the far side too, for a shape that has no inside. */
+  doubleSided?: boolean
 }
 
 export function useFaceHighlightMaterial({
@@ -31,6 +33,7 @@ export function useFaceHighlightMaterial({
   componentCount,
   opacity,
   transparent,
+  doubleSided = false,
 }: FaceHighlightOptions) {
   const { invalidate } = useThree()
 
@@ -58,6 +61,9 @@ export function useFaceHighlightMaterial({
     colors.selected.value.set(selectedColor)
     material.transparent = transparent
     material.opacity = opacity ?? 1
+    // A sketch or a lone face has no far side to cull, so culling it leaves
+    // nothing to see from behind.
+    material.side = doubleSided ? THREE.DoubleSide : THREE.FrontSide
     invalidate()
   }, [
     material,
@@ -67,6 +73,7 @@ export function useFaceHighlightMaterial({
     selectedColor,
     opacity,
     transparent,
+    doubleSided,
     invalidate,
   ])
 

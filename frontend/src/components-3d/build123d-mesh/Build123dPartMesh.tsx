@@ -62,6 +62,7 @@ export function Build123dPartMesh({
     componentCount: part.instance.trianglesPerFace.length,
     opacity: part.alpha,
     transparent,
+    doubleSided: part.renderback,
   })
   const edgeMaterial = useEdgeHighlightMaterial({
     color: colors.line,
@@ -104,11 +105,16 @@ export function Build123dPartMesh({
   }
 
   const shown = visible ?? part.visible
+
+  // A shape can lack one kind entirely - a Line has no faces at all - and an
+  // empty geometry still costs a draw call and a raycast.
+  const hasFaces = part.instance.triangles.length > 0
+  const hasEdges = part.instance.edges.length > 0
   const [position, quaternion] = part.location
 
   return (
     <group position={position} quaternion={quaternion}>
-      {shown.faces && (
+      {shown.faces && hasFaces && (
         <mesh
           geometry={faceGeometry}
           material={faceMaterial}
@@ -117,7 +123,7 @@ export function Build123dPartMesh({
           onPointerOut={() => setHoveredFace(null)}
         />
       )}
-      {shown.edges && (
+      {shown.edges && hasEdges && (
         <lineSegments
           geometry={edgeGeometry}
           material={edgeMaterial}
