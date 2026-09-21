@@ -9,6 +9,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./python": {
+      "types": "./dist/python.d.ts",
+      "default": "./dist/python.js"
+    },
+    "./build123d": {
+      "types": "./dist/build123d.d.ts",
+      "default": "./dist/build123d.js"
     }
   },
   "scripts": {

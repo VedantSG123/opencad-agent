@@ -9,6 +9,8 @@ import type {
   UserPreferences,
   UserPreferencesPatch,
 } from 'shared'
+import type { Build123dResult } from 'shared/build123d'
+import type { PythonEnvStatus, PythonInstallProgress } from 'shared/python'
 
 export interface WatchEvent {
   event: 'fs:watch'
@@ -128,6 +130,23 @@ export interface ElectronAPI {
       parameterSet?: unknown
     }>
   >
+  runBuild123d: (request: {
+    mainPath: string
+    projectDirectory: string
+    overrides?: Record<string, string>
+  }) => Promise<Result<Build123dResult>>
+  runBuild123dSource: (source: string) => Promise<Result<Build123dResult>>
+  cancelBuild123dRun: () => Promise<Result<boolean>>
+  getPythonStatus: () => Promise<Result<PythonEnvStatus>>
+  installPython: () => Promise<Result<PythonEnvStatus>>
+  repairPython: () => Promise<Result<PythonEnvStatus>>
+  cancelPythonInstall: () => Promise<Result<boolean>>
+  setPythonInterpreter: (
+    interpreter: string | null,
+  ) => Promise<Result<PythonEnvStatus>>
+  onPythonProgress: (
+    handler: (progress: PythonInstallProgress) => void,
+  ) => () => void
   onMetrics: (handler: (metrics: PerfMetrics) => void) => () => void
 }
 
@@ -208,6 +227,26 @@ const api: ElectronAPI = {
       projectDirectory,
     ),
   executeOpenSCAD: (request) => ipcRenderer.invoke('openscad:execute', request),
+  runBuild123d: (request) => ipcRenderer.invoke('build123d:run', request),
+  runBuild123dSource: (source) =>
+    ipcRenderer.invoke('build123d:runSource', source),
+  cancelBuild123dRun: () => ipcRenderer.invoke('build123d:cancel'),
+  getPythonStatus: () => ipcRenderer.invoke('python:status'),
+  installPython: () => ipcRenderer.invoke('python:install'),
+  repairPython: () => ipcRenderer.invoke('python:repair'),
+  cancelPythonInstall: () => ipcRenderer.invoke('python:cancel'),
+  setPythonInterpreter: (interpreter) =>
+    ipcRenderer.invoke('python:setInterpreter', interpreter),
+  onPythonProgress: (handler) => {
+    const listener = (
+      _event: IpcRendererEvent,
+      progress: PythonInstallProgress,
+    ) => handler(progress)
+    ipcRenderer.on('python:progress', listener)
+    return () => {
+      ipcRenderer.removeListener('python:progress', listener)
+    }
+  },
   onWatch: (handler) => {
     const listener = (_event: IpcRendererEvent, data: WatchEvent) =>
       handler(data)

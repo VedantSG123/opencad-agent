@@ -5,6 +5,8 @@ import type {
   UserPreferences,
   UserPreferencesPatch,
 } from 'shared'
+import type { Build123dResult } from 'shared/build123d'
+import type { PythonEnvStatus, PythonInstallProgress } from 'shared/python'
 
 export interface WatchEvent {
   event: 'fs:watch'
@@ -96,6 +98,23 @@ export interface ElectronAPI {
   executeOpenSCAD: (
     request: OpenSCADRequest,
   ) => Promise<Result<OpenSCADIpcResult>>
+  runBuild123d: (request: {
+    mainPath: string
+    projectDirectory: string
+    overrides?: Record<string, string>
+  }) => Promise<Result<Build123dResult>>
+  runBuild123dSource: (source: string) => Promise<Result<Build123dResult>>
+  cancelBuild123dRun: () => Promise<Result<boolean>>
+  getPythonStatus: () => Promise<Result<PythonEnvStatus>>
+  installPython: () => Promise<Result<PythonEnvStatus>>
+  repairPython: () => Promise<Result<PythonEnvStatus>>
+  cancelPythonInstall: () => Promise<Result<boolean>>
+  setPythonInterpreter: (
+    interpreter: string | null,
+  ) => Promise<Result<PythonEnvStatus>>
+  onPythonProgress: (
+    handler: (progress: PythonInstallProgress) => void,
+  ) => () => void
   onMetrics: (handler: (metrics: PerfMetrics) => void) => () => void
   storeCredential: (providerId: string, auth: unknown) => Promise<Result<void>>
   isEncryptionAvailable: () => Promise<Result<boolean>>

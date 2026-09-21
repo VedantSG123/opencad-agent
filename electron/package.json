@@ -12,10 +12,10 @@
   "scripts": {
     "build:preload": "tsc -p tsconfig.preload.json",
     "build:main": "tsc -p tsconfig.json",
-    "build": "bun scripts/setup-openscad.ts && bun run build:preload && bun run build:main",
+    "build": "bun scripts/setup-openscad.ts && bun scripts/setup-uv.ts && bun run build:preload && bun run build:main",
     "lint": "oxlint .",
     "start": "electron dist/main.js",
-    "dev": "bun scripts/setup-openscad.ts && bun run build:preload && bun run build:main && concurrently -k -n \"tsc,electron\" -c \"blue,green\" \"tsc -p tsconfig.json -w\" \"electron --no-sandbox dist/main.js\"",
+    "dev": "bun scripts/setup-openscad.ts && bun scripts/setup-uv.ts && bun run build:preload && bun run build:main && concurrently -k -n \"tsc,electron\" -c \"blue,green\" \"tsc -p tsconfig.json -w\" \"electron --no-sandbox dist/main.js\"",
     "package": "electron-builder",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.preload.json --noEmit && tsc -p tsconfig.scripts.json --noEmit"
   },
@@ -61,6 +61,14 @@
       {
         "from": "openscad-libs",
         "to": "openscad-libs"
+      },
+      {
+        "from": "uv-bin",
+        "to": "uv-bin"
+      },
+      {
+        "from": "python",
+        "to": "python"
       }
     ],
     "linux": {

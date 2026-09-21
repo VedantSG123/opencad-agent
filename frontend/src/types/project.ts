@@ -1,4 +1,4 @@
-export type CadKernel = 'replicad' | 'openscad'
+export type CadKernel = 'replicad' | 'openscad' | 'build123d'
 
 export interface Project {
   id: string
