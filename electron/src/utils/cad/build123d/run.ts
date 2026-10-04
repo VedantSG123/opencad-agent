@@ -5,11 +5,16 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { app } from 'electron'
-import type { Build123dResult } from 'shared/build123d'
+import type {
+  Build123dExportFormat,
+  Build123dExportResult,
+  Build123dResult,
+} from 'shared/build123d'
+import { BUILD123D_EXPORT_EXTENSIONS } from 'shared/build123d'
 
 import { AppError } from '../../ipc-utils.js'
 import { getPythonStatus } from '../../python/status.js'
-import { resolveRunnerPath } from './runnerPath.js'
+import { resolvePythonEntry } from './runnerPath.js'
 
 /** A script that has not finished by now is not going to. */
 const RUN_TIMEOUT_MS = 120_000
@@ -45,15 +50,14 @@ type SpawnOptions = {
   searchPath?: string[]
 }
 
-function spawnRunner(
+function spawnPython(
   interpreter: string,
-  scriptPath: string,
+  entry: string,
+  args: string[],
   options: SpawnOptions,
 ): Promise<Build123dResult> {
-  const runner = resolveRunnerPath()
-
   return new Promise((resolve, reject) => {
-    const child = spawn(interpreter, [runner, scriptPath], {
+    const child = spawn(interpreter, [entry, ...args], {
       cwd: options.cwd,
       env: {
         ...process.env,
@@ -151,9 +155,64 @@ export async function runBuild123dProject({
   const interpreter = await readyInterpreter()
   cancelBuild123dRun()
 
+  const staged = await stageOverrides({
+    mainPath,
+    projectDirectory,
+    overrides,
+  })
+
+  return spawnPython(
+    interpreter,
+    resolvePythonEntry('runner.py'),
+    [staged.scriptPath],
+    staged.options,
+  )
+}
+
+/**
+ * Build source that is not on disk - an editor buffer, or the hardcoded script
+ * the test page sends. Written to one scratch file that is overwritten each
+ * time, so a traceback names something that can still be opened and read.
+ */
+export async function runBuild123dSource(
+  source: string,
+): Promise<Build123dResult> {
+  const interpreter = await readyInterpreter()
+  cancelBuild123dRun()
+
+  const scratchDir = path.join(app.getPath('temp'), 'opencad-build123d')
+  const scratchPath = path.join(scratchDir, 'scratch.py')
+  await fs.mkdir(scratchDir, { recursive: true })
+  await fs.writeFile(scratchPath, source, 'utf-8')
+
+  return spawnPython(
+    interpreter,
+    resolvePythonEntry('runner.py'),
+    [scratchPath],
+    { cwd: scratchDir },
+  )
+}
+
+/**
+ * Write the unsaved buffers into a shadow tree and say how to run against it.
+ *
+ * The buffers are not written over the user's files, and the tree leads
+ * sys.path - so an edited module wins, an unedited one still resolves from the
+ * project, and nothing is written where the user did not ask for it. The
+ * script runs with the project as its working directory either way, so a path
+ * to a STEP file beside it still opens.
+ */
+async function stageOverrides({
+  mainPath,
+  projectDirectory,
+  overrides,
+}: Build123dRunRequest): Promise<{
+  scriptPath: string
+  options: SpawnOptions
+}> {
   const dirty = Object.entries(overrides ?? {})
   if (dirty.length === 0) {
-    return spawnRunner(interpreter, mainPath, { cwd: projectDirectory })
+    return { scriptPath: mainPath, options: { cwd: projectDirectory } }
   }
 
   const shadow = path.join(
@@ -178,27 +237,52 @@ export async function runBuild123dProject({
     }
   }
 
-  return spawnRunner(interpreter, scriptPath, {
-    cwd: projectDirectory,
-    searchPath: [shadow, projectDirectory],
-  })
+  return {
+    scriptPath,
+    options: {
+      cwd: projectDirectory,
+      searchPath: [shadow, projectDirectory],
+    },
+  }
 }
 
 /**
- * Build source that is not on disk - an editor buffer, or the hardcoded script
- * the test page sends. Written to one scratch file that is overwritten each
- * time, so a traceback names something that can still be opened and read.
+ * Export the model the script shows, as the file the user asked for.
+ *
+ * Written to a scratch file and read back rather than streamed: the exporters
+ * take a path, and a STEP of any size is a poor fit for a pipe that also
+ * carries the JSON result.
  */
-export async function runBuild123dSource(
-  source: string,
-): Promise<Build123dResult> {
+export async function exportBuild123d(
+  request: Build123dRunRequest & { format: Build123dExportFormat },
+): Promise<Build123dExportResult> {
   const interpreter = await readyInterpreter()
   cancelBuild123dRun()
 
-  const scratchDir = path.join(app.getPath('temp'), 'opencad-build123d')
-  const scratchPath = path.join(scratchDir, 'scratch.py')
-  await fs.mkdir(scratchDir, { recursive: true })
-  await fs.writeFile(scratchPath, source, 'utf-8')
+  const staged = await stageOverrides(request)
 
-  return spawnRunner(interpreter, scratchPath, { cwd: scratchDir })
+  const outputDir = path.join(app.getPath('temp'), 'opencad-build123d-export')
+  await fs.mkdir(outputDir, { recursive: true })
+  const extension = BUILD123D_EXPORT_EXTENSIONS[request.format]
+  const outputPath = path.join(outputDir, `model.${extension}`)
+  await fs.rm(outputPath, { force: true })
+
+  const result = await spawnPython(
+    interpreter,
+    resolvePythonEntry('exporter.py'),
+    [staged.scriptPath, request.format, outputPath],
+    staged.options,
+  )
+
+  if (!result.ok) {
+    return result
+  }
+
+  return {
+    ok: true,
+    logs: result.logs,
+    duration: result.duration,
+    extension,
+    data: await fs.readFile(outputPath),
+  }
 }

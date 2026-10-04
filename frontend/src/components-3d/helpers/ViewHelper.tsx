@@ -36,9 +36,7 @@ export function ViewHelper({ placement, size }: ViewHelperProps) {
 
     return new ViewGizmo({
       camera,
-      renderer: gl as unknown as ConstructorParameters<
-        typeof ViewGizmo
-      >[0]['renderer'],
+      renderer: gl,
       container,
       placement,
       size,

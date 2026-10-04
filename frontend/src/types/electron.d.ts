@@ -5,7 +5,11 @@ import type {
   UserPreferences,
   UserPreferencesPatch,
 } from 'shared'
-import type { Build123dResult } from 'shared/build123d'
+import type {
+  Build123dExportFormat,
+  Build123dExportResult,
+  Build123dResult,
+} from 'shared/build123d'
 import type { PythonEnvStatus, PythonInstallProgress } from 'shared/python'
 
 export interface WatchEvent {
@@ -104,6 +108,12 @@ export interface ElectronAPI {
     overrides?: Record<string, string>
   }) => Promise<Result<Build123dResult>>
   runBuild123dSource: (source: string) => Promise<Result<Build123dResult>>
+  exportBuild123d: (request: {
+    mainPath: string
+    projectDirectory: string
+    overrides?: Record<string, string>
+    format: Build123dExportFormat
+  }) => Promise<Result<Build123dExportResult>>
   cancelBuild123dRun: () => Promise<Result<boolean>>
   getPythonStatus: () => Promise<Result<PythonEnvStatus>>
   installPython: () => Promise<Result<PythonEnvStatus>>

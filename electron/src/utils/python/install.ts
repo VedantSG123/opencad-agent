@@ -3,7 +3,6 @@ import { spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 
 import {
-  BUILD123D_VERSION,
   PYTHON_INSTALL_SPECS,
   PYTHON_INSTALL_STEPS,
   PYTHON_VERSION,
@@ -61,9 +60,6 @@ function runUv(args: string[], onLine: (line: string) => void): Promise<void> {
         UV_PYTHON_INSTALL_DIR,
         UV_CACHE_DIR,
         NO_COLOR: '1',
-        // build123d installs from a GitHub archive, which carries no git
-        // history for setuptools_scm to read a version out of.
-        SETUPTOOLS_SCM_PRETEND_VERSION_FOR_BUILD123D: BUILD123D_VERSION,
       },
     })
 

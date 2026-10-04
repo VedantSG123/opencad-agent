@@ -6,18 +6,18 @@ import { app } from 'electron'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-/** `python/runner.py`, staged next to the app by electron-builder. */
-export function resolveRunnerPath(): string {
-  const runnerPath = path.join(
+/** One of the Python entry points, staged beside the app by electron-builder. */
+export function resolvePythonEntry(name: 'runner.py' | 'exporter.py'): string {
+  const entry = path.join(
     app.isPackaged
       ? path.join(process.resourcesPath, 'python')
       : path.join(__dirname, '../../../..', 'python'),
-    'runner.py',
+    name,
   )
 
-  if (!existsSync(runnerPath)) {
-    throw new Error(`The build123d runner is missing at ${runnerPath}`)
+  if (!existsSync(entry)) {
+    throw new Error(`The build123d ${name} is missing at ${entry}`)
   }
 
-  return runnerPath
+  return entry
 }

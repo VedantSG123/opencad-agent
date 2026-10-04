@@ -36,3 +36,6 @@ src/lib/openscad/openscad.wasm
 
 # uv binary
 uv-bin
+
+# Python bytecode beside the build123d entry points
+python/__pycache__

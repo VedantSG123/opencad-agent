@@ -83,3 +83,47 @@ export type Build123dResult =
       duration: number
     }
   | { ok: false; error: string; logs: string; duration: number }
+
+/**
+ * The 3D formats offered from the viewport.
+ *
+ * STEP leads because it is the only one that keeps exact geometry and the
+ * assembly - labels and all - so it is what goes to a machinist or into
+ * another CAD package. The rest are meshes: STL for printing, 3MF for printing
+ * with colour and a fraction of STL's size, GLB for the web.
+ *
+ * OBJ and BREP are deliberately absent. OBJ writes no .mtl, so its materials
+ * do not travel, and BREP is only readable by another OpenCascade program.
+ */
+export const BUILD123D_EXPORT_FORMATS = [
+  'step',
+  'stl',
+  'stl-ascii',
+  '3mf',
+  'glb',
+] as const
+
+export type Build123dExportFormat = (typeof BUILD123D_EXPORT_FORMATS)[number]
+
+/** The extension each format is written with; both STL variants are .stl. */
+export const BUILD123D_EXPORT_EXTENSIONS: Record<
+  Build123dExportFormat,
+  string
+> = {
+  step: 'step',
+  stl: 'stl',
+  'stl-ascii': 'stl',
+  '3mf': '3mf',
+  glb: 'glb',
+}
+
+export type Build123dExportResult =
+  | {
+      ok: true
+      /** The written file, read back off disk. */
+      data: Uint8Array
+      extension: string
+      logs: string
+      duration: number
+    }
+  | { ok: false; error: string; logs: string; duration: number }

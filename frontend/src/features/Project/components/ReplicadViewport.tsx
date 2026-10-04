@@ -1,13 +1,11 @@
 import { Button } from '@heroui/react'
-import {
-  Download04Icon,
-  SlidersHorizontalIcon,
-} from '@hugeicons/core-free-icons'
+import { SlidersHorizontalIcon } from '@hugeicons/core-free-icons'
 import * as React from 'react'
 
 import { CadViewer } from '@/components-3d/cad-viewer/ReplicadViewer'
 import type { StageHandle } from '@/components-3d/helpers/Stage'
 import { BusyIndicator } from '@/components/cad/BusyIndicator'
+import { ExportButton } from '@/components/cad/export/ExportButton'
 import { ResetViewButton } from '@/components/cad/ResetViewButton'
 import { SelectionReadout } from '@/components/cad/SelectionReadout'
 import { ViewportStatusBar } from '@/components/cad/ViewportStatusBar'
@@ -90,16 +88,7 @@ export function ReplicadViewport() {
             </Button>
           )}
 
-          <Button
-            onPress={() => setIsExportOpen(true)}
-            size='sm'
-            className='pointer-events-auto rounded-lg'
-            variant='primary'
-            aria-label='Export CAD model'
-          >
-            <Icon icon={Download04Icon} size={14} />
-            <span>Export</span>
-          </Button>
+          <ExportButton onPress={() => setIsExportOpen(true)} />
         </div>
       )}
       {/* Floating Parameters Panel */}

@@ -3,35 +3,29 @@ import { z } from 'zod'
 /**
  * The interpreter the managed environment is built on.
  *
- * `cadquery-ocp-novtk`, which build123d pulls in, ships ABI-specific wheels and
- * requires >=3.11,<3.15. An interpreter outside that range matches no wheel and
- * pip falls back to building OCCT from source, which does not end well.
+ * build123d 0.13 requires >=3.11,<3.15, and the `cadquery-ocp-novtk` it pulls in
+ * ships ABI-specific wheels over the same range. An interpreter outside it
+ * matches no wheel and pip falls back to building OCCT from source, which does
+ * not end well.
  */
 export const PYTHON_VERSION = '3.12'
 
 /**
- * build123d is pinned to a commit rather than a release.
+ * Pinned so that an install today and an install in six months agree, and so
+ * that the agent guidance and API documentation describe what is installed.
  *
- * PyPI's 0.11.1 cannot be imported on a stock Windows install: FontManager
- * parses every file in the Windows font directories at import time and
- * `register_font` guards none of it, so mstmc.ttf - which ships with Windows
- * and is not a parseable font - takes the whole import down. The dev branch
- * wraps it in a try/except; no release carries that yet. Move to the next PyPI
- * release that does.
+ * 0.13.0 is the first release carrying the fix for the Windows font crash that
+ * had this on a dev commit: FontManager parsed every file in the Windows font
+ * directories at import time and guarded none of it, so mstmc.ttf - which
+ * ships with Windows and is not a parseable font - took the whole import down.
  */
-export const BUILD123D_COMMIT = '5b1b4b5da481a7b0140cb71d32b7fa93fe8032ce'
-
-/**
- * A GitHub archive carries no git history, so setuptools_scm cannot derive a
- * version from it and the build fails outright unless it is told one.
- */
-export const BUILD123D_VERSION = '0.11.2.dev0'
+export const BUILD123D_VERSION = '0.13.0'
 
 export const OCP_TESSELLATE_VERSION = '3.5.3'
 
 /** What `uv pip install` is handed. */
 export const PYTHON_INSTALL_SPECS: string[] = [
-  `build123d @ https://github.com/gumyr/build123d/archive/${BUILD123D_COMMIT}.tar.gz`,
+  `build123d==${BUILD123D_VERSION}`,
   `ocp-tessellate==${OCP_TESSELLATE_VERSION}`,
 ]
 

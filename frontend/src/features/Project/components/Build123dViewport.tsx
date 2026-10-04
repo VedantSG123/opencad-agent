@@ -5,6 +5,7 @@ import { Build123dViewer } from '@/components-3d/cad-viewer/Build123dViewer'
 import type { StageHandle } from '@/components-3d/helpers/Stage'
 import { PartTreePanel } from '@/components/build123d/PartTreePanel'
 import { BusyIndicator } from '@/components/cad/BusyIndicator'
+import { ExportButton } from '@/components/cad/export/ExportButton'
 import { ResetViewButton } from '@/components/cad/ResetViewButton'
 import { SelectionReadout } from '@/components/cad/SelectionReadout'
 import { ViewportStatusBar } from '@/components/cad/ViewportStatusBar'
@@ -19,8 +20,12 @@ import { leafIds } from '@/kernels/build123d/tree'
 import type { SelectedComponent } from '@/types'
 
 import { Build123dCompiler } from './Build123dCompiler'
+import { Build123dExportDialog } from './Build123dExportDialog'
+import { useEditor } from './editor/context'
 
 function Build123dViewportInner() {
+  const { project } = useEditor()
+  const [isExportOpen, setIsExportOpen] = React.useState(false)
   const model = useBuild123d((state) => state.model)
   const error = useBuild123d((state) => state.error)
   const isBuilding = useBuild123d((state) => state.isBuilding)
@@ -59,6 +64,19 @@ function Build123dViewportInner() {
           onSelect={select}
         />
       )}
+
+      {/* Viewport Ribbon Bar */}
+      {model && (
+        <div className='pointer-events-none absolute top-2 right-2 left-2 z-20 flex justify-end gap-2'>
+          <ExportButton onPress={() => setIsExportOpen(true)} />
+        </div>
+      )}
+
+      <Build123dExportDialog
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        project={project}
+      />
 
       <ViewportStatusBar>
         <ResetViewButton stageRef={stageRef} />
