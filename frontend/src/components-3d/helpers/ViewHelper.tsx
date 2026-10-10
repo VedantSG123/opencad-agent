@@ -2,8 +2,8 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as React from 'react'
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
-import type { GizmoPlacement } from './ViewGizmo'
-import { ViewGizmo } from './ViewGizmo'
+import type { GizmoPlacement } from './viewGizmo'
+import { ViewGizmo } from './viewGizmo'
 
 type ViewHelperProps = {
   placement?: GizmoPlacement
