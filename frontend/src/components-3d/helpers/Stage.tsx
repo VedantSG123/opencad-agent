@@ -8,7 +8,7 @@ export interface StageHandle {
 }
 
 export default React.forwardRef<StageHandle, StageProps>(function Stage(
-  { children, center = false, ...props },
+  { children, center = false, onBounds, ...props },
   ref,
 ) {
   const camera = useThree((state) => state.camera)
@@ -38,6 +38,8 @@ export default React.forwardRef<StageHandle, StageProps>(function Stage(
         outer.current.updateWorldMatrix(true, true)
         box3.setFromObject(inner.current)
       }
+
+      onBounds?.(box3)
 
       const sphere = new THREE.Sphere()
       box3.getBoundingSphere(sphere)
@@ -79,7 +81,7 @@ export default React.forwardRef<StageHandle, StageProps>(function Stage(
       hasFramed.current = true
       invalidate()
     },
-    [camera, center, invalidate],
+    [camera, center, invalidate, onBounds],
   )
 
   React.useLayoutEffect(() => {
@@ -102,5 +104,7 @@ export default React.forwardRef<StageHandle, StageProps>(function Stage(
 
 type StageProps = ThreeElements['group'] & {
   center?: boolean
+  /** Called with the framed world-space bounds each time the stage re-measures. */
+  onBounds?: (bounds: THREE.Box3) => void
   children: React.ReactNode
 }

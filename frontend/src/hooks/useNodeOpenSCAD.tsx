@@ -9,12 +9,7 @@ import {
   createNodeOpenSCADApi,
 } from '@/kernels/openscad/nodeOpenSCADApi'
 import { inSeries } from '@/kernels/replicad/inSeries'
-
-export type LogEntry = {
-  type: 'log' | 'info' | 'warn' | 'error'
-  text: string
-  timestamp: number
-}
+import type { LogEntry } from '@/types'
 
 const ERROR_PATTERNS = [
   /^ERROR:/i,

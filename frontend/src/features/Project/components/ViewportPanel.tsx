@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import { Icon } from '@/components/icons/HugeIcon'
 
 import { usePanelContext } from '../context/PanelContext'
+import { Build123dViewport } from './Build123dViewport'
 import { useEditor } from './editor/context'
 import { OpenSCADViewport } from './OpenSCADViewport'
 import { ReplicadViewport } from './ReplicadViewport'
@@ -19,6 +20,7 @@ export function ViewportPanel() {
 
   const isReplicad = project.cad_kernel === 'replicad'
   const isOpenSCAD = project.cad_kernel === 'openscad'
+  const isBuild123d = project.cad_kernel === 'build123d'
 
   return (
     <div
@@ -48,7 +50,8 @@ export function ViewportPanel() {
       <div id='cad-viewer' className='flex-1 min-h-0'>
         {isReplicad && <ReplicadViewport />}
         {isOpenSCAD && <OpenSCADViewport />}
-        {!isReplicad && !isOpenSCAD && (
+        {isBuild123d && <Build123dViewport />}
+        {!isReplicad && !isOpenSCAD && !isBuild123d && (
           <div className='h-full flex items-center justify-center'>
             <span className='text-sm text-foreground/60'>3D Viewport</span>
           </div>

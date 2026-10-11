@@ -1,12 +1,13 @@
 import { Button } from '@heroui/react'
-import {
-  Download04Icon,
-  SlidersHorizontalIcon,
-} from '@hugeicons/core-free-icons'
+import { SlidersHorizontalIcon } from '@hugeicons/core-free-icons'
 import * as React from 'react'
 
 import { OpenSCADViewer } from '@/components-3d/cad-viewer/OpenSCADViewer'
 import type { StageHandle } from '@/components-3d/helpers/Stage'
+import { BusyIndicator } from '@/components/cad/BusyIndicator'
+import { ExportButton } from '@/components/cad/export/ExportButton'
+import { ResetViewButton } from '@/components/cad/ResetViewButton'
+import { ViewportStatusBar } from '@/components/cad/ViewportStatusBar'
 import { Icon } from '@/components/icons/HugeIcon'
 import { type KernelFilesState, useKernelFiles } from '@/hooks/useKernelFiles'
 import { useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
@@ -105,24 +106,10 @@ function OpenSCADViewportInner() {
     <div className='relative h-full w-full'>
       <OpenSCADViewer result={result} hasError={hasError} stageRef={stageRef} />
 
-      <Button
-        onPress={() => {
-          if (stageRef.current && stageRef.current.reset) {
-            stageRef.current.reset()
-          }
-        }}
-        size='sm'
-        className='absolute z-10 bottom-4 left-4 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs text-foreground/60 hover:text-foreground transition-colors min-w-0 h-auto'
-      >
-        Reset View
-      </Button>
-
-      {isCompiling && (
-        <div className='absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-md border shadow-sm flex items-center gap-2 text-xs text-foreground/60 animate-in fade-in duration-200'>
-          <div className='h-2 w-2 bg-blue-500 rounded-full animate-pulse' />
-          Compiling...
-        </div>
-      )}
+      <ViewportStatusBar>
+        <ResetViewButton stageRef={stageRef} />
+        <BusyIndicator active={isCompiling} label='Compiling...' />
+      </ViewportStatusBar>
 
       {/* Viewport Ribbon Bar */}
       {result && (
@@ -144,16 +131,7 @@ function OpenSCADViewportInner() {
             </Button>
           )}
 
-          <Button
-            onPress={() => setIsExportOpen(true)}
-            size='sm'
-            className='pointer-events-auto rounded-lg'
-            variant='primary'
-            aria-label='Export CAD model'
-          >
-            <Icon icon={Download04Icon} size={14} />
-            <span>Export</span>
-          </Button>
+          <ExportButton onPress={() => setIsExportOpen(true)} />
         </div>
       )}
 
