@@ -1,7 +1,5 @@
-import { TerminalIcon } from '@hugeicons/core-free-icons'
 import * as React from 'react'
 
-import { Icon } from '@/components/icons/HugeIcon'
 import { cn } from '@/lib/utils'
 import type { LogEntry } from '@/types'
 
@@ -22,33 +20,38 @@ export function ExportLogPanel({ logs }: { logs: LogEntry[] }) {
   }, [logs])
 
   return (
-    <div className='mt-2 rounded-lg border border-border/80 bg-zinc-950 p-3 font-mono text-[10px] text-zinc-300 shadow-inner dark:bg-black'>
-      <div className='mb-2 flex items-center gap-1.5 border-b border-zinc-900 pb-1.5 text-zinc-500 select-none'>
-        <Icon icon={TerminalIcon} size={14} className='text-zinc-400' />
-        <span className='font-semibold'>Export Output Logs</span>
+    <div className='flex flex-col gap-1.5'>
+      <div className='flex items-baseline justify-between text-xs'>
+        <span className='font-medium text-muted'>Output</span>
+        <span className='text-muted tabular-nums'>
+          {logs.length} {logs.length === 1 ? 'line' : 'lines'}
+        </span>
       </div>
-      <div ref={scrollRef} className='h-28 overflow-y-auto pr-3'>
+      <div
+        ref={scrollRef}
+        className='h-28 overflow-y-auto rounded-md border border-border bg-zinc-950 px-2.5 py-2 font-mono text-[11px] text-zinc-300'
+      >
         {logs.length === 0 ? (
-          <div className='text-zinc-600 italic'>No logs generated.</div>
+          <div className='text-zinc-500'>Waiting for output…</div>
         ) : (
-          <div className='flex flex-col gap-1'>
-            {logs.map((log, index) => (
-              <div
-                key={`${log.timestamp}-${index}`}
-                className={cn(
-                  'leading-relaxed whitespace-pre-wrap',
-                  log.type === 'error' && 'font-bold text-red-400',
-                  log.type === 'warn' && 'text-yellow-400',
-                  log.type === 'info' && 'text-blue-400',
-                )}
-              >
-                <span className='mr-1.5 text-zinc-600 select-none'>
-                  [{new Date(log.timestamp).toLocaleTimeString()}]
-                </span>
-                {log.text}
-              </div>
-            ))}
-          </div>
+          logs.map((log, index) => (
+            <div
+              key={`${log.timestamp}-${index}`}
+              className={cn(
+                'leading-relaxed whitespace-pre-wrap',
+                log.type === 'error' && 'text-red-400',
+                log.type === 'warn' && 'text-yellow-400',
+                log.type === 'info' && 'text-sky-400',
+              )}
+            >
+              <span className='mr-2 text-zinc-600 tabular-nums select-none'>
+                {new Date(log.timestamp).toLocaleTimeString([], {
+                  hour12: false,
+                })}
+              </span>
+              {log.text}
+            </div>
+          ))
         )}
       </div>
     </div>

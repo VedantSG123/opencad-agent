@@ -3,74 +3,91 @@ import {
   CheckmarkCircle02Icon,
   LoaderCircleIcon,
 } from '@hugeicons/core-free-icons'
-import type * as React from 'react'
 
 import { Icon } from '@/components/icons/HugeIcon'
 
+export type ExportPhase = 'idle' | 'exporting' | 'success' | 'error'
+
 /** The spinner every export shares, so one change moves all three kernels. */
-export function ExportSpinner({ size = 40 }: { size?: number }) {
+export function ExportSpinner({ size = 14 }: { size?: number }) {
   return (
     <Icon
       icon={LoaderCircleIcon}
       size={size}
-      className='animate-spin text-foreground/70'
+      className='animate-spin text-muted motion-reduce:animate-none'
     />
   )
 }
 
-export function ExportProgress({
-  title,
-  detail,
-}: {
-  title: string
-  detail?: React.ReactNode
-}) {
-  return (
-    <div className='flex flex-col items-center justify-center gap-4 py-6'>
-      <ExportSpinner />
-      <div className='text-center'>
-        <div className='text-sm font-semibold'>{title}</div>
-        {detail && (
-          <div className='mt-1 text-xs text-foreground/60'>{detail}</div>
-        )}
-      </div>
-    </div>
-  )
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  const kilobytes = bytes / 1024
+  if (kilobytes < 1024) return `${kilobytes.toFixed(1)} KB`
+  return `${(kilobytes / 1024).toFixed(1)} MB`
 }
 
-export function ExportSuccess({ detail }: { detail?: React.ReactNode }) {
-  return (
-    <div className='flex flex-col items-center justify-center gap-4 py-6'>
-      <div className='relative'>
+/**
+ * One line saying what the last export did, under the options it ran with.
+ *
+ * The form stays on screen through every phase, so this is a status line and
+ * not a screen of its own: the format is still visible next to the result.
+ */
+export function ExportStatusLine({
+  phase,
+  filename,
+  size,
+  fileCount = 1,
+  error,
+}: {
+  phase: ExportPhase
+  filename: string
+  size?: number
+  fileCount?: number
+  error?: string
+}) {
+  if (phase === 'idle') return null
+
+  if (phase === 'exporting') {
+    return (
+      <div role='status' className='flex items-center gap-2 text-xs'>
+        <ExportSpinner />
+        <span className='text-foreground'>
+          Writing <span className='font-mono'>{filename}</span>…
+        </span>
+      </div>
+    )
+  }
+
+  if (phase === 'success') {
+    return (
+      <div role='status' className='flex items-center gap-2 text-xs'>
         <Icon
           icon={CheckmarkCircle02Icon}
-          size={48}
-          className='text-success animate-in zoom-in-50 duration-300'
+          size={14}
+          className='shrink-0 text-success'
         />
-        <div className='absolute -inset-0.5 animate-ping rounded-full bg-success/20 duration-1000' />
+        <span className='min-w-0 truncate text-foreground'>
+          Wrote <span className='font-mono'>{filename}</span>
+        </span>
+        <span className='shrink-0 text-muted tabular-nums'>
+          {fileCount > 1 && `${fileCount} files · `}
+          {size !== undefined && formatBytes(size)}
+        </span>
       </div>
-      <div className='text-center'>
-        <div className='text-base font-bold text-foreground'>
-          Export Complete!
-        </div>
-        {detail && (
-          <div className='mt-1 text-xs text-foreground/60'>{detail}</div>
-        )}
-      </div>
-    </div>
-  )
-}
+    )
+  }
 
-export function ExportFailure({ message }: { message: string }) {
   return (
-    <div className='flex flex-col gap-4 py-2'>
-      <div className='flex items-start gap-3 rounded-lg border border-danger/20 bg-danger/10 p-3 text-danger'>
-        <Icon icon={Alert02Icon} size={20} className='mt-0.5 shrink-0' />
-        <div className='flex flex-col gap-1 text-xs'>
-          <span className='font-bold'>Export Failed</span>
-          <span className='leading-relaxed whitespace-pre-wrap'>{message}</span>
-        </div>
+    <div role='alert' className='flex flex-col gap-1.5 text-xs'>
+      <div className='flex items-center gap-2 font-medium text-danger'>
+        <Icon icon={Alert02Icon} size={14} className='shrink-0' />
+        Export failed
       </div>
+      {error && (
+        <pre className='max-h-32 overflow-auto rounded-md bg-danger-soft px-2.5 py-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-danger-soft-foreground'>
+          {error}
+        </pre>
+      )}
     </div>
   )
 }
