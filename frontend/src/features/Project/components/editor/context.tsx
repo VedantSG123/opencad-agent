@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner'
 
 import type { TreeDataItem } from '@/components/tree-view'
+import { KERNEL_INFO } from '@/constants/kernels'
 import {
   type FileSyncStatus,
   type FSEntry,
@@ -257,8 +258,8 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
       const mainFileVirtualPath =
         project.file && project.directory
           ? (toFsPath(project.directory, project.file) ??
-            `/main${project.cad_kernel === 'replicad' ? '.js' : '.scad'}`)
-          : `/main${project.cad_kernel === 'replicad' ? '.js' : '.scad'}`
+            `/main${KERNEL_INFO[project.cad_kernel].fileExtension}`)
+          : `/main${KERNEL_INFO[project.cad_kernel].fileExtension}`
 
       const exists = findFileInTree(treeData, mainFileVirtualPath)
       if (exists) {

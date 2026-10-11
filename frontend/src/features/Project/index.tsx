@@ -7,6 +7,7 @@ import {
 import { useParams } from 'react-router'
 import { toast } from 'sonner'
 
+import { Build123dProvider } from '@/hooks/useBuild123d'
 import { NodeOpenSCADProvider } from '@/hooks/useNodeOpenSCAD'
 import { useProjects, useUpdateProjectAccess } from '@/hooks/useProjects'
 import { ReplicadProvider } from '@/hooks/useReplicad'
@@ -164,8 +165,6 @@ export function ProjectPage() {
     )
   }
 
-  const isOpenSCAD = project.cad_kernel === 'openscad'
-
   const content = (
     <div className='h-screen flex flex-col overflow-hidden'>
       <TopBar project={project} />
@@ -181,10 +180,14 @@ export function ProjectPage() {
   // own build lands.
   return (
     <PanelProvider>
-      {isOpenSCAD ? (
-        <NodeOpenSCADProvider key={project.id}>{content}</NodeOpenSCADProvider>
-      ) : (
+      {project.cad_kernel === 'replicad' && (
         <ReplicadProvider key={project.id}>{content}</ReplicadProvider>
+      )}
+      {project.cad_kernel === 'openscad' && (
+        <NodeOpenSCADProvider key={project.id}>{content}</NodeOpenSCADProvider>
+      )}
+      {project.cad_kernel === 'build123d' && (
+        <Build123dProvider key={project.id}>{content}</Build123dProvider>
       )}
     </PanelProvider>
   )

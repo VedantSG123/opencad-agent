@@ -20,4 +20,10 @@ export const KERNEL_INFO: Record<CadKernel, KernelInfo> = {
     image: '/openscad.png',
     fileExtension: '.scad',
   },
+  build123d: {
+    label: 'build123d',
+    description: 'Python CAD library built on OpenCascade',
+    image: '/build123d.svg',
+    fileExtension: '.py',
+  },
 }

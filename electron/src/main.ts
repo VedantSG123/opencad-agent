@@ -8,11 +8,13 @@ import * as path from 'path'
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
 
 import { registerBackendIpc } from './ipc/backend.js'
+import { registerBuild123dIpc } from './ipc/build123d.js'
 import { registerCredentialsIpc } from './ipc/credentials.js'
 import { registerDialogIpc } from './ipc/dialog.js'
 import { registerFsIpc } from './ipc/fs.js'
 import { registerOpenSCADIpc } from './ipc/openscad.js'
 import { registerPreferencesIpc } from './ipc/preferences.js'
+import { registerPythonIpc } from './ipc/python.js'
 import { registerSettingsIpc } from './ipc/settings.js'
 import { registerShellIpc } from './ipc/shell.js'
 import { registerWorkspaceIpc } from './ipc/workspace.js'
@@ -118,7 +120,6 @@ function startBackend(port: number, vaultPort: number, vaultSecret: string) {
 
 function createWindow(port: number) {
   const isMac = process.platform === 'darwin'
-  const isWin = process.platform === 'win32'
   // Vertically centered against the same 36px titlebar height used for the
   // Windows/Linux overlay (see getTitleBarOverlay), for a consistent look.
   const macTrafficLightPosition = { x: 14, y: 9 }
@@ -152,7 +153,6 @@ function createWindow(port: number) {
       ],
     },
     autoHideMenuBar: true,
-    ...(isWin ? { backgroundMaterial: 'mica' } : {}),
   })
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL
@@ -204,6 +204,8 @@ app.whenReady().then(async () => {
     registerShellIpc(ipcMain)
     registerCredentialsIpc(ipcMain)
     registerPreferencesIpc(ipcMain)
+    registerPythonIpc(ipcMain, () => mainWindow)
+    registerBuild123dIpc(ipcMain)
 
     // Broadcast performance metrics every second
     setInterval(() => {

@@ -19,7 +19,7 @@ export function KernelStep({ selected, onSelect }: KernelStepProps) {
           Select the scripting engine for your project
         </p>
       </div>
-      <div className='grid grid-cols-2 gap-3'>
+      <div className='grid grid-cols-3 gap-3'>
         {(
           Object.entries(KERNEL_INFO) as [
             CadKernel,

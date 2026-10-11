@@ -2,14 +2,10 @@ import { Button, Input, Label } from '@heroui/react'
 import { FolderOpenIcon, Loading02Icon } from '@hugeicons/core-free-icons'
 
 import { Icon } from '@/components/icons/HugeIcon'
+import { KERNEL_INFO } from '@/constants/kernels'
 import { useFileDialog } from '@/hooks/useFileDialog'
 import { joinPaths, normalizePath } from '@/lib/utils'
 import type { CadKernel } from '@/types/project'
-
-const KERNEL_EXTENSION: Record<CadKernel, string> = {
-  replicad: '.js',
-  openscad: '.scad',
-}
 
 interface DetailsStepProps {
   action: 'create' | 'open' | null
@@ -45,7 +41,10 @@ export function DetailsStep({
 
   const scriptPathPreview =
     !isOpen && directory && name && kernel
-      ? joinPaths(joinPaths(directory, name), `main${KERNEL_EXTENSION[kernel]}`)
+      ? joinPaths(
+          joinPaths(directory, name),
+          `main${KERNEL_INFO[kernel].fileExtension}`,
+        )
       : ''
 
   return (

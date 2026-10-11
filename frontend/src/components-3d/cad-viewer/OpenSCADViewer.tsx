@@ -103,11 +103,7 @@ export function OpenSCADViewer({
         </div>
       }
     >
-      <Canvas
-        key='3d'
-        orthographic
-        onCreated={(state) => (state.gl.localClippingEnabled = true)}
-      >
+      <Canvas key='3d' orthographic>
         <Scene stageRef={stageRef} enableDamping>
           {hasError ? (
             <ErrorMesh />
