@@ -43,6 +43,7 @@ export const Model = z.object({
   }),
   status: z.enum(['alpha', 'beta', 'deprecated', 'active']).optional(),
   release_date: z.string(),
+  free: z.boolean(),
 })
 
 export type Model = z.infer<typeof Model>

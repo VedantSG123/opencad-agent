@@ -80,9 +80,10 @@ function sdkOptions(
 export async function listConnectedModels(): Promise<ModelRef[]> {
   const { providers } = await getProviderCache()
   return Object.values(providers).flatMap((provider) =>
-    Object.values(provider.models)
-      .filter((model) => model.capabilities.toolcall)
-      .map((model) => ({ providerId: provider.id, modelId: model.id })),
+    Object.values(provider.models).map((model) => ({
+      providerId: provider.id,
+      modelId: model.id,
+    })),
   )
 }
 

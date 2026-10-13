@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   Disclosure,
   Input,
   ListBox,
@@ -96,11 +97,23 @@ function ProviderGroup({
               id={model.id}
               textValue={model.name}
               className={cn(
-                'rounded-lg text-sm font-normal text-foreground/80',
+                'gap-2 rounded-lg text-sm font-normal text-foreground/80',
                 selectedModelId === model.id && 'bg-accent-soft',
               )}
             >
-              {highlightMatch(model.name, query)}
+              <span className='flex-1 truncate'>
+                {highlightMatch(model.name, query)}
+              </span>
+              {model.free && (
+                <Chip
+                  variant='soft'
+                  color='success'
+                  size='sm'
+                  className='shrink-0 text-xs'
+                >
+                  Free
+                </Chip>
+              )}
             </ListBox.Item>
           ))}
         </ListBox>
@@ -150,14 +163,10 @@ export function ModelSelectButton({
     return connectedProviders
       .map((provider) => {
         const providerMatches =
-          trimmedQuery.length > 0 && matchesText(provider.name, trimmedQuery)
-        const allModels = Object.values(provider.models)
-        const models =
-          trimmedQuery.length === 0
-            ? allModels
-            : providerMatches
-              ? allModels
-              : allModels.filter((m) => matchesText(m.name, trimmedQuery))
+          trimmedQuery.length === 0 || matchesText(provider.name, trimmedQuery)
+        const models = Object.values(provider.models)
+          .filter((m) => providerMatches || matchesText(m.name, trimmedQuery))
+          .sort((a, b) => Number(b.free) - Number(a.free))
         return { provider, models }
       })
       .filter((group) => group.models.length > 0)
