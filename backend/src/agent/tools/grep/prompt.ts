@@ -6,7 +6,6 @@ WHEN TO USE: finding where a symbol is defined, which files import a module,
   than reading files one by one.
 
 WHEN NOT TO USE: reading a file you have already located (use read instead).
-  Looking up a replicad class or method (use getApiDocumentation instead).
   Running a command (use shell instead).
 
 DO NOT USE FOR: reading a known file (use read), \`rg\`, \`grep\` or

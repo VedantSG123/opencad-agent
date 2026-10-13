@@ -12,14 +12,25 @@ export const CREATE_TOOL_NAME = 'create'
 export const GET_API_DOCUMENTATION_TOOL_NAME = 'getApiDocumentation'
 export const SHELL_TOOL_NAME = 'shell'
 
-/** Every tool the agent may be handed. `createTools` must return all of them. */
-export const TOOL_NAMES = [
+/** Offered whatever kernel the project uses. */
+export const COMMON_TOOL_NAMES = [
   READ_TOOL_NAME,
   GREP_TOOL_NAME,
   EDIT_TOOL_NAME,
   CREATE_TOOL_NAME,
-  GET_API_DOCUMENTATION_TOOL_NAME,
   SHELL_TOOL_NAME,
 ] as const
+
+/** Offered only to the kernels whose profile in `agent/kernels` names them. */
+export const KERNEL_TOOL_NAMES = [GET_API_DOCUMENTATION_TOOL_NAME] as const
+
+export type KernelToolName = (typeof KERNEL_TOOL_NAMES)[number]
+
+/**
+ * Every tool the agent may be handed. `createTools` must build all of them,
+ * and the permission registry must describe all of them, whichever subset a
+ * given kernel is offered.
+ */
+export const TOOL_NAMES = [...COMMON_TOOL_NAMES, ...KERNEL_TOOL_NAMES] as const
 
 export type ToolName = (typeof TOOL_NAMES)[number]

@@ -1,5 +1,11 @@
 import { FUZZY_THRESHOLD, fuzzySearch, getSimilarityScore } from './fuzzySearch'
 import {
+  detectIndentUnit,
+  fileIndentUnitAt,
+  leadingWhitespace,
+  reindent,
+} from './indentation'
+import {
   addLineNumbersToContent,
   everyLineHasLineNumbers,
   extractTextFromLineNumberedContent,
@@ -226,10 +232,13 @@ export function applyReplacements(
       matchIndex + searchLines.length,
     )
 
+    const matchedBaseIndent = leadingWhitespace(matchedLines[0])
     const indentedReplaceLines = reindent(
       replaceLines,
       leadingWhitespace(searchLines[0]),
-      leadingWhitespace(matchedLines[0]),
+      matchedBaseIndent,
+      detectIndentUnit([...searchLines, ...replaceLines]),
+      fileIndentUnitAt(matchedBaseIndent, codeLines),
     )
 
     codeLines = [
@@ -248,35 +257,4 @@ export function applyReplacements(
     appliedCount,
     failures,
   }
-}
-
-/**
- * Rebases the replacement onto the indentation the file actually uses: each
- * line keeps its depth relative to the first search line, measured in
- * characters. A model that indents its block differently from the file still
- * produces correctly nested output.
- */
-function reindent(
-  replaceLines: string[],
-  searchBaseIndent: string,
-  matchedBaseIndent: string,
-): string[] {
-  return replaceLines.map((line) => {
-    const indentDifference =
-      leadingWhitespace(line).length - searchBaseIndent.length
-
-    const finalIndent =
-      indentDifference < 0
-        ? matchedBaseIndent.slice(
-            0,
-            Math.max(0, matchedBaseIndent.length + indentDifference),
-          )
-        : matchedBaseIndent + ' '.repeat(indentDifference)
-
-    return finalIndent + line.trim()
-  })
-}
-
-function leadingWhitespace(line: string | undefined): string {
-  return line?.match(/^[\t ]*/)?.[0] ?? ''
 }

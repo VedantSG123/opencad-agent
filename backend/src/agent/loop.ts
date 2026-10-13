@@ -71,7 +71,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
     projectDirectory: input.project.directory,
     sessionId: input.session.id,
   })
-  const tools = createTools(permissions)
+  const tools = createTools(permissions, input.project.cad_kernel)
   const definitions = withoutExecute(tools)
   const writer = new SessionWriter(input.session.id, input.model)
   const repetition = createRepetitionGuard()

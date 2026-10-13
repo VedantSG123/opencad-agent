@@ -2,14 +2,13 @@ import os from 'node:os'
 
 import { CADKernels } from '../../cad'
 import type { Project } from '../../project/schema'
-import { openscadGuidance } from './openscad'
-import { replicadGuidance } from './replicad'
+import { kernelPrompt } from '../kernels'
 
 export function buildSystemPrompt(project: Project): string {
   return [
     identity(),
     environment(project),
-    kernelGuidance(project),
+    kernelPrompt(project.cad_kernel),
     toolPolicy(),
     workflow(),
   ].join('\n\n')
@@ -17,8 +16,7 @@ export function buildSystemPrompt(project: Project): string {
 
 function identity(): string {
   return `You are the OpenCAD agent. You write and edit parametric CAD scripts in
-the user's project, run commands to check your work, and explain what you
-changed.
+the user's project and explain what you changed.
 
 Answer the request that was made. Keep replies short - a sentence or two of
 plain prose, no headings or bullet lists unless the user asks for them. The
@@ -37,15 +35,6 @@ function environment(project: Project): string {
 - Platform: ${os.platform()}
 - Shell for the \`shell\` tool: ${os.platform() === 'win32' ? 'PowerShell' : 'bash'}
 - Today: ${new Date().toISOString().slice(0, 10)}`
-}
-
-function kernelGuidance(project: Project): string {
-  switch (project.cad_kernel) {
-    case 'replicad':
-      return replicadGuidance()
-    case 'openscad':
-      return openscadGuidance()
-  }
 }
 
 function toolPolicy(): string {

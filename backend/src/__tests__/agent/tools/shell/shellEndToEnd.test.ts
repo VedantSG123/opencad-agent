@@ -16,6 +16,7 @@ import {
 import { createTools } from '../../../../agent/tools'
 import { TOOL_NAMES } from '../../../../agent/tools/names'
 import { shutdownPowerShellParsers } from '../../../../agent/tools/shell/parse/powershell'
+import { SUPPORTED_CAD_KERNELS } from '../../../../cad'
 
 const PROJECT = process.cwd()
 const SESSION = 'ses_shell_e2e'
@@ -49,13 +50,18 @@ describe('the shell tool is wired in', () => {
     expect(TOOL_NAMES).toContain('shell')
   })
 
-  test('createTools builds it alongside the others', () => {
-    const tools = createTools({
-      projectDirectory: PROJECT,
-      guardFor: () => ({ refusalFor: () => null }),
-    })
+  test('createTools offers it whatever the kernel', () => {
+    for (const kernel of SUPPORTED_CAD_KERNELS.options) {
+      const tools = createTools(
+        {
+          projectDirectory: PROJECT,
+          guardFor: () => ({ refusalFor: () => null }),
+        },
+        kernel,
+      )
 
-    expect(Object.keys(tools)).toContain('shell')
+      expect(Object.keys(tools)).toContain('shell')
+    }
   })
 })
 
