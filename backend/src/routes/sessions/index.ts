@@ -1,7 +1,6 @@
 import { createUIMessageStream, createUIMessageStreamResponse } from 'ai'
 import { Elysia, t } from 'elysia'
-import type { Attachment, PermissionScope } from 'shared'
-import { attachmentRefusal, attachmentSetRefusal } from 'shared'
+import type { PermissionScope } from 'shared'
 
 import type { ModelRef } from '../../agent/model'
 import { resolveModel } from '../../agent/model'
@@ -26,6 +25,8 @@ import {
   getSessionsByProjectId,
   renameSession,
 } from '../../utils/dbUtils/sessions'
+import { attachmentsRefusal } from '../../utils/sessions/attachments'
+import { defaultTitle } from '../../utils/sessions/defaultTitle'
 
 const sessionIdParam = t.Object({ id: t.String() })
 
@@ -289,22 +290,3 @@ export const sessionsRoutes = new Elysia({ prefix: '/sessions' })
         : status(409, { message: 'No turn is in flight for this session.' }),
     { params: sessionIdParam },
   )
-
-function defaultTitle(): string {
-  return `Session ${new Date().toLocaleString()}`
-}
-
-/** The first thing wrong with the attachments, or `null` if nothing is. */
-function attachmentsRefusal(files: Attachment[], model: Model): string | null {
-  const capabilities = {
-    image: model.capabilities.input.image,
-    pdf: model.capabilities.input.pdf,
-  }
-
-  for (const file of files) {
-    const refusal = attachmentRefusal(file, capabilities)
-    if (refusal) return refusal
-  }
-
-  return attachmentSetRefusal(files)
-}
