@@ -142,7 +142,13 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
       messages.push({ role: 'tool', content: results })
     }
   } catch (error) {
-    if (!isAbort(error, input.abortSignal)) throw error
+    if (!isAbort(error, input.abortSignal)) {
+      writer.failAssistantMessage(
+        assistant,
+        error instanceof Error ? error.message : String(error),
+      )
+      throw error
+    }
     aborted = true
     finishReason = 'stop'
   }

@@ -15,8 +15,8 @@ export type FileChanged = {
  * text and tool parts.
  *
  * A plain map rather than an `ai` type, to keep that dependency out of
- * `shared`; the frontend composes `UIMessage<never, AgentUIDataTypes>` with
- * its own copy of the SDK.
+ * `shared`; the frontend composes `UIMessage<AgentUIMetadata, AgentUIDataTypes>`
+ * with its own copy of the SDK.
  */
 export type AgentUIDataTypes = {
   permission: PermissionPrompt
@@ -29,4 +29,9 @@ export type AgentUIDataTypes = {
    * enough for a client to tell a slow turn from a dead socket.
    */
   'keep-alive': number
+}
+
+export type AgentUIMetadata = {
+  /** Why the turn ended early, when the model call itself failed. */
+  error?: string
 }

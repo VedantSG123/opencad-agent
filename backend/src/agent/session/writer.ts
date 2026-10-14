@@ -108,6 +108,17 @@ export class SessionWriter {
     }) as AssistantMessage
   }
 
+  failAssistantMessage(
+    message: AssistantMessage,
+    error: string,
+  ): AssistantMessage {
+    return upsertMessage({
+      ...message,
+      time: { ...message.time, completed: new Date().toISOString() },
+      error,
+    }) as AssistantMessage
+  }
+
   startTextPart(messageId: string): TextPart {
     return upsertPart({
       ...this.partBase(messageId),

@@ -139,6 +139,11 @@ const AssistantMessageSchema = BaseMessageSchema.extend({
     model_id: z.string(),
     provider_id: z.string(),
   }),
+  /**
+   * Set when the model call failed and ended the turn. Tool failures do not
+   * land here - they end only their own call, on the tool part.
+   */
+  error: z.string().optional(),
 })
 
 export const MessageSchema = z.discriminatedUnion('role', [

@@ -63,6 +63,11 @@ function stored(role: 'user' | 'assistant', parts: (id: string) => Part[]) {
   } satisfies StoredMessage
 }
 
+function failed(entry: StoredMessage, error: string): StoredMessage {
+  if (entry.message.role !== 'assistant') throw new Error('only a turn fails')
+  return { ...entry, message: { ...entry.message, error } }
+}
+
 describe('toUIMessages', () => {
   test('a text exchange keeps its roles and order', () => {
     const messages = toUIMessages([
@@ -126,6 +131,42 @@ describe('toUIMessages', () => {
     ])
 
     expect(messages).toHaveLength(0)
+  })
+
+  test('a turn the model call ended carries the error alongside its parts', () => {
+    const entry = failed(
+      stored('assistant', (id) => [
+        toolPart(id, 'read', { path: 'main.scad' }, { output: 'contents' }),
+      ]),
+      'rate-limited upstream',
+    )
+
+    const [restored] = toUIMessages([entry])
+
+    expect(restored.metadata).toEqual({ error: 'rate-limited upstream' })
+    expect(restored.parts).toHaveLength(1)
+  })
+
+  test('a turn that failed before saying anything is still shown', () => {
+    const entry = failed(
+      stored('assistant', () => []),
+      'invalid api key',
+    )
+
+    const messages = toUIMessages([entry])
+
+    expect(messages).toHaveLength(1)
+    expect(messages[0].metadata).toEqual({ error: 'invalid api key' })
+  })
+
+  test('a turn that finished carries no metadata', () => {
+    const [restored] = toUIMessages([
+      stored('assistant', (id) => [
+        { ...partBase(id), type: 'text', text: 'hello' },
+      ]),
+    ])
+
+    expect(restored.metadata).toBeUndefined()
   })
 })
 

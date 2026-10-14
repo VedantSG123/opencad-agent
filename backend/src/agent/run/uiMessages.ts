@@ -1,13 +1,13 @@
 import type { UIMessage, UIMessageChunk } from 'ai'
-import type { AgentUIDataTypes } from 'shared'
+import type { AgentUIDataTypes, AgentUIMetadata } from 'shared'
 
 import type { Part, ToolPart, ToolState } from '../../session/messageSchema'
 import type { AgentStreamEvent } from '../events'
 import { describeToolAccess } from '../permissions/request/registry'
 import type { StoredMessage } from '../session/history'
 
-export type AgentUIMessage = UIMessage<never, AgentUIDataTypes>
-export type AgentUIChunk = UIMessageChunk<never, AgentUIDataTypes>
+export type AgentUIMessage = UIMessage<AgentUIMetadata, AgentUIDataTypes>
+export type AgentUIChunk = UIMessageChunk<AgentUIMetadata, AgentUIDataTypes>
 
 /**
  * One event, the chunks it becomes.
@@ -131,15 +131,21 @@ function filesChanged(part: ToolPart): AgentUIChunk[] {
  * live turn and a conversation restored from the database.
  */
 export function toUIMessages(stored: StoredMessage[]): AgentUIMessage[] {
-  return stored
-    .map(
-      (entry): AgentUIMessage => ({
-        id: entry.message.id,
-        role: entry.message.role,
-        parts: entry.parts.flatMap((part) => storedPart(part)),
-      }),
-    )
-    .filter((message) => message.parts.length > 0)
+  return (
+    stored
+      .map(
+        (entry): AgentUIMessage => ({
+          id: entry.message.id,
+          role: entry.message.role,
+          ...(entry.message.role === 'assistant' && entry.message.error
+            ? { metadata: { error: entry.message.error } }
+            : {}),
+          parts: entry.parts.flatMap((part) => storedPart(part)),
+        }),
+      )
+      // A turn that failed on its first call has nothing else to show.
+      .filter((message) => message.parts.length > 0 || message.metadata?.error)
+  )
 }
 
 function storedPart(part: Part): AgentUIMessage['parts'] {

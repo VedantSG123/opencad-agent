@@ -124,10 +124,14 @@ export function startRun(input: StartRunInput): void {
       // The response headers left long ago, so a failure has to travel in the
       // stream. Without this the client waits on a turn that already died.
       logger.error({ error, sessionId: run.sessionId }, 'agent run failed')
+      const errorText = error instanceof Error ? error.message : String(error)
+      // The same shape `toUIMessages` restores, so a reload renders the
+      // failure the way the live turn did.
       publish(run, {
-        type: 'error',
-        errorText: error instanceof Error ? error.message : String(error),
+        type: 'message-metadata',
+        messageMetadata: { error: errorText },
       })
+      publish(run, { type: 'error', errorText })
     })
     .finally(() => {
       denyOutstanding(run, 'the turn ended before this was answered')
