@@ -16,7 +16,6 @@ import {
 import type { AgentUIMessage } from '../../agent/run/uiMessages'
 import { toUIMessages } from '../../agent/run/uiMessages'
 import { loadSessionMessages } from '../../agent/session/history'
-import type { Model } from '../../models/schemas'
 import { getProjectById } from '../../utils/dbUtils/projects'
 import {
   createSession,

@@ -1,7 +1,7 @@
-import { Attachment } from 'shared'
+import type { Attachment } from 'shared'
 import { attachmentRefusal, attachmentSetRefusal } from 'shared'
 
-import { Model } from '../../models/schemas'
+import type { Model } from '../../models/schemas'
 
 /** The first thing wrong with the attachments, or `null` if nothing is. */
 export function attachmentsRefusal(
