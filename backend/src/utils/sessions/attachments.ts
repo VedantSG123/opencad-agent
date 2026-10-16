@@ -1,5 +1,5 @@
-import type { Attachment } from 'shared'
-import { attachmentRefusal, attachmentSetRefusal } from 'shared'
+import type { Attachment } from 'shared/attachments'
+import { attachmentRefusal, attachmentSetRefusal } from 'shared/attachments'
 
 import type { Model } from '../../models/schemas'
 

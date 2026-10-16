@@ -26,6 +26,10 @@ import {
 } from '../../utils/dbUtils/sessions'
 import { attachmentsRefusal } from '../../utils/sessions/attachments'
 import { defaultTitle } from '../../utils/sessions/defaultTitle'
+import {
+  PromptBodyTooLargeError,
+  readPromptBody,
+} from '../../utils/sessions/promptBody'
 
 const sessionIdParam = t.Object({ id: t.String() })
 
@@ -57,8 +61,8 @@ const promptBody = t.Object({
     modelId: t.String({ minLength: 1 }),
   }),
   // The count is checked in the handler rather than here, so going over it
-  // answers with a sentence instead of a schema violation. The body size
-  // limit on the server is what stops an absurd array being parsed at all.
+  // answers with a sentence instead of a schema violation. `readPromptBody`
+  // is what stops an absurd array being read at all.
   files: t.Optional(t.Array(attachment)),
 })
 
@@ -176,7 +180,21 @@ export const sessionsRoutes = new Elysia({ prefix: '/sessions' })
 
       return status(202, { sessionId: session.id })
     },
-    { params: sessionIdParam, body: promptBody },
+    {
+      params: sessionIdParam,
+      body: promptBody,
+      parse: ({ request }) => readPromptBody(request),
+      // Elysia wraps anything a parse hook throws in a 400 `ParseError`, and
+      // a status returned from one is ignored.
+      error: ({ code, error, status }) => {
+        if (
+          code === 'PARSE' &&
+          error.cause instanceof PromptBodyTooLargeError
+        ) {
+          return status(413, { message: error.cause.message })
+        }
+      },
+    },
   )
 
   .get(

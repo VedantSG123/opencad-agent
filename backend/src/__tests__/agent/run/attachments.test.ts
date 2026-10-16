@@ -1,14 +1,15 @@
 import { describe, expect, test } from 'bun:test'
 
-import type { Attachment, AttachmentCapabilities } from 'shared'
+import type { Attachment, AttachmentCapabilities } from 'shared/attachments'
 import {
   attachmentRefusal,
   attachmentSetRefusal,
-  dataUriBytes,
+  base64Length,
   MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS_PER_MESSAGE,
   MAX_ATTACHMENTS_TOTAL_BYTES,
-} from 'shared'
+  parseDataUri,
+} from 'shared/attachments'
 
 const MULTIMODAL: AttachmentCapabilities = { image: true, pdf: true }
 const TEXT_ONLY: AttachmentCapabilities = { image: false, pdf: false }
@@ -26,16 +27,32 @@ function file(mime: string, bytes = 1024, filename = 'ref.png'): Attachment {
   return { mime, filename, url: dataUri(mime, bytes) }
 }
 
-describe('dataUriBytes', () => {
+describe('parseDataUri', () => {
   test('counts the decoded bytes, not the encoded length', () => {
     // "hello" is 5 bytes; its base64 is 8 characters.
-    const bytes = dataUriBytes('data:image/png;base64,aGVsbG8=')
-    expect(bytes).toBe(5)
+    expect(parseDataUri('data:image/png;base64,aGVsbG8=')).toEqual({
+      mime: 'image/png',
+      bytes: 5,
+    })
+  })
+
+  test('a header without a type has no mime', () => {
+    expect(parseDataUri('data:;base64,aGVsbG8=')?.mime).toBeNull()
   })
 
   test('anything that is not a data URI is refused rather than guessed at', () => {
-    expect(dataUriBytes('https://example.com/a.png')).toBeNull()
-    expect(dataUriBytes('not a uri')).toBeNull()
+    expect(parseDataUri('https://example.com/a.png')).toBeNull()
+    expect(parseDataUri('not a uri')).toBeNull()
+  })
+
+  test('base64Length is its inverse for every padding', () => {
+    for (const bytes of [0, 1, 2, 3, 4, 5, MAX_ATTACHMENT_BYTES]) {
+      const uri = dataUri('image/png', bytes)
+      expect(uri.length - 'data:image/png;base64,'.length).toBe(
+        base64Length(bytes),
+      )
+      expect(parseDataUri(uri)?.bytes).toBe(bytes)
+    }
   })
 })
 
