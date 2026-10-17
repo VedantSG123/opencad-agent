@@ -1,5 +1,7 @@
+import { clearOnceGrants, clearSessionRules } from '../../agent/permissions'
 import { db } from '../../db'
 import type { Session } from '../../session/schema'
+import { generateIdWithPrefix } from '../generateId'
 
 type SessionRow = {
   id: string
@@ -41,15 +43,39 @@ export function getSessionById(id: string): Session | null {
   return row ? rowToSession(row) : null
 }
 
+/** Newest first: a session list is read to resume the last conversation. */
 export function getSessionsByProjectId(projectId: string): Session[] {
   const rows = db
     .query(
-      `SELECT id, project_id, title, created_at, updated_at FROM sessions WHERE project_id = ? ORDER BY created_at ASC`,
+      `SELECT id, project_id, title, created_at, updated_at FROM sessions WHERE project_id = ? ORDER BY updated_at DESC, id DESC`,
     )
     .all(projectId) as SessionRow[]
   return rows.map(rowToSession)
 }
 
+export function createSession(projectId: string, title: string): Session {
+  return upsertSession({
+    id: generateIdWithPrefix('session'),
+    project_id: projectId,
+    title,
+    // Ignored by `upsertSession` - the column defaults and the update trigger
+    // own both timestamps.
+    time: { created: '', updated: '' },
+  })
+}
+
+export function renameSession(id: string, title: string): Session | null {
+  const session = getSessionById(id)
+  return session ? upsertSession({ ...session, title }) : null
+}
+
+/**
+ * Foreign keys cascade the messages and parts away, but the permission grants
+ * a session earned are held in memory and would otherwise outlive it - and be
+ * inherited by the next session that happened to reuse the id.
+ */
 export function deleteSession(id: string): void {
   db.query(`DELETE FROM sessions WHERE id = ?`).run(id)
+  clearSessionRules(id)
+  clearOnceGrants(id)
 }

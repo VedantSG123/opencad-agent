@@ -4,15 +4,8 @@ import { Umzug } from 'umzug'
 
 import { db } from '.'
 import { logger } from '../utils/logger'
+import { isCompiled } from '../utils/runtime'
 import { BunSqliteStorage } from './BunSqliteStorage'
-
-// When Bun compiles the entrypoint to a binary, process.execPath is the path to the binary.
-// In development, process.execPath is the path to the bun executable.
-// We check if the running process is the compiled binary by checking if process.execPath
-// ends with 'backend-api' or similar.
-const isCompiled =
-  process.execPath.endsWith('backend-api') ||
-  process.execPath.endsWith('backend-api.exe')
 
 const migrationsDir =
   process.env.MIGRATIONS_PATH ||
