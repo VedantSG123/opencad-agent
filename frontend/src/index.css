@@ -145,3 +145,40 @@
 [data-theme='dark'] .aurora-glow {
   opacity: 0.4;
 }
+
+/* --- Shimmer on in-progress labels ("Working", "Thinking") --- */
+
+/*
+ * The gradient is three times the text's width so the bright band starts and
+ * ends fully outside it, and each pass enters from the left edge.
+ */
+.text-shimmer {
+  background: linear-gradient(
+      90deg,
+      var(--muted) 40%,
+      var(--foreground) 50%,
+      var(--muted) 60%
+    )
+    0 0 / 300% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: text-shimmer 1.8s linear infinite;
+}
+
+@keyframes text-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-shimmer {
+    animation: none;
+    background: none;
+    color: var(--muted);
+  }
+}
