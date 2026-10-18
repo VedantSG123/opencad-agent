@@ -40,6 +40,7 @@ export interface Model {
   }
   status?: 'alpha' | 'beta' | 'deprecated' | 'active'
   release_date: string
+  free: boolean
 }
 
 export interface Provider {

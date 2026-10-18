@@ -14,7 +14,7 @@ import { ReplicadProvider } from '@/hooks/useReplicad'
 import { cn } from '@/lib/utils'
 import type { Project } from '@/types/project'
 
-import { AgentPanel } from './components/AgentPanel'
+import { AgentPanel } from './components/agent/AgentPanel'
 import { CodeEditorPanel } from './components/CodeEditorPanel'
 import { EditorProvider } from './components/editor/context'
 import { FileSync } from './components/FileSync'
@@ -114,7 +114,7 @@ function ProjectLayout({ project }: { project: Project }) {
           panelRef={agentRef}
         >
           <div className='h-full overflow-hidden'>
-            <AgentPanel />
+            <AgentPanel project={project} />
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>

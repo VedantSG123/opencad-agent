@@ -17,6 +17,10 @@
     "./build123d": {
       "types": "./dist/build123d.d.ts",
       "default": "./dist/build123d.js"
+    },
+    "./attachments": {
+      "types": "./dist/attachments.d.ts",
+      "default": "./dist/attachments.js"
     }
   },
   "scripts": {

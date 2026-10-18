@@ -1,6 +1,8 @@
 import { mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
+import { DEFAULT_PROJECT_PREFERENCES } from 'shared'
+
 import { CADKernels } from '../cad'
 import { upsertProject } from '../utils/dbUtils/projects'
 import { generateIdWithPrefix } from '../utils/generateId'
@@ -11,7 +13,9 @@ export async function createProject({
   cad_kernel,
   directory,
   action,
-}: Omit<Project, 'id' | 'time' | 'file'> & { action: 'create' | 'open' }) {
+}: Omit<Project, 'id' | 'time' | 'file' | 'preferences'> & {
+  action: 'create' | 'open'
+}) {
   const id = generateIdWithPrefix('project', false)
 
   let resolvedFile: string | null = null
@@ -27,6 +31,7 @@ export async function createProject({
     cad_kernel,
     directory,
     file: resolvedFile,
+    preferences: DEFAULT_PROJECT_PREFERENCES,
     time: {
       created: new Date().toISOString(),
       updated: new Date().toISOString(),

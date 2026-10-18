@@ -4,6 +4,7 @@ import { Elysia } from 'elysia'
 import { umzug } from './db/migrate'
 import { projectsRoutes } from './routes/projects/index'
 import { providersRoutes } from './routes/providers/index'
+import { sessionsRoutes } from './routes/sessions/index'
 import { isDevelopment } from './utils/isEnv'
 import { logger, logixlysiaIns } from './utils/logger'
 
@@ -25,13 +26,12 @@ const app = new Elysia()
   )
   .use(logixlysiaIns)
   .get('/', () => 'Hello Elysia')
-  .group('/api', (app) => app.use(providersRoutes).use(projectsRoutes))
+  .group('/api', (app) =>
+    app.use(providersRoutes).use(projectsRoutes).use(sessionsRoutes),
+  )
 
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000
 
-app.listen({
-  port,
-  hostname: '127.0.0.1',
-})
+app.listen({ port, hostname: '127.0.0.1' })
 
 logger.info(`Server started on http://127.0.0.1:${port}`)

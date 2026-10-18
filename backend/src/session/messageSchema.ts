@@ -6,11 +6,23 @@ const PartBaseSchema = z.object({
   session_id: z.string(),
 })
 
-const TextPartSchema = PartBaseSchema.extend({
+export const TextPartSchema = PartBaseSchema.extend({
   type: z.literal('text'),
   text: z.string(),
   synthetic: z.boolean().optional(),
 })
+
+/**
+ * The model's working, kept but never replayed. The projector's allowlist
+ * leaves it out of the context sent on the next turn - it is not conversation,
+ * and paying for it again on every turn would be the only effect.
+ */
+export const ReasoningPartSchema = PartBaseSchema.extend({
+  type: z.literal('reasoning'),
+  text: z.string(),
+})
+
+export type ReasoningPart = z.infer<typeof ReasoningPartSchema>
 
 export const FilePartSchema = PartBaseSchema.extend({
   type: z.literal('file'),
@@ -61,6 +73,21 @@ const ToolSateSchema = z.discriminatedUnion('state', [
   ToolStateError,
 ])
 
+/**
+ * The marker a compaction leaves behind. Everything it summarises stays in the
+ * database untouched - only the projection into model messages starts here,
+ * replaying the summary in place of the turns before it.
+ */
+const CompactionPartSchema = PartBaseSchema.extend({
+  type: z.literal('compaction'),
+  summary: z.string(),
+  auto: z.boolean(),
+  /** Where the replayed tail begins. Defaults to the message after this one. */
+  tail_start_message_id: z.string().optional(),
+})
+
+export type CompactionPart = z.infer<typeof CompactionPartSchema>
+
 const ToolPartSchema = PartBaseSchema.extend({
   type: z.literal('tool'),
   call_id: z.string(),
@@ -71,11 +98,19 @@ const ToolPartSchema = PartBaseSchema.extend({
 
 export const PartSchema = z.discriminatedUnion('type', [
   TextPartSchema,
+  ReasoningPartSchema,
   FilePartSchema,
   ToolPartSchema,
+  CompactionPartSchema,
 ])
 
 export type Part = z.infer<typeof PartSchema>
+
+export type TextPart = z.infer<typeof TextPartSchema>
+
+export type ToolPart = z.infer<typeof ToolPartSchema>
+
+export type ToolState = z.infer<typeof ToolSateSchema>
 
 const BaseMessageSchema = z.object({
   id: z.string(),
@@ -97,12 +132,18 @@ const AssistantMessageSchema = BaseMessageSchema.extend({
   role: z.literal('assistant'),
   time: z.object({
     created: z.string(),
-    completed: z.string(),
+    /** Absent while the turn is still streaming, or if it was interrupted. */
+    completed: z.string().optional(),
   }),
   model: z.object({
     model_id: z.string(),
     provider_id: z.string(),
   }),
+  /**
+   * Set when the model call failed and ended the turn. Tool failures do not
+   * land here - they end only their own call, on the tool part.
+   */
+  error: z.string().optional(),
 })
 
 export const MessageSchema = z.discriminatedUnion('role', [
@@ -111,3 +152,7 @@ export const MessageSchema = z.discriminatedUnion('role', [
 ])
 
 export type Message = z.infer<typeof MessageSchema>
+
+export type AssistantMessage = Extract<Message, { role: 'assistant' }>
+
+export type UserMessage = Extract<Message, { role: 'user' }>

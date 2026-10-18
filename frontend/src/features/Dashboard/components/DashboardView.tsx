@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 
+import type { SelectedModel } from '@/features/Providers/components/ModelSelectButton'
 import {
   extractErrorMessage,
   useCreateProject,
@@ -13,7 +14,6 @@ import { joinPaths } from '@/lib/utils'
 import type { CadKernel } from '@/types/project'
 
 import { DotGridBackground } from './DotGridBackground'
-import type { SelectedModel } from './onboarding/ModelSelectButton'
 import { PromptBox } from './onboarding/PromptBox'
 import { RenameProjectDialog } from './onboarding/RenameProjectDialog'
 import { getNextProjectName } from './onboarding/utils'

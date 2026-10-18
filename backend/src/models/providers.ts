@@ -54,20 +54,27 @@ function transformModelsDevModel(
       interlaved: model.interleaved || false,
     },
     release_date: model.release_date,
+    free: model.cost?.input === 0 && model.cost.output === 0,
   }
+}
+
+function canRunHarness(model: ModelsDevModel): boolean {
+  return (
+    model.tool_call &&
+    model.status !== 'deprecated' &&
+    model.modalities.input.includes('text') &&
+    model.modalities.output.includes('text')
+  )
 }
 
 function transformModelsDevProvider(provider: ModelsDevProvider): Provider {
   const models = Object.fromEntries(
     Object.entries(provider.models)
-      .map(
-        ([modelId, model]) =>
-          [modelId, transformModelsDevModel(provider, model)] as const,
-      )
-      .filter(
-        ([, model]) =>
-          model.capabilities.input.text && model.capabilities.output.text,
-      ),
+      .filter(([, model]) => canRunHarness(model))
+      .map(([modelId, model]) => [
+        modelId,
+        transformModelsDevModel(provider, model),
+      ]),
   )
 
   const oauth = (OAUTH_SUPPORTED_PROVIDERS as readonly string[]).includes(
@@ -102,17 +109,7 @@ let providerCache: ProviderCache | null = null
 
 async function initProviderCache(): Promise<ProviderCache> {
   const detectedProviders: Record<string, Provider> = {}
-  const modelsDev = await getModelsDev()
-  const allProviders = Object.fromEntries(
-    Object.entries(modelsDev)
-      .filter(([providerId]) =>
-        (SUPPORTED_PROVIDERS as readonly string[]).includes(providerId),
-      )
-      .map(([providerId, provider]) => [
-        providerId,
-        transformModelsDevProvider(provider),
-      ]),
-  )
+  const allProviders = await getAvailableProviders()
 
   // First pass: detect which providers have their env vars set
   const env = getEnv()

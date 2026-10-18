@@ -6,12 +6,15 @@ import {
 } from '@hugeicons/core-free-icons'
 
 import { Icon } from '@/components/icons/HugeIcon'
+import {
+  ModelSelectButton,
+  type SelectedModel,
+} from '@/features/Providers/components/ModelSelectButton'
 import { useFileDialog } from '@/hooks/useFileDialog'
 import type { CadKernel } from '@/types/project'
 import { truncatePath } from '@/utils/date'
 
 import { KernelSelect } from './KernelSelect'
-import { ModelSelectButton, type SelectedModel } from './ModelSelectButton'
 
 interface PromptBoxProps {
   prompt: string
