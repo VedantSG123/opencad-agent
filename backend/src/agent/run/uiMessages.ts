@@ -1,7 +1,12 @@
 import type { UIMessage, UIMessageChunk } from 'ai'
-import type { AgentUIDataTypes, AgentUIMetadata } from 'shared'
+import type { AgentUIDataTypes, AgentUIMetadata, FileChanged } from 'shared'
 
-import type { Part, ToolPart, ToolState } from '../../session/messageSchema'
+import type {
+  AssistantMessage,
+  Part,
+  ToolPart,
+  ToolState,
+} from '../../session/messageSchema'
 import type { AgentStreamEvent } from '../events'
 import { describeToolAccess } from '../permissions/request/registry'
 import type { StoredMessage } from '../session/history'
@@ -21,7 +26,13 @@ export type AgentUIChunk = UIMessageChunk<AgentUIMetadata, AgentUIDataTypes>
 export function toUIChunks(event: AgentStreamEvent): AgentUIChunk[] {
   switch (event.type) {
     case 'start':
-      return [{ type: 'start', messageId: event.message.id }]
+      return [
+        {
+          type: 'start',
+          messageId: event.message.id,
+          messageMetadata: { created: event.message.time.created },
+        },
+      ]
 
     case 'start-step':
       return [{ type: 'start-step' }]
@@ -95,7 +106,7 @@ export function toUIChunks(event: AgentStreamEvent): AgentUIChunk[] {
       return [{ type: 'finish-step' }]
 
     case 'finish':
-      return [{ type: 'finish' }]
+      return [{ type: 'finish', messageMetadata: event.message.time }]
 
     case 'abort':
       return [{ type: 'abort' }]
@@ -110,20 +121,22 @@ function outputOf(part: ToolPart): unknown {
  * Taken from the descriptor the policy layer weighed before letting the call
  * run, so this can never name a file the call was not permitted to write.
  */
-function filesChanged(part: ToolPart): AgentUIChunk[] {
+function writtenFiles(part: ToolPart): FileChanged[] {
   if (part.state.state !== 'completed') return []
 
   const accesses = describeToolAccess(part.tool, part.state.input) ?? []
   return accesses.flatMap((access) =>
     access.kind === 'path' && access.access === 'write'
-      ? [
-          {
-            type: 'data-file-changed' as const,
-            data: { path: access.path, tool: part.tool },
-          },
-        ]
+      ? [{ path: access.path, tool: part.tool }]
       : [],
   )
+}
+
+function filesChanged(part: ToolPart): AgentUIChunk[] {
+  return writtenFiles(part).map((data) => ({
+    type: 'data-file-changed',
+    data,
+  }))
 }
 
 /**
@@ -137,8 +150,8 @@ export function toUIMessages(stored: StoredMessage[]): AgentUIMessage[] {
         (entry): AgentUIMessage => ({
           id: entry.message.id,
           role: entry.message.role,
-          ...(entry.message.role === 'assistant' && entry.message.error
-            ? { metadata: { error: entry.message.error } }
+          ...(entry.message.role === 'assistant'
+            ? { metadata: assistantMetadata(entry.message) }
             : {}),
           parts: entry.parts.flatMap((part) => storedPart(part)),
         }),
@@ -146,6 +159,13 @@ export function toUIMessages(stored: StoredMessage[]): AgentUIMessage[] {
       // A turn that failed on its first call has nothing else to show.
       .filter((message) => message.parts.length > 0 || message.metadata?.error)
   )
+}
+
+function assistantMetadata(message: AssistantMessage): AgentUIMetadata {
+  return {
+    ...message.time,
+    ...(message.error ? { error: message.error } : {}),
+  }
 }
 
 function storedPart(part: Part): AgentUIMessage['parts'] {
@@ -176,6 +196,10 @@ function storedPart(part: Part): AgentUIMessage['parts'] {
           toolCallId: part.call_id,
           ...toolPartState(part.state),
         },
+        ...writtenFiles(part).map((data) => ({
+          type: 'data-file-changed' as const,
+          data,
+        })),
       ]
 
     // A context-window device, not something to show.

@@ -31,7 +31,11 @@ export type AgentUIDataTypes = {
   'keep-alive': number
 }
 
+/** Set on assistant messages only. */
 export type AgentUIMetadata = {
+  /** ISO timestamps, as stored. `completed` is absent while the turn runs. */
+  created?: string
+  completed?: string
   /** Why the turn ended early, when the model call itself failed. */
   error?: string
 }

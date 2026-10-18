@@ -110,6 +110,30 @@ describe('toUIMessages', () => {
     expect(part.output).toBeUndefined()
   })
 
+  test('a restored write reports its file the way the live stream does', () => {
+    const messages = toUIMessages([
+      stored('assistant', (id) => [
+        toolPart(
+          id,
+          'edit',
+          { path: 'src/bracket.js', diff: 'x' },
+          { output: 'Edited src/bracket.js' },
+        ),
+        toolPart(id, 'edit', { path: 'b.scad' }, { error: 'Error: no match' }),
+      ]),
+    ])
+
+    const changed = messages[0].parts.filter(
+      (part) => part.type === 'data-file-changed',
+    )
+    expect(changed).toEqual([
+      {
+        type: 'data-file-changed',
+        data: { path: 'src/bracket.js', tool: 'edit' },
+      },
+    ])
+  })
+
   test('a call the process died inside still renders with its input', () => {
     const messages = toUIMessages([
       stored('assistant', (id) => [
@@ -143,7 +167,7 @@ describe('toUIMessages', () => {
 
     const [restored] = toUIMessages([entry])
 
-    expect(restored.metadata).toEqual({ error: 'rate-limited upstream' })
+    expect(restored.metadata?.error).toBe('rate-limited upstream')
     expect(restored.parts).toHaveLength(1)
   })
 
@@ -156,14 +180,22 @@ describe('toUIMessages', () => {
     const messages = toUIMessages([entry])
 
     expect(messages).toHaveLength(1)
-    expect(messages[0].metadata).toEqual({ error: 'invalid api key' })
+    expect(messages[0].metadata?.error).toBe('invalid api key')
   })
 
-  test('a turn that finished carries no metadata', () => {
+  test('a finished turn carries its times and no error', () => {
     const [restored] = toUIMessages([
       stored('assistant', (id) => [
         { ...partBase(id), type: 'text', text: 'hello' },
       ]),
+    ])
+
+    expect(restored.metadata).toEqual({ created: 'now', completed: 'now' })
+  })
+
+  test('a user message carries no metadata', () => {
+    const [restored] = toUIMessages([
+      stored('user', (id) => [{ ...partBase(id), type: 'text', text: 'hi' }]),
     ])
 
     expect(restored.metadata).toBeUndefined()
@@ -295,7 +327,7 @@ describe('toUIChunks', () => {
     ])
   })
 
-  test('the message id travels on start, and finish closes the turn', () => {
+  test('the message id and start time travel on start, the finish time on finish', () => {
     const result = chunks([
       { type: 'start', message: message('msg_1', 'assistant') as never },
       { type: 'start-step' },
@@ -308,10 +340,17 @@ describe('toUIChunks', () => {
     ])
 
     expect(result).toEqual([
-      { type: 'start', messageId: 'msg_1' },
+      {
+        type: 'start',
+        messageId: 'msg_1',
+        messageMetadata: { created: 'now' },
+      },
       { type: 'start-step' },
       { type: 'finish-step' },
-      { type: 'finish' },
+      {
+        type: 'finish',
+        messageMetadata: { created: 'now', completed: 'now' },
+      },
     ])
   })
 })
