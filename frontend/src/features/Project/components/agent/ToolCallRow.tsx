@@ -5,6 +5,7 @@ import {
   BookOpen01Icon,
   Clock01Icon,
   CommandLineIcon,
+  CubeIcon,
   File02Icon,
   Loading02Icon,
   PencilEdit02Icon,
@@ -28,6 +29,7 @@ const TOOLS: Record<string, { label: string; icon: IconSvgElement }> = {
   create: { label: 'Create', icon: Add01Icon },
   shell: { label: 'Run', icon: CommandLineIcon },
   getApiDocumentation: { label: 'Docs', icon: BookOpen01Icon },
+  build: { label: 'Build', icon: CubeIcon },
 }
 
 type ToolPart = ToolUIPart | DynamicToolUIPart

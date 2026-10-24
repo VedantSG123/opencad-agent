@@ -1,11 +1,13 @@
 import { createUIMessageStream, createUIMessageStreamResponse } from 'ai'
 import { Elysia, t } from 'elysia'
+import { buildReportSchema } from 'shared'
 import type { PermissionScope } from 'shared'
 
 import type { ModelRef } from '../../agent/model'
 import { resolveModel } from '../../agent/model'
 import {
   abortRun,
+  answerBuild,
   answerPermission,
   hasRun,
   isRunning,
@@ -34,6 +36,8 @@ import {
 const sessionIdParam = t.Object({ id: t.String() })
 
 const permissionParams = t.Object({ id: t.String(), callId: t.String() })
+
+const buildParams = t.Object({ id: t.String(), callId: t.String() })
 
 const listQuery = t.Object({ projectId: t.String() })
 
@@ -297,6 +301,27 @@ export const sessionsRoutes = new Elysia({ prefix: '/sessions' })
       return status(204)
     },
     { params: permissionParams, body: answerBody },
+  )
+
+  .post(
+    '/:id/builds/:callId',
+    ({ params, body, status }) => {
+      // Parsed here rather than declared with `t`, so the zod schema in
+      // `shared` stays the one definition of a report.
+      const report = buildReportSchema.safeParse(body)
+      if (!report.success) {
+        return status(400, { message: 'Invalid build report' })
+      }
+
+      const result = answerBuild(params.id, params.callId, report.data)
+      if (result === 'no-such-run') {
+        return status(404, {
+          message: 'No tool call is waiting on that build.',
+        })
+      }
+      return status(204)
+    },
+    { params: buildParams, body: t.Unknown() },
   )
 
   .post(

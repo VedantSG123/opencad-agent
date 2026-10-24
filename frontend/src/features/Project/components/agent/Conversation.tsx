@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Attachment } from 'shared/attachments'
 
 import type { SelectedModel } from '@/features/Providers/components/ModelSelectButton'
+import { useAnswerBuilds } from '@/hooks/useAgentBuilds'
 import {
   fetchAgentSession,
   useAbortAgentRun,
@@ -87,6 +88,7 @@ function ChatView({
     return instance
   })
   const { messages, status, error, sendMessage } = useChat({ chat })
+  useAnswerBuilds(sessionId, messages)
 
   // Once per mount, by hand: `useChat`'s own `resume` option is an unguarded
   // effect, and StrictMode's second run would read the stream twice into one

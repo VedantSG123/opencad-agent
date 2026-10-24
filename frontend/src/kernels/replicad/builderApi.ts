@@ -7,6 +7,7 @@ import type {
   MeshRenderOutput,
   SvgRenderOutput,
 } from '@/types'
+import type { SourceLocation } from '@/workers/replicad/vm'
 import CadWorker from '@/workers/replicad/worker?worker'
 
 // Define the worker service interface based on the exposed service
@@ -20,6 +21,7 @@ interface CadWorkerService {
         error: true
         message: string
         stack?: string
+        location: SourceLocation | null
         logs: Array<{
           type: 'log' | 'info' | 'warn' | 'error'
           text: string
@@ -153,6 +155,10 @@ let builderApiInstance: BuilderApi | null = null
 /**
  * Get the singleton instance of the BuilderApi
  */
+export type WorkerBuildResult = Awaited<
+  ReturnType<CadWorkerService['buildFromCode']>
+>
+
 export function getBuilderApi(): BuilderApi {
   if (!builderApiInstance) {
     builderApiInstance = new BuilderApi()

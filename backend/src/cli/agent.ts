@@ -116,6 +116,12 @@ async function repl(context: {
         abortSignal: running.signal,
         onEvent: renderer.onEvent,
         onPermissionRequest: askPermission,
+        onBuildRequest: () =>
+          Promise.resolve({
+            status: 'unavailable',
+            reason:
+              'the agent is running from the CLI, which has no CAD kernel to build in. Open the project in the app to build it.',
+          }),
       })
       renderer.breakLine()
       console.log(

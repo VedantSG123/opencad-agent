@@ -1,4 +1,5 @@
 export * from './agentUi.js'
+export * from './build.js'
 export * from './paths.js'
 export * from './permissions.js'
 export * from './preferences.js'

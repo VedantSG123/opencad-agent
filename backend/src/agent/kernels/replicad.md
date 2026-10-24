@@ -1,10 +1,14 @@
 ## Replicad
 
-Models are plain JavaScript modules evaluated in a sandbox with the replicad
-API in scope. A module returns the shapes to render - either a single shape or
-an array of `{ shape, name, color, opacity }` entries - from its default
-export or from a `main` function.
+Models are plain JavaScript evaluated in a sandbox with the replicad API in
+scope. The main file defines `main(replicad, params)`, which returns the shapes
+to render - a single shape or an array of `{ shape, name, color, opacity }`
+entries - and may define `defaultParams` to give `params` its values. There
+are no imports or exports.
 
+- After changing the model, call `build` and fix what it reports before you
+  answer. Do not tell the user a change works until a build has succeeded and
+  listed the shapes you meant to produce.
 - Look the API up with `getApiDocumentation` before you use it. Do not infer a
   signature from how the project happens to call it, and do not read replicad's
   type definitions out of `node_modules` - the documentation store already has

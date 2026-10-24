@@ -7,16 +7,21 @@ import type { CleanedShape } from '@/kernels/replicad/shape-format'
 import { getRenderOutput, isMeshShape } from '@/kernels/replicad/shape-format'
 import type { ExportConfiguration, ExportFileTypes } from '@/types'
 
-import { runFunctionWithContext } from './vm'
+import {
+  runFunctionWithContext,
+  sandboxLocation,
+  syntaxErrorLocation,
+} from './vm'
 
 let loaded = false
 let OC: OpenCascadeInstance | null = null
 const SHAPE_MEMO: Record<string, CleanedShape[]> = {}
 const DEFAULT_MEMO_KEY = 'default_shapes'
 
+// The user's code opens the sandboxed body, so its line numbers are the ones
+// `sandboxLocation` reports.
 function getEditedCode(code: string) {
-  return `
-${code}
+  return `${code}
 let dp = {}
 try {
   dp = defaultParams;
@@ -94,6 +99,19 @@ function formatException(oc: OpenCascadeInstance | null, e: unknown) {
     message,
     stack: e instanceof Error ? e.stack : undefined,
   }
+}
+
+/**
+ * A frame past the user's last line is in the code wrapped around it, which
+ * the user cannot see or fix.
+ */
+function userCodeLocation(e: unknown, code: string) {
+  if (e instanceof SyntaxError) return syntaxErrorLocation(code)
+
+  const location = sandboxLocation(e instanceof Error ? e.stack : undefined)
+  return location !== null && location.line <= code.split('\n').length
+    ? location
+    : null
 }
 
 function buildBlob(
@@ -241,11 +259,13 @@ async function buildFromCode(code: string, params?: Record<string, unknown>) {
   startCapturingLogs()
   let shapes
   let errorResult = null
+  let location = null
 
   try {
     shapes = runFunctionCode(code, params)
   } catch (e) {
     errorResult = formatException(OC, e)
+    location = userCodeLocation(e, code)
   }
 
   const logs = stopCapturingLogs()
@@ -255,6 +275,7 @@ async function buildFromCode(code: string, params?: Record<string, unknown>) {
       error: true as const,
       message: errorResult.message,
       stack: errorResult.stack,
+      location,
       logs,
     }
   }

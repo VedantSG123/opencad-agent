@@ -61,6 +61,6 @@ function workflow(): string {
 3. Keep the parameters at the top of the file parametric - if a dimension the
    user names already has a variable, change the variable, not every use.
 4. After editing, say in one line what changed and what the user should see in
-   the viewport. The app recompiles and re-renders on its own; you do not need
-   to run anything to make that happen.`
+   the viewport. The app re-renders the main file on its own whenever it
+   changes.`
 }

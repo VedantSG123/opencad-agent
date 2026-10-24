@@ -2,6 +2,7 @@ import { describeCreateAccess } from '../../tools/create/permissions'
 import { describeEditAccess } from '../../tools/edit/permissions'
 import { describeGrepAccess } from '../../tools/grep/permissions'
 import {
+  BUILD_TOOL_NAME,
   CREATE_TOOL_NAME,
   EDIT_TOOL_NAME,
   GET_API_DOCUMENTATION_TOOL_NAME,
@@ -35,6 +36,10 @@ export function describeToolAccess(
     // Reaches no path the model chooses: the documentation store is read-only
     // and owned by the app.
     case GET_API_DOCUMENTATION_TOOL_NAME:
+      return []
+    // Takes no input: it reads the project's main file, which the user chose,
+    // and the build runs in the app's own sandboxed kernel worker.
+    case BUILD_TOOL_NAME:
       return []
     default:
       return null

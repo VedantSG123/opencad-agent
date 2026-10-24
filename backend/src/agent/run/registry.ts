@@ -1,8 +1,4 @@
-import type {
-  PermissionPrompt,
-  PermissionRequest,
-  PermissionScope,
-} from 'shared'
+import type { BuildReport, PermissionScope } from 'shared'
 
 import type { Project } from '../../project/schema'
 import type { Session } from '../../session/schema'
@@ -10,6 +6,10 @@ import { logger } from '../../utils/logger'
 import { runAgent } from '../loop'
 import type { ModelRef } from '../model'
 import type { FileAttachment } from '../session/writer'
+import { createBuildRequests } from './buildRequests'
+import type { BuildRequests } from './buildRequests'
+import { createPermissionQuestions } from './permissionQuestions'
+import type { AnswerResult, PermissionQuestions } from './permissionQuestions'
 import type { AgentUIChunk } from './uiMessages'
 import { toUIChunks } from './uiMessages'
 
@@ -20,27 +20,12 @@ export type RunUpdate =
 
 export type RunListener = (event: RunUpdate) => void
 
-/**
- * How long a permission question waits before the run gives up on it.
- *
- * Long enough that a person who stepped away can still come back to it, short
- * enough that a turn nobody is watching does not sit parked forever holding a
- * session against the next prompt. Expiry denies, because a question nobody
- * answered is not consent.
- */
-const PERMISSION_TIMEOUT_MS = 5 * 60_000
-
-type PendingPermission = {
-  request: PermissionRequest
-  resolve: (scope: PermissionScope | null) => void
-  timer: ReturnType<typeof setTimeout>
-}
-
 type Run = {
   sessionId: string
   abort: AbortController
   listeners: Set<RunListener>
-  pending: Map<string, PendingPermission>
+  permissions: PermissionQuestions
+  builds: BuildRequests
   buffer: AgentUIChunk[]
   finished: boolean
 }
@@ -80,19 +65,22 @@ export function hasRun(sessionId: string): boolean {
  * the client can disconnect and come back without the model noticing.
  */
 export function startRun(input: StartRunInput): void {
-  if (isRunning(input.session.id)) {
-    throw new RunInFlightError(input.session.id)
+  const sessionId = input.session.id
+  if (isRunning(sessionId)) {
+    throw new RunInFlightError(sessionId)
   }
 
+  const publishToRun = (chunk: AgentUIChunk) => publish(run, chunk)
   const run: Run = {
-    sessionId: input.session.id,
+    sessionId,
     abort: new AbortController(),
     listeners: new Set(),
-    pending: new Map(),
+    permissions: createPermissionQuestions(sessionId, publishToRun),
+    builds: createBuildRequests(sessionId, publishToRun),
     buffer: [],
     finished: false,
   }
-  runs.set(input.session.id, run)
+  runs.set(sessionId, run)
 
   void runAgent({
     session: input.session,
@@ -104,26 +92,13 @@ export function startRun(input: StartRunInput): void {
     onEvent: (event) => {
       for (const chunk of toUIChunks(event)) publish(run, chunk)
     },
-    onPermissionRequest: (request, toolCallId) =>
-      new Promise<PermissionScope | null>((resolve) => {
-        const timer = setTimeout(
-          () => expirePermission(run, toolCallId),
-          PERMISSION_TIMEOUT_MS,
-        )
-        // A question waiting on nobody should not be a reason the process
-        // stays up.
-        timer.unref?.()
-
-        // Registered before the question goes out, so an answer can never
-        // arrive for a call the register has not heard of.
-        run.pending.set(toolCallId, { request, resolve, timer })
-        publish(run, permissionChunk({ toolCallId, request }))
-      }),
+    onPermissionRequest: run.permissions.ask,
+    onBuildRequest: run.builds.request,
   })
     .catch((error: unknown) => {
       // The response headers left long ago, so a failure has to travel in the
       // stream. Without this the client waits on a turn that already died.
-      logger.error({ error, sessionId: run.sessionId }, 'agent run failed')
+      logger.error({ error, sessionId }, 'agent run failed')
       const errorText = error instanceof Error ? error.message : String(error)
       // The same shape `toUIMessages` restores, so a reload renders the
       // failure the way the live turn did.
@@ -134,86 +109,30 @@ export function startRun(input: StartRunInput): void {
       publish(run, { type: 'error', errorText })
     })
     .finally(() => {
-      denyOutstanding(run, 'the turn ended before this was answered')
+      run.permissions.denyAll('the turn ended before this was answered')
+      run.builds.abandonAll('the turn ended before the app answered.')
       run.finished = true
       for (const listener of run.listeners) listener({ type: 'end' })
       run.listeners.clear()
     })
 }
 
-export type AnswerResult = 'answered' | 'no-such-run' | 'not-offered'
-
-/**
- * The scope is checked against the choices the request offered, because
- * `applyGrant` throws for one it did not - and that throw escapes `runAgent`,
- * taking the whole turn with it rather than failing this one call.
- */
 export function answerPermission(
   sessionId: string,
   toolCallId: string,
   scope: PermissionScope | null,
 ): AnswerResult {
-  const run = runs.get(sessionId)
-  const waiting = run?.pending.get(toolCallId)
-  if (!run || !waiting) return 'no-such-run'
-
-  if (scope !== null && !offers(waiting.request, scope)) return 'not-offered'
-
-  const pending = takePending(run, toolCallId)
-  if (!pending) return 'no-such-run'
-  pending.resolve(scope)
-
-  // Same id as the question, so the panel shows what was decided in place of
-  // the prompt rather than leaving it open.
-  publish(
-    run,
-    permissionChunk({ toolCallId, request: pending.request, answered: scope }),
+  return (
+    runs.get(sessionId)?.permissions.answer(toolCallId, scope) ?? 'no-such-run'
   )
-
-  return 'answered'
 }
 
-/**
- * Takes the question off the register and stops its timer together, so a
- * settled promise can never be settled again by a timer still counting down.
- */
-function takePending(
-  run: Run,
+export function answerBuild(
+  sessionId: string,
   toolCallId: string,
-): PendingPermission | undefined {
-  const pending = run.pending.get(toolCallId)
-  if (!pending) return undefined
-
-  run.pending.delete(toolCallId)
-  clearTimeout(pending.timer)
-  return pending
-}
-
-function expirePermission(run: Run, toolCallId: string): void {
-  const pending = takePending(run, toolCallId)
-  if (!pending) return
-
-  logger.warn(
-    { toolCallId, sessionId: run.sessionId },
-    'permission question expired unanswered',
-  )
-  pending.resolve(null)
-  publish(
-    run,
-    permissionChunk({
-      toolCallId,
-      request: pending.request,
-      answered: null,
-      expired: true,
-    }),
-  )
-}
-
-export function offers(
-  request: PermissionRequest,
-  scope: PermissionScope,
-): boolean {
-  return request.choices.some((choice) => choice.scope === scope)
+  report: BuildReport,
+): 'answered' | 'no-such-run' {
+  return runs.get(sessionId)?.builds.answer(toolCallId, report) ?? 'no-such-run'
 }
 
 export function abortRun(sessionId: string): boolean {
@@ -222,7 +141,8 @@ export function abortRun(sessionId: string): boolean {
 
   // Before the abort, so nothing is still waiting on an answer while the loop
   // unwinds.
-  denyOutstanding(run, 'the turn was stopped')
+  run.permissions.denyAll('the turn was stopped')
+  run.builds.abandonAll('the user stopped the turn.')
   run.abort.abort()
   return true
 }
@@ -259,21 +179,4 @@ function publish(run: Run, chunk: AgentUIChunk): void {
   for (const listener of run.listeners) {
     listener({ type: 'chunk', index, chunk })
   }
-}
-
-/**
- * A parked promise nobody will answer hangs the loop forever. Denial is the
- * safe direction: the model is told it was refused and carries on.
- */
-function denyOutstanding(run: Run, reason: string): void {
-  for (const toolCallId of [...run.pending.keys()]) {
-    const pending = takePending(run, toolCallId)
-    if (!pending) continue
-    logger.debug({ toolCallId, reason }, 'denying unanswered permission')
-    pending.resolve(null)
-  }
-}
-
-function permissionChunk(prompt: PermissionPrompt): AgentUIChunk {
-  return { type: 'data-permission', id: prompt.toolCallId, data: prompt }
 }
