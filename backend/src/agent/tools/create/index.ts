@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, open, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import { tool } from 'ai'
@@ -62,28 +62,62 @@ export async function create(
   // was rather than with an empty directory in it.
   abortSignal?.throwIfAborted()
 
-  if (resolved.missingDirectory !== null) {
-    await mkdir(path.dirname(resolved.absolutePath), { recursive: true })
+  const { destination } = resolved
+  const written =
+    destination.kind === 'empty-file'
+      ? await fillEmptyFile(resolved.absolutePath, input.content)
+      : await writeNewFile(
+          resolved.absolutePath,
+          input.content,
+          destination.missingDirectory !== null,
+        )
+  if (!written) {
+    return `Error: ${resolved.displayPath} already exists and is not empty. Create only makes a new file or fills an empty one - read it and use edit to change it.`
+  }
+
+  return formatCreateResult({
+    displayPath: resolved.displayPath,
+    content: input.content,
+    destination,
+  })
+}
+
+/** `false` when the path was taken between the check and the write. */
+async function writeNewFile(
+  absolutePath: string,
+  content: string,
+  makeDirectories: boolean,
+): Promise<boolean> {
+  if (makeDirectories) {
+    await mkdir(path.dirname(absolutePath), { recursive: true })
   }
 
   try {
     // `wx` fails if the path is taken. The check in `resolveCreatePath` read
     // the filesystem a moment earlier; only the open itself is decisive, and
     // this is the difference between reporting a clash and overwriting a file.
-    await writeFile(resolved.absolutePath, input.content, {
-      encoding: 'utf-8',
-      flag: 'wx',
-    })
+    await writeFile(absolutePath, content, { encoding: 'utf-8', flag: 'wx' })
+    return true
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
-      return `Error: ${resolved.displayPath} already exists. Create only makes a new file - read it and use edit to change it.`
-    }
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') return false
     throw error
   }
+}
 
-  return formatCreateResult({
-    displayPath: resolved.displayPath,
-    content: input.content,
-    createdDirectory: resolved.missingDirectory,
-  })
+/**
+ * `false` when the file gained content since it was checked. The size is read
+ * from the open handle, so it describes the very file being written.
+ */
+async function fillEmptyFile(
+  absolutePath: string,
+  content: string,
+): Promise<boolean> {
+  const handle = await open(absolutePath, 'r+')
+  try {
+    if ((await handle.stat()).size !== 0) return false
+    await handle.writeFile(content, 'utf-8')
+    return true
+  } finally {
+    await handle.close()
+  }
 }

@@ -86,6 +86,9 @@ export async function edit(
   }
 
   const originalContent = await readFile(resolved.absolutePath, 'utf-8')
+  if (originalContent === '') {
+    return `Error: ${resolved.displayPath} is empty, so there is nothing to search for. Use create to write its contents.`
+  }
   const result = applyReplacements(originalContent, replacements)
 
   if (result.appliedCount > 0) {

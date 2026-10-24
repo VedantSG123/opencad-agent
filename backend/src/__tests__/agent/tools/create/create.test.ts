@@ -31,7 +31,11 @@ const CAN_LINK = await (async () => {
   const probe = await mkdtemp(path.join(tmpdir(), 'create-link-probe-'))
   try {
     await mkdir(path.join(probe, 'target'))
-    await symlink(path.join(probe, 'target'), path.join(probe, 'link'), LINK_TYPE)
+    await symlink(
+      path.join(probe, 'target'),
+      path.join(probe, 'link'),
+      LINK_TYPE,
+    )
     return true
   } catch {
     return false
@@ -167,6 +171,29 @@ describe('create tool', () => {
       expect(result).toContain('use edit')
       // The whole point of the refusal: the file is untouched.
       expect(await contentsOf('src/parts.js')).toBe('export const x = 1\n')
+    })
+
+    test('fills a file that exists but is empty', async () => {
+      await writeFile(path.join(root, 'main.js'), '')
+
+      const result = await runCreate({
+        path: 'main.js',
+        content: 'const main = () => {}\n',
+      })
+
+      expect(result).toBe('Wrote main.js (1 line, 22 bytes), which was empty.')
+      expect(await contentsOf('main.js')).toBe('const main = () => {}\n')
+    })
+
+    test('refuses a link to an empty file, which the write would follow', async () => {
+      if (!CAN_LINK) return
+      await writeFile(path.join(outside, 'empty.js'), '')
+      await symlink(path.join(outside, 'empty.js'), path.join(root, 'link.js'))
+
+      const result = await runCreate({ path: 'link.js', content: 'x\n' })
+
+      expect(result).toContain('already exists')
+      expect(await readFile(path.join(outside, 'empty.js'), 'utf-8')).toBe('')
     })
 
     test('refuses a directory', async () => {
