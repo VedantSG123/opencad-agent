@@ -5,7 +5,6 @@ import {
   BUILD_TOOL_NAME,
   CREATE_TOOL_NAME,
   EDIT_TOOL_NAME,
-  GET_API_DOCUMENTATION_TOOL_NAME,
   GREP_TOOL_NAME,
   READ_TOOL_NAME,
   SHELL_TOOL_NAME,
@@ -33,10 +32,6 @@ export function describeToolAccess(
       return describeCreateAccess(input)
     case SHELL_TOOL_NAME:
       return describeShellAccess(input)
-    // Reaches no path the model chooses: the documentation store is read-only
-    // and owned by the app.
-    case GET_API_DOCUMENTATION_TOOL_NAME:
-      return []
     // Takes no input: it reads the project's main file, which the user chose,
     // and the build runs in the app's own sandboxed kernel worker.
     case BUILD_TOOL_NAME:

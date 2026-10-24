@@ -58,7 +58,7 @@ Some tests depend on what the machine has and skip rather than fail when it is m
 1. User opens project → frontend fetches from backend API
 2. User edits code in Monaco → `kernelFilesStore` (vanilla zustand) updated on every keystroke
 3. CAD kernel worker (comlink) reads from `kernelFilesStore` for compilation
-4. Agent panel sends chat → backend agent loop → LLM → tool calls (`read`, `grep`, `edit`, `shell`, `getApiDocumentation`), each weighed by the permission layer first
+4. Agent panel sends chat → backend agent loop → LLM → tool calls (`read`, `grep`, `edit`, `create`, `shell`, `build`), each weighed by the permission layer first
 5. Agent writes to a file under the project directory → file watcher (chokidar in Electron) syncs back to editor
 6. 3D viewport renders compiled output (STL/SVG mesh via Replicad or OpenSCAD)
 
@@ -68,7 +68,7 @@ Some tests depend on what the machine has and skip rather than fail when it is m
 - `index.ts` — Entry point, migrates DB, creates Elysia app
 - `routes/projects/` — Project CRUD endpoints (Elysia with Zod validation)
 - `routes/providers/` — Auth routes (API key + OAuth)
-- `agent/tools/` — The tools the model may call (`read`, `grep`, `edit`, `shell`, `getApiDocumentation`)
+- `agent/tools/` — The tools the model may call (`read`, `grep`, `edit`, `create`, `shell`, `build`)
 - `agent/permissions/` — Two layers: `checkToolCall` weighs a call before it runs, `pathGuard` re-checks each path at the filesystem. Rules live in three stores (once / session / project)
 - `models/` — Provider schemas, auth models, SDK configs
 - `db/` — SQLite setup, migrations (umzug + BunSqliteStorage)

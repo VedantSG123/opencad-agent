@@ -2,7 +2,6 @@ import { Disclosure } from '@heroui/react'
 import {
   Add01Icon,
   AlertCircleIcon,
-  BookOpen01Icon,
   Clock01Icon,
   CommandLineIcon,
   CubeIcon,
@@ -28,7 +27,6 @@ const TOOLS: Record<string, { label: string; icon: IconSvgElement }> = {
   edit: { label: 'Edit', icon: PencilEdit02Icon },
   create: { label: 'Create', icon: Add01Icon },
   shell: { label: 'Run', icon: CommandLineIcon },
-  getApiDocumentation: { label: 'Docs', icon: BookOpen01Icon },
   build: { label: 'Build', icon: CubeIcon },
 }
 
@@ -158,11 +156,6 @@ function describeCall(
     case 'shell': {
       const command = field(values.command)
       return command ? { short: command, full: command } : null
-    }
-    case 'getApiDocumentation': {
-      const name =
-        `${field(values.entityType)} ${field(values.entityName)}`.trim()
-      return name ? { short: name, full: name } : null
     }
     default: {
       const json = JSON.stringify(values)

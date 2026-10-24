@@ -9,7 +9,6 @@ export const READ_TOOL_NAME = 'read'
 export const GREP_TOOL_NAME = 'grep'
 export const EDIT_TOOL_NAME = 'edit'
 export const CREATE_TOOL_NAME = 'create'
-export const GET_API_DOCUMENTATION_TOOL_NAME = 'getApiDocumentation'
 export const SHELL_TOOL_NAME = 'shell'
 export const BUILD_TOOL_NAME = 'build'
 
@@ -23,10 +22,7 @@ export const COMMON_TOOL_NAMES = [
 ] as const
 
 /** Offered only to the kernels whose profile in `agent/kernels` names them. */
-export const KERNEL_TOOL_NAMES = [
-  GET_API_DOCUMENTATION_TOOL_NAME,
-  BUILD_TOOL_NAME,
-] as const
+export const KERNEL_TOOL_NAMES = [BUILD_TOOL_NAME] as const
 
 export type KernelToolName = (typeof KERNEL_TOOL_NAMES)[number]
 

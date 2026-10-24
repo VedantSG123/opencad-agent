@@ -1,10 +1,6 @@
 import type { SupportedCADKernels } from '../../cad'
 import { inlineFile } from '../../utils/macro' with { type: 'macro' }
-import {
-  BUILD_TOOL_NAME,
-  COMMON_TOOL_NAMES,
-  GET_API_DOCUMENTATION_TOOL_NAME,
-} from '../tools/names'
+import { BUILD_TOOL_NAME, COMMON_TOOL_NAMES } from '../tools/names'
 import type { KernelToolName, ToolName } from '../tools/names'
 
 /** What the agent is given for a project on one kernel. */
@@ -26,7 +22,7 @@ export type KernelProfile = {
 const KERNEL_PROFILES: Record<SupportedCADKernels, KernelProfile> = {
   replicad: {
     prompt: inlineFile('agent/kernels/replicad.md'),
-    tools: [GET_API_DOCUMENTATION_TOOL_NAME, BUILD_TOOL_NAME],
+    tools: [BUILD_TOOL_NAME],
   },
   openscad: {
     prompt: inlineFile('agent/kernels/openscad.md'),

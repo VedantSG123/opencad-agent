@@ -2,7 +2,6 @@ import type { AgentStreamEvent } from '../agent/events'
 import {
   CREATE_TOOL_NAME,
   EDIT_TOOL_NAME,
-  GET_API_DOCUMENTATION_TOOL_NAME,
   GREP_TOOL_NAME,
   READ_TOOL_NAME,
   SHELL_TOOL_NAME,
@@ -107,8 +106,6 @@ export function describeToolCall(tool: string, input: unknown): string {
         .join('  ')
     case SHELL_TOOL_NAME:
       return field(values.command)
-    case GET_API_DOCUMENTATION_TOOL_NAME:
-      return `${field(values.entityType)} ${field(values.entityName)}`.trim()
     default:
       return firstLine(JSON.stringify(values))
   }
