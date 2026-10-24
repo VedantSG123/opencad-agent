@@ -1,8 +1,7 @@
 import type { PermissionAccess, PermissionRule } from 'shared'
 
 import { isWithin } from '../../utils/paths'
-import { deniedPathReason } from './builtin/deniedPaths'
-import { evaluatePath } from './evaluate'
+import { evaluatePath, pathDenialReason } from './evaluate'
 import { onceGrantedPaths } from './rules/onceGrants'
 
 export type PathGuard = {
@@ -42,9 +41,7 @@ export function createPathGuard({
 
       if (decision === 'allow') return null
       if (decision === 'deny') {
-        const reason =
-          deniedPathReason(absolutePath) ?? 'a permission rule denies it'
-        return `${absolutePath} cannot be accessed: ${reason}.`
+        return `${absolutePath} cannot be accessed: ${pathDenialReason(absolutePath, access)}.`
       }
 
       // Nothing standing settles it, so only a warrant issued for this very

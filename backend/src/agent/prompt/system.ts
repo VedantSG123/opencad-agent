@@ -2,7 +2,7 @@ import os from 'node:os'
 
 import { CADKernels } from '../../cad'
 import type { Project } from '../../project/schema'
-import { kernelPrompt } from '../kernels'
+import { kernelLibrary, kernelPrompt } from '../kernels'
 
 export function buildSystemPrompt(project: Project): string {
   return [
@@ -25,6 +25,7 @@ wrote back at them.`
 }
 
 function environment(project: Project): string {
+  const library = kernelLibrary(project.cad_kernel)
   return `## Environment
 
 - Project: ${project.name}
@@ -32,7 +33,12 @@ function environment(project: Project): string {
 - CAD kernel: ${project.cad_kernel}
 - Main file: ${project.file ?? '(none set)'}
 - File extension for this kernel: ${CADKernels[project.cad_kernel].fileExtension}
-- Platform: ${os.platform()}
+${
+  library
+    ? `- ${library.name} ${library.version} source, read-only: ${library.directory}
+`
+    : ''
+}- Platform: ${os.platform()}
 - Shell for the \`shell\` tool: ${os.platform() === 'win32' ? 'PowerShell' : 'bash'}
 - Today: ${new Date().toISOString().slice(0, 10)}`
 }
