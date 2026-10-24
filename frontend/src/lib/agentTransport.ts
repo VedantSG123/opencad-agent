@@ -91,34 +91,46 @@ function resumable(
 ): ReadableStream<AgentUIChunk> {
   let reader = first.getReader()
   let received = 0
+  // The chat cancels the stream when it reads an `error` chunk. A read still
+  // pending then resolves as done, and the stream is no longer ours to close.
+  let cancelled = false
 
   return new ReadableStream<AgentUIChunk>({
     async pull(controller) {
       for (;;) {
+        // Only the read is a connection that can drop. Anything the controller
+        // throws is about this stream, and reconnecting cannot change it.
+        let result: ReadableStreamReadResult<AgentUIChunk>
         try {
-          const { done, value } = await reader.read()
-          if (done) {
-            controller.close()
-            return
-          }
-          if (!isTransient(value)) received++
-          controller.enqueue(value)
-          return
+          result = await reader.read()
         } catch (error) {
+          if (cancelled) return
           if (signal?.aborted || error instanceof MalformedChunkError) {
             controller.error(error)
             return
           }
           const next = await reconnect(sessionId, received - 1, signal)
+          if (cancelled) return
           if (!next) {
             controller.error(new RunLostError())
             return
           }
           reader = next.getReader()
+          continue
         }
+
+        if (cancelled) return
+        if (result.done) {
+          controller.close()
+          return
+        }
+        if (!isTransient(result.value)) received++
+        controller.enqueue(result.value)
+        return
       }
     },
     cancel(reason) {
+      cancelled = true
       return reader.cancel(reason)
     },
   })
