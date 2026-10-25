@@ -182,7 +182,7 @@ async function initProviderCache(): Promise<ProviderCache> {
   // Third pass: For all oauth providers
   for (const [authProviderId, auth] of Object.entries(allAuth)) {
     if (auth.type !== 'oauth') continue
-    detectedProviders[authProviderId] = loadProviderWithOAuth(
+    detectedProviders[authProviderId] = await loadProviderWithOAuth(
       auth,
       allProviders[authProviderId],
     )
@@ -204,6 +204,40 @@ export function invalidateProviderCache() {
   providerCache = null
 }
 
+/**
+ * Credentials written directly via the Electron IPC vault bypass this module's
+ * set()/remove(), so the lazy auth cache can go stale. A fresh read (and a
+ * provider cache recomputed from it) makes a just-connected key show up
+ * without an app restart.
+ */
+async function refreshProviderCache() {
+  const allAuth = await refreshAuth()
+  invalidateProviderCache()
+  const cache = await getProviderCache()
+  return { allAuth, cache }
+}
+
+/**
+ * Every supported provider, carrying the models its connection actually
+ * grants (a ChatGPT login lists the Codex catalog, not the API's). Only
+ * `models` is taken from the connection: its `options` hold credentials.
+ */
+export async function getListedProviders(): Promise<Record<string, Provider>> {
+  const [available, { cache }] = await Promise.all([
+    getAvailableProviders(),
+    refreshProviderCache(),
+  ])
+  return Object.fromEntries(
+    Object.entries(available).map(([id, provider]) => {
+      const connected = cache.providers[id]
+      return [
+        id,
+        connected ? { ...provider, models: connected.models } : provider,
+      ]
+    }),
+  )
+}
+
 export async function getAvailableProviders(): Promise<
   Record<string, Provider>
 > {
@@ -223,13 +257,7 @@ export async function getAvailableProviders(): Promise<
 export async function getAuthenticatedStatus(): Promise<
   Record<string, { authenticated: boolean; method?: 'api_key' | 'oauth' }>
 > {
-  // Credentials written directly via the Electron IPC vault bypass this
-  // module's set()/remove(), so the lazy auth cache can go stale. Force a
-  // fresh read here (and recompute the provider cache from it) so a
-  // just-connected key shows up immediately without an app restart.
-  const allAuth = await refreshAuth()
-  invalidateProviderCache()
-  const cache = await getProviderCache()
+  const { allAuth, cache } = await refreshProviderCache()
 
   const status: Record<
     string,

@@ -82,21 +82,48 @@ function sdkFetch(provider: Provider) {
   ) => Promise<Response>
 }
 
+const CATALOG_URL =
+  'https://chatgpt.com/backend-api/codex/models?client_version=999.0.0'
+
+function catalogEntry(slug: string, overrides: object = {}) {
+  return {
+    slug,
+    display_name: slug.toUpperCase(),
+    visibility: 'list',
+    context_window: 272000,
+    input_modalities: ['text', 'image'],
+    supported_reasoning_levels: [{ effort: 'low' }, { effort: 'high' }],
+    ...overrides,
+  }
+}
+
+function serveCatalog(models: object[]) {
+  respond = (url) =>
+    url === CATALOG_URL ? Response.json({ models }) : new Response('{}')
+}
+
+/** Loads the provider, then forgets the requests loading made. */
+async function load(auth: Auth = oauth()): Promise<Provider> {
+  const provider = await loadOpenaiProviderWithAuth(auth, openaiProvider())
+  captured = []
+  return provider
+}
+
 describe('loadOpenaiProviderWithAuth', () => {
-  test('points models at the Codex base URL, leaving the path to the SDK', () => {
-    const provider = loadOpenaiProviderWithAuth(oauth(), openaiProvider())
+  test('points models at the Codex base URL, leaving the path to the SDK', async () => {
+    const provider = await load()
     expect(provider.models['gpt-6-sol'].api.url).toBe(
       'https://chatgpt.com/backend-api/codex',
     )
   })
 
-  test('asks every call not to be stored, which the Codex backend requires', () => {
-    const provider = loadOpenaiProviderWithAuth(oauth(), openaiProvider())
+  test('asks every call not to be stored, which the Codex backend requires', async () => {
+    const provider = await load()
     expect(provider.callOptions).toEqual({ openai: { store: false } })
   })
 
   test('sends the token, account and originator to chatgpt.com', async () => {
-    const provider = loadOpenaiProviderWithAuth(oauth(), openaiProvider())
+    const provider = await load()
     await sdkFetch(provider)(
       'https://chatgpt.com/backend-api/codex/responses',
       { headers: { Authorization: 'Bearer oauth-dummy-key' } },
@@ -112,7 +139,7 @@ describe('loadOpenaiProviderWithAuth', () => {
   })
 
   test('never sends the token to another host', async () => {
-    const provider = loadOpenaiProviderWithAuth(oauth(), openaiProvider())
+    const provider = await load()
     await sdkFetch(provider)('https://example.com/v1/responses', {
       headers: { Authorization: 'Bearer oauth-dummy-key' },
     })
@@ -132,7 +159,7 @@ describe('loadOpenaiProviderWithAuth', () => {
           })
         : new Response('{}')
 
-    const provider = loadOpenaiProviderWithAuth(
+    const provider = await loadOpenaiProviderWithAuth(
       oauth({ expires: Date.now() - 1 }),
       openaiProvider(),
     )
@@ -148,6 +175,7 @@ describe('loadOpenaiProviderWithAuth', () => {
     expect(codexCalls.map((c) => c.headers.get('authorization'))).toEqual([
       'Bearer fresh-access',
       'Bearer fresh-access',
+      'Bearer fresh-access',
     ])
     expect(persisted).toHaveLength(1)
     expect(persisted[0][1]).toMatchObject({
@@ -159,10 +187,7 @@ describe('loadOpenaiProviderWithAuth', () => {
   test('surfaces the server response when a refresh is rejected', async () => {
     respond = () => new Response('{"error":"invalid_grant"}', { status: 400 })
 
-    const provider = loadOpenaiProviderWithAuth(
-      oauth({ expires: Date.now() - 1 }),
-      openaiProvider(),
-    )
+    const provider = await load(oauth({ expires: Date.now() - 1 }))
 
     const error = await sdkFetch(provider)(
       'https://chatgpt.com/backend-api/codex/responses',
@@ -171,6 +196,89 @@ describe('loadOpenaiProviderWithAuth', () => {
       (reason: unknown) => reason,
     )
     expect(String(error)).toContain('invalid_grant')
+  })
+})
+
+// Each test uses its own account: the catalog is cached per account. The
+// first one runs before anything is cached, which is the case it covers.
+describe('Codex model catalog', () => {
+  test('fetches the catalog for a login whose token names no account', async () => {
+    serveCatalog([catalogEntry('gpt-7')])
+    const provider = await load(oauth({ accountId: undefined }))
+
+    expect(Object.keys(provider.models)).toEqual(['gpt-7'])
+  })
+
+  test('lists only the models the catalog marks as listed', async () => {
+    serveCatalog([
+      catalogEntry('gpt-6-sol'),
+      catalogEntry('gpt-reserve', { visibility: 'hide' }),
+    ])
+    const provider = await load(oauth({ accountId: 'acct_listed' }))
+
+    expect(Object.keys(provider.models)).toEqual(['gpt-6-sol'])
+  })
+
+  test('keeps the models.dev details of a model it knows, with the Codex context window', async () => {
+    serveCatalog([catalogEntry('gpt-6-sol', { context_window: 123456 })])
+    const provider = await load(oauth({ accountId: 'acct_known' }))
+
+    const model = provider.models['gpt-6-sol']
+    expect(model.providerId).toBe('openai')
+    expect(model.api).toEqual({
+      id: 'gpt-6-sol',
+      url: 'https://chatgpt.com/backend-api/codex',
+      npm: '',
+    })
+    expect(model.limit.context).toBe(123456)
+  })
+
+  test('describes a model models.dev does not know from the catalog alone', async () => {
+    serveCatalog([catalogEntry('gpt-7', { input_modalities: ['text'] })])
+    const provider = await load(oauth({ accountId: 'acct_unknown' }))
+
+    const model = provider.models['gpt-7']
+    expect(model.name).toBe('GPT-7')
+    expect(model.api).toEqual({
+      id: 'gpt-7',
+      url: 'https://chatgpt.com/backend-api/codex',
+      npm: '@ai-sdk/openai',
+    })
+    expect(model.capabilities.reasoning).toBe(true)
+    expect(model.capabilities.input.image).toBe(false)
+    expect(model.capabilities.toolcall).toBe(true)
+  })
+
+  test('asks the catalog with the account headers', async () => {
+    serveCatalog([catalogEntry('gpt-6-sol')])
+    await loadOpenaiProviderWithAuth(
+      oauth({ accountId: 'acct_headers' }),
+      openaiProvider(),
+    )
+
+    expect(captured).toHaveLength(1)
+    expect(captured[0].url).toBe(CATALOG_URL)
+    expect(captured[0].headers.get('authorization')).toBe('Bearer access-token')
+    expect(captured[0].headers.get('chatgpt-account-id')).toBe('acct_headers')
+  })
+
+  test('reuses the catalog for the same account instead of asking again', async () => {
+    serveCatalog([catalogEntry('gpt-6-sol')])
+    const auth = oauth({ accountId: 'acct_cached' })
+    await loadOpenaiProviderWithAuth(auth, openaiProvider())
+    await loadOpenaiProviderWithAuth(auth, openaiProvider())
+
+    expect(captured.filter((c) => c.url === CATALOG_URL)).toHaveLength(1)
+  })
+
+  test('falls back to the models.dev list when the catalog cannot be fetched', async () => {
+    respond = () => new Response('{"detail":"Unauthorized"}', { status: 401 })
+    const provider = await load(oauth({ accountId: 'acct_failing' }))
+
+    expect(Object.keys(provider.models)).toEqual(['gpt-6-sol'])
+    expect(provider.models['gpt-6-sol'].api.url).toBe(
+      'https://chatgpt.com/backend-api/codex',
+    )
   })
 })
 

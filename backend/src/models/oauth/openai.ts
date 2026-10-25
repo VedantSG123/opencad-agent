@@ -1,10 +1,13 @@
 import * as crypto from 'crypto'
 import { createServer, type Server } from 'http'
 
+import z from 'zod'
+
+import { logger } from '../../utils/logger'
 import { oauthCallbackPage } from '../../utils/oauthPage'
 import type { Auth } from '../auth'
 import { set as setAuth } from '../auth'
-import type { Provider } from '../schemas'
+import type { Model, Provider } from '../schemas'
 import type { Authorization, CallbackResult, OAuthProvider } from './types'
 
 const CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann'
@@ -16,6 +19,11 @@ const OAUTH_PORT = 1455
 const REDIRECT_URI = `http://localhost:${OAUTH_PORT}/auth/callback`
 const SCOPE = 'openid profile email offline_access'
 const OAUTH_DUMMY_KEY = 'oauth-dummy-key'
+// The catalog hides any model whose `minimal_client_version` is above the
+// version asked for. We run our own agent loop rather than the Codex CLI's, so
+// we ask as a client new enough for all of them.
+const CODEX_CLIENT_VERSION = '999.0.0'
+const CATALOG_TTL_MS = 60 * 60 * 1000
 
 import { base64UrlEncode, generatePKCE, type PkceCodes } from './pkce.js'
 
@@ -315,43 +323,153 @@ async function refreshAuth(providerId: string, auth: OAuth): Promise<OAuth> {
   return refreshed
 }
 
-export function loadOpenaiProviderWithAuth(
+type SdkFetch = (
+  request: RequestInfo | URL,
+  init?: RequestInit,
+) => Promise<Response>
+
+function createCodexFetch(providerId: string, auth: OAuth): SdkFetch {
+  let current = auth
+  return async (request, init) => {
+    const url = new URL(request instanceof Request ? request.url : request)
+    const headers = new Headers(init?.headers)
+    headers.delete('authorization')
+
+    if (url.hostname === CODEX_HOST) {
+      if (current.expires < Date.now()) {
+        current = await refreshAuth(providerId, current)
+      }
+      headers.set('authorization', `Bearer ${current.access}`)
+      headers.set('originator', ORIGINATOR)
+      if (current.accountId) {
+        headers.set('chatgpt-account-id', current.accountId)
+      }
+    }
+
+    return fetch(request, { ...init, headers })
+  }
+}
+
+const CodexModelSchema = z.object({
+  slug: z.string(),
+  display_name: z.string(),
+  visibility: z.string(),
+  context_window: z.number(),
+  input_modalities: z.array(z.string()).default(['text']),
+  supported_reasoning_levels: z
+    .array(z.object({ effort: z.string() }))
+    .default([]),
+})
+
+type CodexModel = z.infer<typeof CodexModelSchema>
+
+const CodexCatalogSchema = z.object({ models: z.array(CodexModelSchema) })
+
+let catalogCache: {
+  accountId: string | undefined
+  fetchedAt: number
+  models: CodexModel[]
+} | null = null
+
+async function fetchCodexCatalog(
+  codexFetch: SdkFetch,
+  accountId: string | undefined,
+): Promise<CodexModel[]> {
+  if (
+    catalogCache &&
+    catalogCache.accountId === accountId &&
+    Date.now() - catalogCache.fetchedAt < CATALOG_TTL_MS
+  ) {
+    return catalogCache.models
+  }
+
+  const response = await codexFetch(
+    `${CODEX_BASE_URL}/models?client_version=${CODEX_CLIENT_VERSION}`,
+    { headers: { accept: 'application/json' } },
+  )
+  if (!response.ok) {
+    throw new Error(
+      `Codex model catalog request failed: ${response.status} ${await response.text()}`,
+    )
+  }
+  const { models } = CodexCatalogSchema.parse(await response.json())
+  // Anything not marked "list" is internal or retired.
+  const listed = models.filter((model) => model.visibility === 'list')
+  catalogCache = { accountId, fetchedAt: Date.now(), models: listed }
+  return listed
+}
+
+function toModel(provider: Provider, entry: CodexModel): Model {
+  const known = provider.models[entry.slug]
+  if (known) {
+    return {
+      ...known,
+      api: { ...known.api, url: CODEX_BASE_URL },
+      limit: { ...known.limit, context: entry.context_window },
+    }
+  }
+
+  const accepts = (modality: string) =>
+    entry.input_modalities.includes(modality)
+  return {
+    id: entry.slug,
+    providerId: provider.id,
+    name: entry.display_name,
+    api: { id: entry.slug, url: CODEX_BASE_URL, npm: '@ai-sdk/openai' },
+    capabilities: {
+      temperature: false,
+      reasoning: entry.supported_reasoning_levels.length > 0,
+      attachment: accepts('image'),
+      toolcall: true,
+      input: {
+        text: true,
+        audio: accepts('audio'),
+        image: accepts('image'),
+        video: accepts('video'),
+        pdf: accepts('pdf'),
+      },
+      output: {
+        text: true,
+        audio: false,
+        image: false,
+        video: false,
+        pdf: false,
+      },
+      interlaved: false,
+    },
+    // The catalog states no output limit; the context window bounds it.
+    limit: { context: entry.context_window, output: entry.context_window },
+    release_date: '',
+    free: false,
+  }
+}
+
+export async function loadOpenaiProviderWithAuth(
   auth: Auth,
   provider: Provider,
-): Provider {
+): Promise<Provider> {
   if (auth.type !== 'oauth') {
     return provider
   }
 
-  for (const model of Object.values(provider.models)) {
-    model.api.url = CODEX_BASE_URL
-  }
-
+  const codexFetch = createCodexFetch(provider.id, auth)
+  provider.options = { apiKey: OAUTH_DUMMY_KEY, fetch: codexFetch }
   // The Codex backend rejects stored responses. Without this the SDK also
   // replays earlier turns as `item_reference`s to items that were never kept.
   provider.callOptions = { openai: { store: false } }
 
-  let current: OAuth = auth
-  provider.options = {
-    apiKey: OAUTH_DUMMY_KEY,
-    async fetch(request: RequestInfo | URL, init?: RequestInit) {
-      const url = new URL(request instanceof Request ? request.url : request)
-      const headers = new Headers(init?.headers)
-      headers.delete('authorization')
-
-      if (url.hostname === CODEX_HOST) {
-        if (current.expires < Date.now()) {
-          current = await refreshAuth(provider.id, current)
-        }
-        headers.set('authorization', `Bearer ${current.access}`)
-        headers.set('originator', ORIGINATOR)
-        if (current.accountId) {
-          headers.set('chatgpt-account-id', current.accountId)
-        }
-      }
-
-      return fetch(request, { ...init, headers })
-    },
+  try {
+    const catalog = await fetchCodexCatalog(codexFetch, auth.accountId)
+    provider.models = Object.fromEntries(
+      catalog.map((entry) => [entry.slug, toModel(provider, entry)]),
+    )
+  } catch (error) {
+    // Offline or a rejected token: the request itself will fail with the
+    // real reason, so the picker falls back to the models.dev list meanwhile.
+    logger.warn({ error }, 'Could not fetch the ChatGPT model catalog')
+    for (const model of Object.values(provider.models)) {
+      model.api.url = CODEX_BASE_URL
+    }
   }
 
   return provider
