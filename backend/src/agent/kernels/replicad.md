@@ -27,9 +27,9 @@ replicad's source, the same version the app runs, is installed read-only at
 the path given in the Environment section. Read it with `read` and `grep`
 using that absolute path; it needs no approval.
 
-- `replicad.d.ts` is the public API with its documentation. Look a name up
-  there before you use it - replicad is not OCCT, CadQuery or OpenSCAD, and
-  its names and argument shapes differ from all of them.
+- `replicad.d.ts` is the public API with its documentation. replicad is not
+  OCCT, CadQuery or OpenSCAD, and its names and argument shapes differ from
+  all of them.
 - `src/` holds the original TypeScript, for when you need to know how a
   method behaves rather than what it accepts.
 - `README.md` has worked examples, including the classic OCCT bottle.
@@ -41,11 +41,25 @@ A few shapes worth knowing before you search: points are arrays (`[x, y]`,
 
 ### Working on a model
 
-- After changing the model, call `build` and fix what it reports before you
-  answer. Do not tell the user a change works until a build has succeeded and
-  listed the shapes you meant to produce.
-- Write the main file with `create` when it is empty and `edit` after that,
-  never through the shell.
+Every change to the model goes through these steps, in order:
+
+1. Look up every replicad call you are about to write, before writing it.
+   `grep` `replicad.d.ts` with `outputMode: "content"` for its declaration
+   (`export declare function drawRectangle`, `class Drawing `) and read the
+   signature and the return type. In a chain, each method belongs to the type
+   the previous call returned, and that is where guesses fail: `draw()` has
+   no `.rect`, and a `Drawing` has no `.extrude` until `.sketchOnPlane()`
+   turns it into a sketch. A name you remember from another CAD library, or
+   from an earlier replicad, is not looked up.
+2. Write the main file with `create` when it is empty and `edit` after that,
+   never through the shell.
+3. Call `build` and fix what it reports. A failure means a step 1 lookup was
+   skipped or misread: look the failing call up before editing again, rather
+   than trying another guess. Do not tell the user a change works until a
+   build has succeeded and listed the shapes you meant to produce.
+
+Things the declarations do not tell you:
+
 - Booleans (`fuse`, `cut`, `intersect`) act on solids.
 - Fillets and chamfers take a radius and an edge filter. An oversized radius
   fails at the kernel, not at parse time, so keep them under the smallest
