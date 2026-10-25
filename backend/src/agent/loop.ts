@@ -100,6 +100,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
 
       const result = streamText({
         model: resolved.model,
+        providerOptions: resolved.providerOptions,
         system,
         messages,
         tools: definitions,

@@ -62,10 +62,10 @@ export const oauthPendingState = new Map<
   OAuthFlowState
 >()
 
-export function loadProviderWithOAuth(
+export async function loadProviderWithOAuth(
   auth: Auth,
   provider: Provider,
-): Provider {
+): Promise<Provider> {
   if (auth.type !== 'oauth') {
     return provider
   }

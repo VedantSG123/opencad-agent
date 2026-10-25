@@ -1,7 +1,7 @@
 import type { LanguageModel } from 'ai'
 
 import { getProviderCache } from '../models/providers'
-import type { Model } from '../models/schemas'
+import type { Model, Provider } from '../models/schemas'
 import { providerSdkFunctionMap } from '../models/sdkConfig'
 
 export type ModelRef = {
@@ -14,6 +14,7 @@ export type ResolvedModel = {
   /** What the model can do and how much context it has, from models.dev. */
   info: Model
   model: LanguageModel
+  providerOptions: Provider['callOptions']
 }
 
 /**
@@ -55,6 +56,7 @@ export async function resolveModel(ref: ModelRef): Promise<ResolvedModel> {
     ref,
     info,
     model: factory(sdkOptions(provider.options, info))(info.api.id),
+    providerOptions: provider.callOptions,
   }
 }
 
