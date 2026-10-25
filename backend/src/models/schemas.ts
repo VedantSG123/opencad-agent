@@ -53,6 +53,8 @@ export const Provider = z.object({
   name: z.string(),
   env: z.array(z.string()).optional(),
   options: z.record(z.string(), z.any()),
+  /** Passed as `providerOptions` on every call, keyed by AI SDK provider. */
+  callOptions: z.record(z.string(), z.record(z.string(), z.json())).optional(),
   models: z.record(z.string(), Model),
   oauth: z
     .object({

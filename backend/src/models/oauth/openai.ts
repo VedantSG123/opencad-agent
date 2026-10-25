@@ -9,7 +9,9 @@ import type { Authorization, CallbackResult, OAuthProvider } from './types'
 
 const CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann'
 const ISSUER = 'https://auth.openai.com'
-const CODEX_API_ENDPOINT = 'https://chatgpt.com/backend-api/codex/responses'
+const CODEX_HOST = 'chatgpt.com'
+const CODEX_BASE_URL = `https://${CODEX_HOST}/backend-api/codex`
+const ORIGINATOR = 'opencad'
 const OAUTH_PORT = 1455
 const REDIRECT_URI = `http://localhost:${OAUTH_PORT}/auth/callback`
 const SCOPE = 'openid profile email offline_access'
@@ -26,7 +28,6 @@ interface TokenResponse {
 
 export interface IdTokenClaims {
   chatgpt_account_id?: string
-  organizations?: Array<{ id: string }>
   email?: string
   'https://api.openai.com/auth'?: {
     chatgpt_account_id?: string
@@ -45,18 +46,20 @@ export function parseJwtClaims(token: string): IdTokenClaims | undefined {
   }
 }
 
-export function extractAccountId(tokens: TokenResponse): string | undefined {
-  let claims: IdTokenClaims | undefined
-  if (tokens.id_token) {
-    claims = parseJwtClaims(tokens.id_token)
-  } else if (tokens.access_token) {
-    claims = parseJwtClaims(tokens.access_token)
-  }
-  if (!claims) return undefined
+function accountIdFromClaims(token: string | undefined): string | undefined {
+  const claims = token ? parseJwtClaims(token) : undefined
   return (
-    claims.chatgpt_account_id ||
-    claims['https://api.openai.com/auth']?.chatgpt_account_id ||
-    claims.organizations?.[0]?.id
+    claims?.chatgpt_account_id ||
+    claims?.['https://api.openai.com/auth']?.chatgpt_account_id
+  )
+}
+
+export function extractAccountId(
+  tokens: Pick<TokenResponse, 'id_token' | 'access_token'>,
+): string | undefined {
+  return (
+    accountIdFromClaims(tokens.id_token) ??
+    accountIdFromClaims(tokens.access_token)
   )
 }
 
@@ -71,7 +74,7 @@ function buildAuthorizeUrl(pkce: PkceCodes, state: string): string {
     id_token_add_organizations: 'true',
     codex_cli_simplified_flow: 'true',
     state,
-    originator: 'opencad',
+    originator: ORIGINATOR,
   })
   return `${ISSUER}/oauth/authorize?${params.toString()}`
 }
@@ -92,7 +95,9 @@ async function exchangeCodeForTokens(
     }).toString(),
   })
   if (!response.ok) {
-    throw new Error(`OpenAI token exchange failed: ${response.status}`)
+    throw new Error(
+      `OpenAI token exchange failed: ${response.status} ${await response.text()}`,
+    )
   }
   return response.json() as Promise<TokenResponse>
 }
@@ -110,7 +115,9 @@ async function refreshAccessToken(
     }).toString(),
   })
   if (!response.ok) {
-    throw new Error(`OpenAI token refresh failed: ${response.status}`)
+    throw new Error(
+      `OpenAI token refresh failed: ${response.status} ${await response.text()}`,
+    )
   }
   return response.json() as Promise<TokenResponse>
 }
@@ -293,6 +300,21 @@ export const openaiOAuthProvider: OAuthProvider = {
   },
 }
 
+type OAuth = Extract<Auth, { type: 'oauth' }>
+
+async function refreshAuth(providerId: string, auth: OAuth): Promise<OAuth> {
+  const tokens = await refreshAccessToken(auth.refresh)
+  const refreshed: OAuth = {
+    type: 'oauth',
+    access: tokens.access_token,
+    refresh: tokens.refresh_token || auth.refresh,
+    expires: Date.now() + (tokens.expires_in ?? 3600) * 1000,
+    accountId: extractAccountId(tokens) ?? auth.accountId,
+  }
+  await setAuth(providerId, refreshed).catch(() => {})
+  return refreshed
+}
+
 export function loadOpenaiProviderWithAuth(
   auth: Auth,
   provider: Provider,
@@ -302,88 +324,33 @@ export function loadOpenaiProviderWithAuth(
   }
 
   for (const model of Object.values(provider.models)) {
-    model.api.url = CODEX_API_ENDPOINT
+    model.api.url = CODEX_BASE_URL
   }
 
+  // The Codex backend rejects stored responses. Without this the SDK also
+  // replays earlier turns as `item_reference`s to items that were never kept.
+  provider.callOptions = { openai: { store: false } }
+
+  let current: OAuth = auth
   provider.options = {
     apiKey: OAUTH_DUMMY_KEY,
-    async fetch(request: RequestInfo, init?: RequestInit) {
-      // 1. Delete standard authorization headers to avoid conflicts
-      if (init?.headers) {
-        if (init.headers instanceof Headers) {
-          init.headers.delete('authorization')
-          init.headers.delete('Authorization')
-        } else if (Array.isArray(init.headers)) {
-          init.headers = init.headers.filter(
-            ([key]) => key.toLowerCase() !== 'authorization',
-          )
-        } else {
-          delete init.headers['authorization']
-          delete init.headers['Authorization']
+    async fetch(request: RequestInfo | URL, init?: RequestInit) {
+      const url = new URL(request instanceof Request ? request.url : request)
+      const headers = new Headers(init?.headers)
+      headers.delete('authorization')
+
+      if (url.hostname === CODEX_HOST) {
+        if (current.expires < Date.now()) {
+          current = await refreshAuth(provider.id, current)
+        }
+        headers.set('authorization', `Bearer ${current.access}`)
+        headers.set('originator', ORIGINATOR)
+        if (current.accountId) {
+          headers.set('chatgpt-account-id', current.accountId)
         }
       }
 
-      // 2. Fetch current OAuth config
-      let currentAuth = auth
-      if (
-        currentAuth.type === 'oauth' &&
-        (!currentAuth.access || currentAuth.expires < Date.now())
-      ) {
-        try {
-          const tokens = await refreshAccessToken(currentAuth.refresh)
-          const refreshedExpires =
-            Date.now() + (tokens.expires_in ?? 3600) * 1000
-          const refreshedRefresh = tokens.refresh_token || currentAuth.refresh
-          const accountId = extractAccountId(tokens) || currentAuth.accountId
-
-          currentAuth = {
-            type: 'oauth',
-            access: tokens.access_token,
-            refresh: refreshedRefresh,
-            expires: refreshedExpires,
-            accountId,
-          }
-
-          // Persist rotated tokens
-          await setAuth(provider.id, currentAuth).catch(() => {})
-        } catch (e) {
-          console.error('Failed to auto-refresh OpenAI OAuth token', e)
-        }
-      }
-
-      // 3. Inject Bearer token and headers
-      const headers = new Headers()
-      if (init?.headers) {
-        if (init.headers instanceof Headers) {
-          init.headers.forEach((value, key) => headers.set(key, value))
-        } else if (Array.isArray(init.headers)) {
-          for (const [key, value] of init.headers) {
-            if (value !== undefined) headers.set(key, String(value))
-          }
-        } else {
-          for (const [key, value] of Object.entries(init.headers)) {
-            if (value !== undefined) headers.set(key, String(value))
-          }
-        }
-      }
-
-      headers.set('authorization', `Bearer ${currentAuth.access}`)
-      if (currentAuth.type === 'oauth' && currentAuth.accountId) {
-        headers.set('ChatGPT-Account-Id', currentAuth.accountId)
-      }
-
-      // Rewrite URL endpoint to Codex backend endpoint if matches completions path
-      const parsed =
-        request instanceof URL
-          ? request
-          : new URL(typeof request === 'string' ? request : request.url)
-      const url =
-        parsed.pathname.includes('/chat/completions') ||
-        parsed.pathname.includes('/v1/responses')
-          ? new URL(CODEX_API_ENDPOINT)
-          : parsed
-
-      return fetch(url, { ...init, headers })
+      return fetch(request, { ...init, headers })
     },
   }
 
