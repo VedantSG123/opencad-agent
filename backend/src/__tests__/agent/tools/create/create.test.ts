@@ -347,7 +347,7 @@ describe('create tool', () => {
     const controller = new AbortController()
     controller.abort()
 
-    await expect(
+    expect(
       create(
         { path: 'src/deep/part.js', content: 'x\n' },
         contextWith(),
