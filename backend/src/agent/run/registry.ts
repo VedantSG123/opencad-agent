@@ -6,6 +6,7 @@ import { logger } from '../../utils/logger'
 import { runAgent } from '../loop'
 import type { ModelRef } from '../model'
 import type { FileAttachment } from '../session/writer'
+import { appendRunChunk } from './buffer'
 import { createBuildRequests } from './buildRequests'
 import type { BuildRequests } from './buildRequests'
 import { createPermissionQuestions } from './permissionQuestions'
@@ -174,8 +175,7 @@ export function subscribe(
 }
 
 function publish(run: Run, chunk: AgentUIChunk): void {
-  const index = run.buffer.length
-  run.buffer.push(chunk)
+  const index = appendRunChunk(run.buffer, chunk)
   for (const listener of run.listeners) {
     listener({ type: 'chunk', index, chunk })
   }
