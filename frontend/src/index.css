@@ -4,7 +4,7 @@
 @import '@heroui/styles';
 
 @import './theme.css' layer(theme);
-@import '../../tokens.css';
+@import './tokens.css';
 
 @custom-variant dark (&: is(.dark *));
 
