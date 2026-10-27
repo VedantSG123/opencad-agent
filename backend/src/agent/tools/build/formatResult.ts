@@ -1,5 +1,7 @@
 import type { BuildLog, BuildReport, BuildRequest, BuiltShape } from 'shared'
 
+import { formatGeometry } from './formatGeometry'
+
 const MAX_LOG_LINES = 40
 const MAX_LOG_CHARS = 300
 const EXCERPT_RADIUS = 2
@@ -15,6 +17,9 @@ export function formatBuildReport(
     case 'succeeded':
       return [
         builtSummary(request.file, report.durationMs, report.shapes),
+        ...(report.geometry === undefined
+          ? []
+          : formatGeometry(report.geometry)),
         ...logSection(report.logs),
       ].join('\n')
 

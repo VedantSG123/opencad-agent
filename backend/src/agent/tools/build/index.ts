@@ -2,8 +2,8 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import { tool } from 'ai'
-import type { BuildReport, BuildRequest } from 'shared'
-import { z } from 'zod'
+import { buildOptionsSchema } from 'shared'
+import type { BuildOptions, BuildReport, BuildRequest } from 'shared'
 
 import { logger } from '../../../utils/logger'
 import { formatBuildReport } from './formatResult'
@@ -28,15 +28,15 @@ export type BuildToolContext = {
   requestBuild: BuildRequester
 }
 
-export const buildInputSchema = z.object({})
+export const buildInputSchema = buildOptionsSchema
 
 export function createBuildTool(context: BuildToolContext) {
   return tool({
     description: prompt,
     inputSchema: buildInputSchema,
-    execute: async (_input, options): Promise<string> => {
+    execute: async (input, options): Promise<string> => {
       try {
-        return await build(context, options.toolCallId)
+        return await build(context, options.toolCallId, input)
       } catch (error) {
         logger.error({ error }, 'build tool failed')
         return `Error building: ${error instanceof Error ? error.message : String(error)}`
@@ -48,6 +48,7 @@ export function createBuildTool(context: BuildToolContext) {
 export async function build(
   context: BuildToolContext,
   toolCallId: string,
+  options: BuildOptions = {},
 ): Promise<string> {
   if (context.mainFile === null) {
     return 'Error: this project has no main file set, so there is nothing to build. Ask the user to choose one.'
@@ -68,7 +69,7 @@ export async function build(
     throw error
   }
 
-  const request: BuildRequest = { file, source }
+  const request: BuildRequest = { file, source, ...options }
   return formatBuildReport(
     request,
     await context.requestBuild(request, toolCallId),

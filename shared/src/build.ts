@@ -1,11 +1,67 @@
 import { z } from 'zod'
 
+export const buildOptionsSchema = z.object({
+  geometrySummary: z
+    .boolean()
+    .optional()
+    .describe(
+      'Request geometry measurements and validity checks. Omit for appearance-only changes.',
+    ),
+})
+
+export type BuildOptions = z.infer<typeof buildOptionsSchema>
+
 /** What the backend asks the app to build: the source as it is on disk. */
 export type BuildRequest = {
   /** Relative to the project directory. */
   file: string
   source: string
-}
+} & BuildOptions
+
+const point3Schema = z.tuple([z.number(), z.number(), z.number()])
+const point2Schema = z.tuple([z.number(), z.number()])
+
+const bounds3Schema = z.object({ min: point3Schema, max: point3Schema })
+const bounds2Schema = z.object({ min: point2Schema, max: point2Schema })
+
+const geometryPartSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('3d'),
+    name: z.string(),
+    bounds: bounds3Schema,
+    solidCount: z.number().int().nonnegative(),
+    valid: z.boolean(),
+    shellsClosed: z.boolean().nullable(),
+    surfaceArea: z.number().nonnegative().nullable(),
+    volume: z.number().nonnegative().nullable(),
+    centerOfMass: point3Schema.nullable(),
+  }),
+  z.object({
+    kind: z.literal('2d'),
+    name: z.string(),
+    bounds: bounds2Schema,
+  }),
+  z.object({
+    kind: z.literal('unavailable'),
+    name: z.string(),
+    reason: z.string(),
+  }),
+])
+
+export const geometrySummarySchema = z.object({
+  parts: z.array(geometryPartSchema),
+  overall: z
+    .object({
+      bounds: bounds3Schema,
+      solidCount: z.number().int().nonnegative(),
+      volumeSum: z.number().nonnegative().nullable(),
+      surfaceAreaSum: z.number().nonnegative().nullable(),
+    })
+    .nullable(),
+})
+
+export type GeometrySummary = z.infer<typeof geometrySummarySchema>
+export type GeometryPart = GeometrySummary['parts'][number]
 
 export const buildLogSchema = z.object({
   level: z.enum(['log', 'info', 'warn', 'error']),
@@ -34,6 +90,7 @@ export const buildReportSchema = z.discriminatedUnion('status', [
     durationMs: z.number().nonnegative(),
     shapes: z.array(builtShapeSchema),
     logs: z.array(buildLogSchema),
+    geometry: geometrySummarySchema.optional(),
   }),
   z.object({
     status: z.literal('failed'),

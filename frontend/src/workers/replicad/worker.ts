@@ -1,7 +1,9 @@
 import { expose } from 'comlink'
 import * as replicad from 'replicad'
 import type { OpenCascadeInstance } from 'replicad-opencascadejs/src/replicad_with_exceptions.js'
+import type { BuildOptions, GeometrySummary } from 'shared'
 
+import { summarizeGeometry } from '@/kernels/replicad/geometrySummary'
 import { initOCC } from '@/kernels/replicad/init-occ'
 import type { CleanedShape } from '@/kernels/replicad/shape-format'
 import { getRenderOutput, isMeshShape } from '@/kernels/replicad/shape-format'
@@ -239,7 +241,11 @@ function stopCapturingLogs() {
   return capturedLogs
 }
 
-async function buildFromCode(code: string, params?: Record<string, unknown>) {
+async function buildFromCode(
+  code: string,
+  params?: Record<string, unknown>,
+  options?: BuildOptions,
+) {
   await init()
 
   const defaultParams = extractDefaultParams(code)
@@ -280,8 +286,10 @@ async function buildFromCode(code: string, params?: Record<string, unknown>) {
     }
   }
 
+  let geometry: GeometrySummary | undefined
   const renderOutput = getRenderOutput(shapes, (cleanedShapes) => {
     SHAPE_MEMO[DEFAULT_MEMO_KEY] = cleanedShapes
+    if (options?.geometrySummary) geometry = summarizeGeometry(cleanedShapes)
   })
 
   return {
@@ -289,6 +297,7 @@ async function buildFromCode(code: string, params?: Record<string, unknown>) {
     shapes: renderOutput,
     logs,
     defaultParams,
+    ...(geometry === undefined ? {} : { geometry }),
   }
 }
 

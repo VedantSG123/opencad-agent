@@ -32,8 +32,6 @@ export function describeToolAccess(
       return describeCreateAccess(input)
     case SHELL_TOOL_NAME:
       return describeShellAccess(input)
-    // Takes no input: it reads the project's main file, which the user chose,
-    // and the build runs in the app's own sandboxed kernel worker.
     case BUILD_TOOL_NAME:
       return []
     default:

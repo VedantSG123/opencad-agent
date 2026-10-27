@@ -29,5 +29,6 @@ export function toBuildReport(
         : { name: shape.name, kind: '3d', rendered: !shape.error },
     ),
     logs,
+    ...(result.geometry === undefined ? {} : { geometry: result.geometry }),
   }
 }

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { BuildReport, BuildRequest } from 'shared'
+import type { BuildOptions, BuildReport, BuildRequest } from 'shared'
 import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
@@ -98,10 +98,11 @@ export function createReplicadStore() {
     const run = async (
       code: string,
       params?: Record<string, unknown>,
+      options?: BuildOptions,
     ): Promise<WorkerBuildResult> => {
       set({ isCompiling: true })
       try {
-        const result = await builderApi.buildFromCode(code, params)
+        const result = await builderApi.buildFromCode(code, params, options)
 
         if (!result.error) {
           set({
@@ -158,10 +159,10 @@ export function createReplicadStore() {
       await run(code, params)
     }
 
-    const buildForAgent = async ({ source }: BuildRequest) => {
+    const buildForAgent = async ({ source, geometrySummary }: BuildRequest) => {
       set({ code: source })
       const started = performance.now()
-      const result = await run(source)
+      const result = await run(source, undefined, { geometrySummary })
       return toBuildReport(result, performance.now() - started)
     }
 

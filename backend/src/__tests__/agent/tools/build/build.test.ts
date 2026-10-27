@@ -3,7 +3,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import type { BuildReport, BuildRequest } from 'shared'
+import { buildReportSchema } from 'shared'
+import type { BuildReport, BuildRequest, GeometrySummary } from 'shared'
 
 import { build } from '../../../../agent/tools/build'
 import type { BuildRequester } from '../../../../agent/tools/build'
@@ -50,6 +51,28 @@ function run(requester: BuildRequester, mainFile: string | null = 'main.js') {
 }
 
 describe('what the app is asked to build', () => {
+  test('geometry measurements are requested only when opted in', async () => {
+    const { requester, asked } = answering({
+      status: 'succeeded',
+      durationMs: 5,
+      shapes: [],
+      logs: [],
+    })
+    await run(requester)
+    await build(
+      {
+        workingDirectory: project,
+        mainFile: 'main.js',
+        requestBuild: requester,
+      },
+      'call_2',
+      { geometrySummary: true },
+    )
+    expect(asked).toEqual([
+      { file: 'main.js', source: SOURCE },
+      { file: 'main.js', source: SOURCE, geometrySummary: true },
+    ])
+  })
   test('the main file as saved on disk', async () => {
     const { requester, asked } = answering({
       status: 'succeeded',
@@ -104,6 +127,67 @@ describe('what the app is asked to build', () => {
 })
 
 describe('what the model reads back', () => {
+  test('requested measurements survive report validation and reach the model', async () => {
+    const bounds = { min: [0, 0, 0], max: [10, 20, 30] } satisfies NonNullable<
+      GeometrySummary['overall']
+    >['bounds']
+    const geometry: GeometrySummary = {
+      parts: [
+        {
+          kind: '3d',
+          name: 'bracket',
+          bounds,
+          solidCount: 1,
+          valid: true,
+          shellsClosed: true,
+          surfaceArea: 2200,
+          volume: 6000,
+          centerOfMass: [5, 10, 15],
+        },
+      ],
+      overall: { bounds, solidCount: 1, volumeSum: 6000, surfaceAreaSum: 2200 },
+    }
+    const report = buildReportSchema.parse({
+      status: 'succeeded',
+      durationMs: 10,
+      shapes: [],
+      logs: [],
+      geometry,
+    })
+    const { requester } = answering(report)
+    const output = await run(requester)
+    expect(output).toContain('Geometry summary')
+    expect(output).toContain('size [10, 20, 30]')
+    expect(output).toContain('sum of part volumes 6000')
+    expect(output).toContain('solids 1; valid true; shells closed true')
+    expect(output).toContain('centre of mass [5, 10, 15]')
+    expect(toolFailed(output)).toBe(false)
+  })
+
+  test('geometry analysis failure is reported without failing a successful build', async () => {
+    const { requester } = answering({
+      status: 'succeeded',
+      durationMs: 10,
+      shapes: [{ name: 'bracket', kind: '3d', rendered: true }],
+      logs: [],
+      geometry: {
+        parts: [
+          {
+            name: 'bracket',
+            kind: 'unavailable',
+            reason: 'Could not measure this shape.',
+          },
+        ],
+        overall: null,
+      },
+    })
+    const output = await run(requester)
+    expect(output).toContain('Built main.js')
+    expect(output).toContain(
+      'geometry analysis unavailable: Could not measure this shape.',
+    )
+    expect(toolFailed(output)).toBe(false)
+  })
   test('a failure points at the line in the main file', async () => {
     const { requester } = answering({
       status: 'failed',

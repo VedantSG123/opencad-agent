@@ -57,6 +57,10 @@ Every change to the model goes through these steps, in order:
    skipped or misread: look the failing call up before editing again, rather
    than trying another guess. Do not tell the user a change works until a
    build has succeeded and listed the shapes you meant to produce.
+   Request `geometrySummary: true` when you need to verify dimensions, volume,
+   topology, or validity. Omit it for appearance-only edits such as color or
+   opacity; ordinary builds do not analyze geometry. For before/after checks,
+   request summaries on the builds you need to compare.
 
 Things the declarations do not tell you:
 

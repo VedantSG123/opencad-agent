@@ -1,5 +1,6 @@
 import { wrap } from 'comlink'
 import type { CurveType, SurfaceType } from 'replicad'
+import type { BuildOptions, GeometrySummary } from 'shared'
 
 import type {
   ExportConfiguration,
@@ -16,6 +17,7 @@ interface CadWorkerService {
   buildFromCode(
     code: string,
     params?: Record<string, unknown>,
+    options?: BuildOptions,
   ): Promise<
     | {
         error: true
@@ -37,6 +39,7 @@ interface CadWorkerService {
           timestamp: number
         }>
         defaultParams?: Record<string, unknown>
+        geometry?: GeometrySummary
       }
   >
   exportToFile(
@@ -104,8 +107,12 @@ class BuilderApi {
   /**
    * Build CAD shapes from code
    */
-  async buildFromCode(code: string, params?: Record<string, unknown>) {
-    return await this.workerApi.buildFromCode(code, params)
+  async buildFromCode(
+    code: string,
+    params?: Record<string, unknown>,
+    options?: BuildOptions,
+  ) {
+    return await this.workerApi.buildFromCode(code, params, options)
   }
 
   /**
