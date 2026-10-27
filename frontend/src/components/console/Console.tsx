@@ -28,7 +28,7 @@ interface ConsoleProps {
 export function Console({
   logs,
   title = 'Execution Console',
-  emptyMessage = 'No logs yet. Output logs from your code (if any) will appear here.',
+  emptyMessage = 'No logs yet. Any output logs will appear here.',
   onClear,
   onClose,
   closeLabel = 'Minimize console',
@@ -86,9 +86,9 @@ export function Console({
       </div>
 
       <div ref={scrollRef} className='flex-1 min-h-0 overflow-y-auto'>
-        <div className='p-3 font-mono text-xs leading-relaxed space-y-1.5'>
+        <div className='p-3 font-mono text-xs leading-relaxed space-y-1.5 h-full'>
           {logs.length === 0 ? (
-            <div className='h-full flex items-center justify-center text-foreground/60 italic select-none'>
+            <div className='h-full flex items-center justify-center font-mono text-foreground/60 select-none'>
               {emptyMessage}
             </div>
           ) : (

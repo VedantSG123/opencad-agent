@@ -26,9 +26,6 @@ export function ProjectsView() {
   const [filterKernel, setFilterKernel] = useState<
     'all' | 'replicad' | 'openscad'
   >('all')
-  const [sortBy, setSortBy] = useState<'last_accessed_at' | 'created_at'>(
-    'last_accessed_at',
-  )
 
   const [renameTarget, setRenameTarget] = useState<Project | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
@@ -47,21 +44,11 @@ export function ProjectsView() {
             filterKernel === 'all' ? true : project.cad_kernel === filterKernel
           return matchesSearch && matchesKernel
         })
-        .sort((a, b) => {
-          if (sortBy === 'last_accessed_at') {
-            const dateA = a.time.accessed
-              ? new Date(a.time.accessed).getTime()
-              : 0
-            const dateB = b.time.accessed
-              ? new Date(b.time.accessed).getTime()
-              : 0
-            return dateB - dateA
-          } else {
-            const dateA = new Date(a.time.created).getTime()
-            const dateB = new Date(b.time.created).getTime()
-            return dateB - dateA
-          }
-        })
+        .sort(
+          (a, b) =>
+            Date.parse(b.time.created) - Date.parse(a.time.created) ||
+            b.id.localeCompare(a.id),
+        )
     : []
 
   return (
@@ -153,34 +140,6 @@ export function ProjectsView() {
                   </ListBox>
                 </Select.Popover>
               </Select>
-
-              {/* Sort By Dropdown */}
-              <Select
-                aria-label='Sort By'
-                className='w-full xl:w-44'
-                selectedKey={sortBy}
-                onSelectionChange={(key) =>
-                  setSortBy(key as 'last_accessed_at' | 'created_at')
-                }
-              >
-                <Select.Trigger>
-                  <Select.Value />
-                  <Select.Indicator />
-                </Select.Trigger>
-                <Select.Popover>
-                  <ListBox>
-                    <ListBox.Item
-                      id='last_accessed_at'
-                      textValue='Last Accessed'
-                    >
-                      Last Accessed
-                    </ListBox.Item>
-                    <ListBox.Item id='created_at' textValue='Created Date'>
-                      Created Date
-                    </ListBox.Item>
-                  </ListBox>
-                </Select.Popover>
-              </Select>
             </div>
 
             {/* New Project Button */}
@@ -197,15 +156,14 @@ export function ProjectsView() {
                 {(() => {
                   const count = filteredProjects?.length ?? 0
                   const isFiltered =
-                    searchQuery !== '' ||
-                    filterKernel !== 'all' ||
-                    sortBy !== 'last_accessed_at'
+                    searchQuery !== '' || filterKernel !== 'all'
                   return isFiltered
                     ? `${count} matching project${count === 1 ? '' : 's'}`
                     : `${count} project${count === 1 ? '' : 's'}`
                 })()}
               </p>
             </div>
+            <p className='text-sm text-muted'>Newest created first</p>
           </div>
 
           {/* Project Cards Grid */}
@@ -215,7 +173,6 @@ export function ProjectsView() {
                 <ProjectCard
                   key={project.id}
                   project={project}
-                  sortBy={sortBy}
                   onClick={() => navigate(`/project/${project.id}`)}
                   onRename={() => setRenameTarget(project)}
                   onDelete={() => setDeleteTarget(project)}
@@ -240,7 +197,6 @@ export function ProjectsView() {
                 onPress={() => {
                   setSearchQuery('')
                   setFilterKernel('all')
-                  setSortBy('last_accessed_at')
                 }}
               >
                 Clear all filters
