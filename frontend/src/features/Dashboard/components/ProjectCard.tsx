@@ -15,7 +15,6 @@ interface ProjectCardProps {
   onRename: () => void
   onDelete: () => void
   onClick: () => void
-  sortBy?: 'last_accessed_at' | 'created_at'
 }
 
 export function ProjectCard({
@@ -23,7 +22,6 @@ export function ProjectCard({
   onRename,
   onDelete,
   onClick,
-  sortBy,
 }: ProjectCardProps) {
   const kernel = KERNEL_INFO[project.cad_kernel] ?? KERNEL_INFO.replicad
 
@@ -98,9 +96,7 @@ export function ProjectCard({
             {truncatePath(project.directory)}
           </p>
           <p className='text-xs text-muted'>
-            {sortBy === 'created_at' || !project.time.accessed
-              ? `Created at ${formatRelativeTime(project.time.created)}`
-              : `Opened ${formatRelativeTime(project.time.accessed)}`}
+            Created {formatRelativeTime(project.time.created)}
           </p>
         </div>
       </Card.Content>

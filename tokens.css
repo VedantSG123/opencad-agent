@@ -1,0 +1,18 @@
+/* Hallmark · macrostructure: Index-First · genre: modern-minimal · theme: existing OpenCAD · tone: technical · anchor hue: blue · nav: existing side-rail · footer: none · enrichment: none */
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V4 */
+@layer base {
+  :root {
+    --color-project-focus: var(--focus);
+    --space-project-focus-offset: calc(var(--spacing) / 2);
+  }
+
+  html,
+  body {
+    overflow-x: clip;
+  }
+}
+
+.recent-project-link:focus-visible {
+  outline: 2px solid var(--color-project-focus);
+  outline-offset: var(--space-project-focus-offset);
+}

@@ -69,8 +69,8 @@ export function PromptBox({
           autoFocus
           className='min-h-32 max-h-56 w-full resize-none overflow-y-auto bg-transparent px-6 pt-6 pb-4 text-base text-foreground outline-none placeholder:text-foreground/40'
         />
-        <div className='flex items-center justify-between gap-2 px-4 pb-4 pt-2'>
-          <div className='flex items-center gap-2'>
+        <div className='flex items-end justify-between gap-2 px-4 pb-4 pt-2'>
+          <div className='flex min-w-0 flex-1 flex-wrap items-center gap-2'>
             <Tooltip>
               <Button
                 variant='tertiary'
@@ -107,7 +107,7 @@ export function PromptBox({
           </div>
           <Button
             isIconOnly
-            className='rounded-full bg-surface-foreground text-surface'
+            className='shrink-0 rounded-full bg-surface-foreground text-surface'
             onPress={onSubmit}
             isDisabled={!canSubmit || isSubmitting}
             aria-label='Create project'

@@ -14,7 +14,9 @@ export { DashboardView } from './components/DashboardView'
 export { ProjectsView } from './components/ProjectsView'
 
 export function Dashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => window.matchMedia('(min-width: 768px)').matches,
+  )
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   const { isElectron, isMac } = usePlatform()
@@ -35,6 +37,7 @@ export function Dashboard() {
         >
           <TitlebarIconButton
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
             className='-ml-2 mt-0.5'
           >
             <Icon icon={sidebarOpen ? LayoutAlignLeftIcon : LayoutLeftIcon} />
@@ -47,7 +50,7 @@ export function Dashboard() {
           onSettingsClick={() => setSettingsOpen(true)}
           isOpen={sidebarOpen}
         />
-        <main className='flex-1 flex flex-col overflow-hidden'>
+        <main className='min-w-0 flex-1 flex flex-col overflow-hidden'>
           <div className='flex-1 flex flex-col overflow-auto shadow bg-background rounded-tl-xl border-t border-l dark:border-border/60'>
             <Outlet />
           </div>

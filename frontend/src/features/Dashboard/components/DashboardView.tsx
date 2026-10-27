@@ -17,10 +17,11 @@ import { DotGridBackground } from './DotGridBackground'
 import { PromptBox } from './onboarding/PromptBox'
 import { RenameProjectDialog } from './onboarding/RenameProjectDialog'
 import { getNextProjectName } from './onboarding/utils'
+import { RecentProjects } from './RecentProjects'
 
 export function DashboardView() {
   const navigate = useNavigate()
-  const { data: projects } = useProjects()
+  const { data: projects, isLoading, isError, refetch } = useProjects()
   const { mutateAsync: createProject } = useCreateProject()
   const { invalidateProjects } = useInvalidateProjects()
   const { preferences, updatePreferences } = useUserPreferences()
@@ -82,30 +83,40 @@ export function DashboardView() {
   }
 
   return (
-    <div className='relative flex-1 flex flex-col items-center justify-center p-6'>
+    <div className='relative flex-1 flex flex-col items-center justify-center h-full'>
       <DotGridBackground />
-      <div className='relative z-10 flex w-full max-w-3xl flex-col gap-6'>
-        <h1 className='text-4xl font-medium tracking-tight sm:text-5xl'>
-          Welcome to OpenCAD Agent
-        </h1>
-        <PromptBox
-          prompt={prompt}
-          onPromptChange={setPrompt}
-          kernel={kernel}
-          onKernelChange={setKernel}
-          directory={
-            parentDirectory && projectName
-              ? joinPaths(parentDirectory, projectName)
-              : parentDirectory
-          }
-          onDirectoryPicked={handleDirectoryPicked}
-          model={model}
-          onModelChange={handleModelChange}
-          preferredModel={preferences?.lastUsedModel}
-          onSubmit={handleSubmit}
-          canSubmit={canSubmit}
-          isSubmitting={isCreating}
-        />
+      <div className='w-full h-full overflow-y-auto'>
+        <div className='relative z-10 row-start-2 flex w-full min-w-0 max-w-3xl mx-auto flex-col gap-6 mt-[15%]'>
+          <h1 className='min-w-0 text-3xl font-medium tracking-tight wrap-anywhere sm:text-4xl'>
+            Welcome to OpenCAD Agent
+          </h1>
+          <PromptBox
+            prompt={prompt}
+            onPromptChange={setPrompt}
+            kernel={kernel}
+            onKernelChange={setKernel}
+            directory={
+              parentDirectory && projectName
+                ? joinPaths(parentDirectory, projectName)
+                : parentDirectory
+            }
+            onDirectoryPicked={handleDirectoryPicked}
+            model={model}
+            onModelChange={handleModelChange}
+            preferredModel={preferences?.lastUsedModel}
+            onSubmit={handleSubmit}
+            canSubmit={canSubmit}
+            isSubmitting={isCreating}
+          />
+        </div>
+        <div className='relative z-10 w-full min-w-0 max-w-3xl mx-auto pt-2'>
+          <RecentProjects
+            projects={projects}
+            isLoading={isLoading}
+            isError={isError}
+            onRetry={() => void refetch()}
+          />
+        </div>
       </div>
       {parentDirectory && (
         <RenameProjectDialog
