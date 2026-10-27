@@ -1,3 +1,4 @@
+import type { BuildPrompt } from './build.js'
 import type { PermissionPrompt } from './permissions.js'
 
 /**
@@ -20,6 +21,7 @@ export type FileChanged = {
  */
 export type AgentUIDataTypes = {
   permission: PermissionPrompt
+  build: BuildPrompt
   'file-changed': FileChanged
   /**
    * Nothing to render - it exists so the connection has traffic on it while a

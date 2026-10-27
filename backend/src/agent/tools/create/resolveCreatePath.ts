@@ -8,11 +8,21 @@ import type { PathGuard } from '../../permissions/pathGuard'
 export type ResolvedCreateTarget = {
   absolutePath: string
   displayPath: string
-  /**
-   * How to name the directories that have to be made before the file can be
-   * written, or `null` when the one it goes in is already there.
-   */
-  missingDirectory: string | null
+  destination:
+    | {
+        kind: 'new-file'
+        /**
+         * How to name the directories that have to be made before the file
+         * can be written, or `null` when the one it goes in is already there.
+         */
+        missingDirectory: string | null
+      }
+    /**
+     * A file that exists with nothing in it - the main file a new project
+     * starts with. Filling it loses nothing, and without this the only way to
+     * write it is through the shell.
+     */
+    | { kind: 'empty-file' }
 }
 
 /**
@@ -49,11 +59,12 @@ export async function resolveCreatePath(
   // `lstat`, not `stat`: a link with nothing behind it still occupies the name,
   // and writing would follow it instead of reporting the clash.
   const existing = await lstatOrNull(target)
-  if (existing) {
+  if (existing?.isDirectory()) {
+    return { error: `Error: ${displayPath} is an existing directory.` }
+  }
+  if (existing && !(existing.isFile() && existing.size === 0)) {
     return {
-      error: existing.isDirectory()
-        ? `Error: ${displayPath} is an existing directory.`
-        : `Error: ${displayPath} already exists. Create only makes a new file - read it and use edit to change it.`,
+      error: `Error: ${displayPath} already exists and is not empty. Create only makes a new file or fills an empty one - read it and use edit to change it.`,
     }
   }
 
@@ -85,8 +96,13 @@ export async function resolveCreatePath(
   return {
     absolutePath: target,
     displayPath,
-    missingDirectory:
-      ancestor.path === parent ? null : toDisplayPath(root, parent),
+    destination: existing
+      ? { kind: 'empty-file' }
+      : {
+          kind: 'new-file',
+          missingDirectory:
+            ancestor.path === parent ? null : toDisplayPath(root, parent),
+        },
   }
 }
 

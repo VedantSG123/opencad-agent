@@ -77,6 +77,20 @@ function readSample(name = 'parts.js'): Promise<string> {
 }
 
 describe('edit tool', () => {
+  test('sends an empty file to create, since there is nothing to search', async () => {
+    await writeFile(path.join(root, 'main.js'), '')
+
+    const result = await runEdit({
+      path: 'main.js',
+      diff: block(1, '', 'const main = () => {}'),
+    })
+
+    expect(result).toBe(
+      'Error: main.js is empty, so there is nothing to search for. Use create to write its contents.',
+    )
+    expect(await readSample('main.js')).toBe('')
+  })
+
   describe('applying blocks', () => {
     test('writes a single replacement to the file', async () => {
       const result = await runEdit({

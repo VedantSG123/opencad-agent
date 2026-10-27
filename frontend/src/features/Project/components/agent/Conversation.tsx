@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Attachment } from 'shared/attachments'
 
 import type { SelectedModel } from '@/features/Providers/components/ModelSelectButton'
+import { useAgentData } from '@/hooks/useAgentData'
 import {
   fetchAgentSession,
   useAbortAgentRun,
@@ -67,12 +68,14 @@ function ChatView({
 }: ConversationProps & { detail: AgentSessionDetail }) {
   const invalidateSessions = useInvalidateAgentSessions(projectId)
   const abort = useAbortAgentRun(sessionId)
+  const onData = useAgentData(sessionId)
 
   const [chat] = useState(() => {
     const instance: Chat<AgentUIMessage> = new Chat<AgentUIMessage>({
       id: sessionId,
       messages: restorable(detail),
       transport: new AgentTransport(),
+      onData,
       onFinish: () => void invalidateSessions(),
       onError: (error) => {
         // The stream died with the run, so what is on screen stops wherever

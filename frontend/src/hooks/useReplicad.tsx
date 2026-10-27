@@ -1,8 +1,12 @@
 import * as React from 'react'
+import type { BuildOptions, BuildReport, BuildRequest } from 'shared'
 import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
+import { AgentBuilderProvider } from '@/hooks/useAgentBuilds'
 import { getBuilderApi } from '@/kernels/replicad/builderApi'
+import type { WorkerBuildResult } from '@/kernels/replicad/builderApi'
+import { toBuildReport } from '@/kernels/replicad/buildReport'
 import { inSeries } from '@/kernels/replicad/inSeries'
 import type { LogEntry, MeshRenderOutput, SvgRenderOutput } from '@/types'
 
@@ -19,6 +23,12 @@ type ReplicadState = {
 type ReplicadActions = {
   setCode: (code: string) => void
   build: (params?: Record<string, unknown>) => Promise<void>
+  /**
+   * Builds `request.source` straight away and answers with the result. Not
+   * coalesced like `build`, which returns before a build it folded into
+   * another has run, so the agent would never learn how its build went.
+   */
+  buildForAgent: (request: BuildRequest) => Promise<BuildReport>
   initWorker: () => Promise<void>
   clearLogs: () => void
 }
@@ -85,16 +95,14 @@ export function createReplicadStore() {
       }
     }
 
-    const build = async (params?: Record<string, unknown>) => {
-      const { code } = get()
-      if (!code) {
-        set({ shapes: null, error: null, logs: [], defaultParams: null })
-        return
-      }
-
+    const run = async (
+      code: string,
+      params?: Record<string, unknown>,
+      options?: BuildOptions,
+    ): Promise<WorkerBuildResult> => {
       set({ isCompiling: true })
       try {
-        const result = await builderApi.buildFromCode(code, params)
+        const result = await builderApi.buildFromCode(code, params, options)
 
         if (!result.error) {
           set({
@@ -116,6 +124,7 @@ export function createReplicadStore() {
             defaultParams: null,
           })
         }
+        return result
       } catch (e) {
         const err = e instanceof Error ? e : new Error(String(e))
         const errorLog: LogEntry = {
@@ -129,9 +138,32 @@ export function createReplicadStore() {
           logs: [errorLog],
           defaultParams: null,
         })
+        return {
+          error: true,
+          message: err.message,
+          stack: err.stack,
+          location: null,
+          logs: [],
+        }
       } finally {
         set({ isCompiling: false })
       }
+    }
+
+    const build = async (params?: Record<string, unknown>) => {
+      const { code } = get()
+      if (!code) {
+        set({ shapes: null, error: null, logs: [], defaultParams: null })
+        return
+      }
+      await run(code, params)
+    }
+
+    const buildForAgent = async ({ source, geometrySummary }: BuildRequest) => {
+      set({ code: source })
+      const started = performance.now()
+      const result = await run(source, undefined, { geometrySummary })
+      return toBuildReport(result, performance.now() - started)
     }
 
     const runBuild = inSeries(build)
@@ -146,6 +178,7 @@ export function createReplicadStore() {
       defaultParams: null,
       setCode: (code: string) => set({ code }),
       build: runBuild,
+      buildForAgent,
       initWorker,
       clearLogs: () => set({ logs: [] }),
     }
@@ -159,7 +192,9 @@ export function ReplicadProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ReplicadContext.Provider value={store}>
-      {children}
+      <AgentBuilderProvider value={store.getState().buildForAgent}>
+        {children}
+      </AgentBuilderProvider>
     </ReplicadContext.Provider>
   )
 }

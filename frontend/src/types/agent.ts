@@ -1,7 +1,9 @@
-import type { UIMessage } from 'ai'
+import type { DataUIPart, UIMessage } from 'ai'
 import type { AgentUIDataTypes, AgentUIMetadata } from 'shared'
 
 export type AgentUIMessage = UIMessage<AgentUIMetadata, AgentUIDataTypes>
+
+export type AgentUIDataPart = DataUIPart<AgentUIDataTypes>
 
 export type AgentUIPart = AgentUIMessage['parts'][number]
 

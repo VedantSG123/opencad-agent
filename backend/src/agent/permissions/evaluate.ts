@@ -10,6 +10,10 @@ import {
 } from './builtin/commandPaths'
 import { dangerousCommandReason } from './builtin/dangerousCommands'
 import { deniedPathReason } from './builtin/deniedPaths'
+import {
+  LIBRARY_WRITE_REASON,
+  libraryPathDecision,
+} from './builtin/libraryPaths'
 import { isKnownSafeCommand } from './builtin/safeCommands'
 import type { ToolAccess } from './request/types'
 import {
@@ -72,9 +76,10 @@ export async function evaluateAccess(
     decision,
     reason:
       decision === 'deny'
-        ? (deniedPathReason(
+        ? pathDenialReason(
             path.resolve(context.projectDirectory, access.path),
-          ) ?? 'a permission rule denies it')
+            access.access,
+          )
         : undefined,
     mayBeRemembered: true,
   }
@@ -98,6 +103,19 @@ export async function evaluateAccesses(
   return worst ?? { decision: 'allow', mayBeRemembered: true }
 }
 
+/** Why `evaluatePath` denied a path, for the refusal the model reads. */
+export function pathDenialReason(
+  absolutePath: string,
+  access: PermissionAccess,
+): string {
+  return (
+    deniedPathReason(absolutePath) ??
+    (libraryPathDecision(absolutePath, access) === 'deny'
+      ? LIBRARY_WRITE_REASON
+      : 'a permission rule denies it')
+  )
+}
+
 /**
  * Kept synchronous: the filesystem guard consults it on every path a tool
  * opens, and unlike a command a path needs no parsing to be understood.
@@ -110,6 +128,9 @@ export function evaluatePath(
   const absolute = path.resolve(context.projectDirectory, requestedPath)
 
   if (deniedPathReason(absolute)) return 'deny'
+
+  const library = libraryPathDecision(absolute, access)
+  if (library !== null) return library
 
   const applicable = context.rules.filter((rule) =>
     ruleAppliesToTool(rule, context.tool),

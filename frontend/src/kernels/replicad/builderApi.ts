@@ -1,5 +1,6 @@
 import { wrap } from 'comlink'
 import type { CurveType, SurfaceType } from 'replicad'
+import type { BuildOptions, GeometrySummary } from 'shared'
 
 import type {
   ExportConfiguration,
@@ -7,6 +8,7 @@ import type {
   MeshRenderOutput,
   SvgRenderOutput,
 } from '@/types'
+import type { SourceLocation } from '@/workers/replicad/vm'
 import CadWorker from '@/workers/replicad/worker?worker'
 
 // Define the worker service interface based on the exposed service
@@ -15,11 +17,13 @@ interface CadWorkerService {
   buildFromCode(
     code: string,
     params?: Record<string, unknown>,
+    options?: BuildOptions,
   ): Promise<
     | {
         error: true
         message: string
         stack?: string
+        location: SourceLocation | null
         logs: Array<{
           type: 'log' | 'info' | 'warn' | 'error'
           text: string
@@ -35,6 +39,7 @@ interface CadWorkerService {
           timestamp: number
         }>
         defaultParams?: Record<string, unknown>
+        geometry?: GeometrySummary
       }
   >
   exportToFile(
@@ -102,8 +107,12 @@ class BuilderApi {
   /**
    * Build CAD shapes from code
    */
-  async buildFromCode(code: string, params?: Record<string, unknown>) {
-    return await this.workerApi.buildFromCode(code, params)
+  async buildFromCode(
+    code: string,
+    params?: Record<string, unknown>,
+    options?: BuildOptions,
+  ) {
+    return await this.workerApi.buildFromCode(code, params, options)
   }
 
   /**
@@ -153,6 +162,10 @@ let builderApiInstance: BuilderApi | null = null
 /**
  * Get the singleton instance of the BuilderApi
  */
+export type WorkerBuildResult = Awaited<
+  ReturnType<CadWorkerService['buildFromCode']>
+>
+
 export function getBuilderApi(): BuilderApi {
   if (!builderApiInstance) {
     builderApiInstance = new BuilderApi()

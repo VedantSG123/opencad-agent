@@ -4,14 +4,21 @@ import { kernelPrompt, offeredToolNames } from '../../../agent/kernels'
 import { buildSystemPrompt } from '../../../agent/prompt/system'
 import { createTools } from '../../../agent/tools'
 import {
+  BUILD_TOOL_NAME,
   COMMON_TOOL_NAMES,
-  GET_API_DOCUMENTATION_TOOL_NAME,
+  KERNEL_TOOL_NAMES,
 } from '../../../agent/tools/names'
 import { SUPPORTED_CAD_KERNELS } from '../../../cad'
 import type { SupportedCADKernels } from '../../../cad'
 import type { Project } from '../../../project/schema'
 
 const KERNELS = SUPPORTED_CAD_KERNELS.options
+
+const noBuilds = () =>
+  Promise.resolve({
+    status: 'unavailable' as const,
+    reason: 'not in this test',
+  })
 
 function project(kernel: SupportedCADKernels): Project {
   return {
@@ -58,11 +65,13 @@ describe('tool allowance', () => {
     }
   })
 
-  test('the replicad documentation store is offered to replicad alone', () => {
+  test('only replicad can build until another kernel answers builds', () => {
+    // The app answers a build with the kernel the project is open in; a
+    // kernel with no builder there would leave every build unavailable.
     for (const kernel of KERNELS) {
-      expect(
-        offeredToolNames(kernel).includes(GET_API_DOCUMENTATION_TOOL_NAME),
-      ).toBe(kernel === 'replicad')
+      expect(offeredToolNames(kernel).includes(BUILD_TOOL_NAME)).toBe(
+        kernel === 'replicad',
+      )
     }
   })
 
@@ -73,7 +82,8 @@ describe('tool allowance', () => {
           projectDirectory: '/tmp/test',
           guardFor: () => ({ refusalFor: () => null }),
         },
-        kernel,
+        project(kernel),
+        noBuilds,
       )
 
       expect(Object.keys(tools).sort()).toEqual(
@@ -90,13 +100,14 @@ describe('tool allowance', () => {
         projectDirectory: '/tmp/test',
         guardFor: () => ({ refusalFor: () => null }),
       },
-      'openscad',
+      project('openscad'),
+      noBuilds,
     )
 
     for (const name of COMMON_TOOL_NAMES) {
-      expect(tools[name]?.description).not.toContain(
-        GET_API_DOCUMENTATION_TOOL_NAME,
-      )
+      for (const kernelOnly of KERNEL_TOOL_NAMES) {
+        expect(tools[name]?.description).not.toContain(`\`${kernelOnly}\``)
+      }
     }
   })
 })

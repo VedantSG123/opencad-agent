@@ -1,4 +1,5 @@
 import type { FinishReason } from 'ai'
+import type { BuildReport, BuildRequest } from 'shared'
 
 import type { AssistantMessage, ToolPart } from '../session/messageSchema'
 import type { PermissionRequest, PermissionScope } from './permissions'
@@ -45,4 +46,13 @@ export type AgentCallbacks = {
     request: PermissionRequest,
     toolCallId: string,
   ) => Promise<PermissionScope | null>
+  /**
+   * Hands a build to whoever is driving the run, since the kernels run in the
+   * app rather than here. A driver that cannot build answers `unavailable`
+   * rather than leaving the call waiting.
+   */
+  onBuildRequest: (
+    request: BuildRequest,
+    toolCallId: string,
+  ) => Promise<BuildReport>
 }

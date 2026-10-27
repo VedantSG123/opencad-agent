@@ -18,6 +18,7 @@ import type {
 import type { Session } from '../session/schema'
 import { logger } from '../utils/logger'
 import type { AgentCallbacks, AgentStreamEvent, AgentUsage } from './events'
+import { kernelLibrary } from './kernels'
 import type { ModelRef } from './model'
 import { resolveModel } from './model'
 import { applyGrant, createRunPermissions } from './permissions'
@@ -71,10 +72,11 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
     projectDirectory: input.project.directory,
     sessionId: input.session.id,
   })
-  const tools = createTools(permissions, input.project.cad_kernel)
+  const tools = createTools(permissions, input.project, input.onBuildRequest)
   const definitions = withoutExecute(tools)
   const writer = new SessionWriter(input.session.id, input.model)
   const repetition = createRepetitionGuard()
+  await installKernelLibrary(input.project)
   const system = buildSystemPrompt(input.project)
 
   writer.userMessage(input.prompt, input.files)
@@ -158,6 +160,23 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   emit({ type: 'finish', message: completed })
 
   return { message: completed, steps, finishReason, usage, aborted }
+}
+
+/**
+ * Every turn rather than once at startup, so a cleared cache is restored
+ * before the prompt points the model at it. A failure costs the model its
+ * reference, not the turn.
+ */
+async function installKernelLibrary(project: Project): Promise<void> {
+  const library = kernelLibrary(project.cad_kernel)
+  try {
+    await library?.install()
+  } catch (error) {
+    logger.error(
+      { error, library: library?.directory },
+      'could not install the kernel library',
+    )
+  }
 }
 
 /**

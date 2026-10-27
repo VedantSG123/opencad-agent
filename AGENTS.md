@@ -58,7 +58,7 @@ Some tests depend on what the machine has and skip rather than fail when it is m
 1. User opens project → frontend fetches from backend API
 2. User edits code in Monaco → `kernelFilesStore` (vanilla zustand) updated on every keystroke
 3. CAD kernel worker (comlink) reads from `kernelFilesStore` for compilation
-4. Agent panel sends chat → backend agent loop → LLM → tool calls (`read`, `grep`, `edit`, `shell`, `getApiDocumentation`), each weighed by the permission layer first
+4. Agent panel sends chat → backend agent loop → LLM → tool calls (`read`, `grep`, `edit`, `create`, `shell`, `build`), each weighed by the permission layer first
 5. Agent writes to a file under the project directory → file watcher (chokidar in Electron) syncs back to editor
 6. 3D viewport renders compiled output (STL/SVG mesh via Replicad or OpenSCAD)
 
@@ -68,7 +68,7 @@ Some tests depend on what the machine has and skip rather than fail when it is m
 - `index.ts` — Entry point, migrates DB, creates Elysia app
 - `routes/projects/` — Project CRUD endpoints (Elysia with Zod validation)
 - `routes/providers/` — Auth routes (API key + OAuth)
-- `agent/tools/` — The tools the model may call (`read`, `grep`, `edit`, `shell`, `getApiDocumentation`)
+- `agent/tools/` — The tools the model may call (`read`, `grep`, `edit`, `create`, `shell`, `build`)
 - `agent/permissions/` — Two layers: `checkToolCall` weighs a call before it runs, `pathGuard` re-checks each path at the filesystem. Rules live in three stores (once / session / project)
 - `models/` — Provider schemas, auth models, SDK configs
 - `db/` — SQLite setup, migrations (umzug + BunSqliteStorage)
@@ -157,3 +157,5 @@ Some tests depend on what the machine has and skip rather than fail when it is m
 21. **The shell tool parses and executes with the same shell** — `agent/tools/shell/` decides a command's policy by parsing it, then runs it. Both sides resolve the shell through `shellEnvironment.ts` (`resolveShell` / `resolveBashPath`), and they must stay that way: parsing under PowerShell 7 while executing under Windows PowerShell 5.1 would let the policy approve one reading of a command while the shell ran another. On Windows the parser is a **long-lived PowerShell child process** speaking newline-delimited JSON over stdin (commands travel as base64 UTF-16LE payloads, never concatenated into script text), which turns a ~440ms cold start into 1-4ms per check. Call `shutdownPowerShellParsers()` in a test's `afterAll` or the suite will hang on the live child. On Windows, `bash` on PATH is usually System32's WSL launcher rather than a shell — `OPENCAD_BASH_PATH` pins a real one, mirroring `OPENCAD_RIPGREP_PATH`.
 
 22. **Command permissions are token-wise, never string prefixes** — A stored `commandHead` rule holds `string[]`, and matching compares whole tokens, so a grant for `bun add` cannot stretch to `bun adduser` and one for `bun` cannot cover `bunx` by construction. Three gates decide whether a head may be offered at all (`describeRequest.ts`): the head must be derivable (`git -C /tmp status` is not — a flag may be hiding the subcommand), it must not name a program that runs whatever it is given (`node`, `bash`, `sudo`), and it must settle *every* command in the chain, not just the one it names. Failing any gate falls back to `commandExact`, which `applyGrant` refuses to store at project scope. Anything dangerous, redirecting, substituting, or unparseable may only ever be allowed once.
+
+23. **Kernel libraries are installed for the agent to read** — The agent learns replicad from replicad's own source, not from documentation we write. `agent/kernels/libraries/replicadSource.ts` is a Bun macro (#20) that resolves `replicad` **from the frontend workspace**, so the files match the version the worker runs, and rebuilds the original `src/*.ts` from the package's source map, since npm ships only the bundle. At the start of each replicad turn the files are written once per version to `<CACHE_DIR>/libraries/replicad-<version>/`, and the Environment section of the system prompt names that path. `builtin/libraryPaths.ts` makes everything under `LIBRARIES_DIR` readable without a question and unwritable by any grant. A kernel gets a library by setting `library` in its profile in `agent/kernels/index.ts`.

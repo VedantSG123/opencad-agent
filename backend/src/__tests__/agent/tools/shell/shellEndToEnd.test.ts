@@ -57,7 +57,12 @@ describe('the shell tool is wired in', () => {
           projectDirectory: PROJECT,
           guardFor: () => ({ refusalFor: () => null }),
         },
-        kernel,
+        { cad_kernel: kernel, file: null },
+        () =>
+          Promise.resolve({
+            status: 'unavailable',
+            reason: 'not in this test',
+          }),
       )
 
       expect(Object.keys(tools)).toContain('shell')
