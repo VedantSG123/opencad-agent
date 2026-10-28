@@ -84,6 +84,24 @@ export type Build123dResult =
     }
   | { ok: false; error: string; logs: string; duration: number }
 
+export type Build123dRunIdentity = {
+  sessionId: string
+  runId: string
+}
+
+export type Build123dProjectRequest = Build123dRunIdentity & {
+  mainPath: string
+  projectDirectory: string
+  overrides?: Record<string, string>
+}
+
+export type Build123dSourceRequest = Build123dRunIdentity & { source: string }
+
+export type Build123dCancelRequest = {
+  sessionId: string
+  runId?: string
+}
+
 /**
  * The 3D formats offered from the viewport.
  *

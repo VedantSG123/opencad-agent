@@ -198,6 +198,20 @@ function MonacoEditorBase({
         }
         onDirtyChangeRef.current(p, false)
       },
+      renamePath: (oldPath, newPath) => {
+        for (const [modelPath, model] of [...modelsRef.current]) {
+          if (modelPath !== oldPath && !modelPath.startsWith(oldPath + '/'))
+            continue
+          const renamedPath = newPath + modelPath.slice(oldPath.length)
+          modelsRef.current.delete(modelPath)
+          modelsRef.current.set(renamedPath, model)
+          const baseline = cleanContentRef.current.get(modelPath)
+          cleanContentRef.current.delete(modelPath)
+          if (baseline !== undefined)
+            cleanContentRef.current.set(renamedPath, baseline)
+          monaco.editor.setModelLanguage(model, detectLanguage(renamedPath))
+        }
+      },
     }
     onRegisterAPIRef.current(api)
   }, [])
@@ -308,9 +322,8 @@ function MonacoEditorBase({
     const contentChangedOnServer = hasBeenLoaded && content !== previousClean
     const hasDirtyEdits = hasBeenLoaded && model.getValue() !== previousClean
 
-    if (contentChangedOnServer && hasDirtyEdits) {
-      // Unsaved local edits + external server change → ask the user
-      onExternalConflictRef.current(path, content)
+    if (hasDirtyEdits) {
+      if (contentChangedOnServer) onExternalConflictRef.current(path, content)
       return
     }
 

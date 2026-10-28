@@ -1,44 +1,33 @@
 import { useEffect, useRef } from 'react'
 
-import { useKernelFiles } from '@/hooks/useKernelFiles'
+import { kernelFilesStore } from '@/hooks/useKernelFiles'
+import { createKernelFileSync } from '@/lib/kernelFileSync'
 
 import { useEditor } from './editor/context'
 
 export function FileSync() {
   const { readFile, onWatch, dirtyTabs } = useEditor()
-  const setFileContent = useKernelFiles((state) => state.setFileContent)
-  const clearAll = useKernelFiles((state) => state.clearAll)
-
   const readFileRef = useRef(readFile)
-  const setFileContentRef = useRef(setFileContent)
   const dirtyTabsRef = useRef(dirtyTabs)
 
   useEffect(() => {
     readFileRef.current = readFile
   }, [readFile])
   useEffect(() => {
-    setFileContentRef.current = setFileContent
-  }, [setFileContent])
-  useEffect(() => {
     dirtyTabsRef.current = dirtyTabs
   }, [dirtyTabs])
 
   useEffect(() => {
-    return () => clearAll()
-  }, [clearAll])
-
-  useEffect(() => {
-    return onWatch((event) => {
-      if (event.type !== 'change') return
-
-      const path = event.path
-      if (dirtyTabsRef.current.has(path)) return
-
-      readFileRef
-        .current(path)
-        .then((content) => setFileContentRef.current(path, content))
-        .catch(() => {})
+    const sync = createKernelFileSync({
+      readFile: (path) => readFileRef.current(path),
+      isDirty: (path) => dirtyTabsRef.current.has(path),
     })
+    const stopWatching = onWatch((event) => void sync.handle(event))
+    return () => {
+      stopWatching()
+      sync.dispose()
+      kernelFilesStore.getState().clearAll()
+    }
   }, [onWatch])
 
   return null

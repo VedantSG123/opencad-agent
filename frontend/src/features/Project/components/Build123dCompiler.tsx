@@ -52,6 +52,7 @@ export function Build123dCompiler() {
   }, [project])
 
   const serialized = useKernelFiles(selectPythonSources)
+  const filesystemRevision = useKernelFiles((state) => state.filesystemRevision)
 
   React.useEffect(() => {
     if (!mainFilePath) {
@@ -79,7 +80,7 @@ export function Build123dCompiler() {
     }, BUILD_DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-  }, [serialized, mainFilePath, project.directory, build])
+  }, [serialized, filesystemRevision, mainFilePath, project.directory, build])
 
   return null
 }

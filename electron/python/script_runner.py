@@ -7,11 +7,123 @@ scripts they accept.
 """
 
 import contextlib
+import importlib.abc
+import importlib.machinery
+import importlib.util
 import io
+import json
+import linecache
 import os
 import sys
 import time
 import traceback
+
+
+def _absolute(path):
+    return os.path.normcase(os.path.abspath(path))
+
+
+class _ProjectSourceLoader(importlib.machinery.SourceFileLoader):
+    def __init__(self, name, path, overrides):
+        super().__init__(name, path)
+        self.overrides = overrides
+
+    def get_source(self, fullname):
+        path = _absolute(self.path)
+        if path in self.overrides:
+            return self.overrides[path]
+        return super().get_source(fullname)
+
+    def get_code(self, fullname):
+        source = self.get_source(fullname)
+        linecache.cache[self.path] = (
+            len(source), None, source.splitlines(keepends=True), self.path
+        )
+        # Timestamp-based .pyc files can still match a same-sized edit saved in
+        # the same second. Project code must always come from the current source.
+        return compile(source, self.path, "exec", dont_inherit=True)
+
+
+class _ProjectSources(importlib.abc.MetaPathFinder):
+    def __init__(self, overrides, roots):
+        self.overrides = overrides
+        self.roots = [_absolute(root) for root in roots]
+        self.directories = set()
+        for filename in overrides:
+            directory = os.path.dirname(filename)
+            while directory not in self.directories:
+                self.directories.add(directory)
+                parent = os.path.dirname(directory)
+                if parent == directory:
+                    break
+                directory = parent
+
+    def _project_source(self, path):
+        path = _absolute(path)
+        return path in self.overrides or any(
+            path.startswith(root + os.sep) for root in self.roots
+        )
+
+    def _spec(self, fullname, filename, package=False):
+        return importlib.util.spec_from_file_location(
+            fullname,
+            filename,
+            loader=_ProjectSourceLoader(fullname, filename, self.overrides),
+            submodule_search_locations=[os.path.dirname(filename)] if package else None,
+        )
+
+    def find_spec(self, fullname, path=None, target=None):
+        name = fullname.rsplit(".", 1)[-1]
+        namespaces = []
+        for entry in sys.path if path is None else path:
+            if not isinstance(entry, str):
+                continue
+            directory = _absolute(entry)
+            package = os.path.join(directory, name)
+            initializer = os.path.join(package, "__init__.py")
+            module = os.path.join(directory, name + ".py")
+
+            if initializer in self.overrides:
+                return self._spec(fullname, initializer, package=True)
+
+            spec = importlib.machinery.PathFinder.find_spec(fullname, [entry])
+            if spec is not None and spec.loader is not None:
+                if (
+                    isinstance(spec.loader, importlib.machinery.SourceFileLoader)
+                    and self._project_source(spec.origin)
+                ):
+                    spec.loader = _ProjectSourceLoader(fullname, spec.origin, self.overrides)
+                return spec
+
+            if module in self.overrides:
+                return self._spec(fullname, module)
+
+            if spec is not None:
+                namespaces.extend(spec.submodule_search_locations or [])
+            if package in self.directories and package not in namespaces:
+                namespaces.append(package)
+
+        if namespaces:
+            spec = importlib.machinery.ModuleSpec(fullname, loader=None, is_package=True)
+            spec.submodule_search_locations = namespaces
+            return spec
+        return None
+
+
+def _read_overrides():
+    manifest = os.environ.get("OPENCAD_OVERRIDES_PATH")
+    if not manifest:
+        return {}
+    with open(manifest, "r", encoding="utf-8") as handle:
+        values = json.load(handle)
+    if not isinstance(values, dict) or any(
+        not isinstance(path, str)
+        or not os.path.isabs(path)
+        or not isinstance(source, str)
+        for path, source in values.items()
+    ):
+        raise ValueError("The Python source overrides must map absolute paths to source strings.")
+    return {_absolute(path): source for path, source in values.items()}
 
 
 def run_script(path):
@@ -39,8 +151,9 @@ def run_script(path):
             }
         )
 
-    with open(path, "r", encoding="utf-8") as handle:
-        source = handle.read()
+    path = os.path.abspath(path)
+    overrides = _read_overrides()
+    loader = _ProjectSourceLoader("__main__", path, overrides)
 
     # `__name__` is "__main__" so that a script guarding its body on it still
     # runs, and the script's directory leads sys.path so sibling modules import.
@@ -51,15 +164,20 @@ def run_script(path):
         "show": show,
         "show_object": show_object,
     }
-    # The script's own directory goes on first so that the host's entries end
-    # up ahead of it: the shadow directory holding unsaved buffers has to lead,
-    # or an edited module loses to the copy still on disk.
-    sys.path.insert(0, os.path.dirname(os.path.abspath(path)))
-    for entry in reversed(os.environ.get("OPENCAD_SYS_PATH", "").split(os.pathsep)):
-        if entry:
-            sys.path.insert(0, entry)
-
-    exec(compile(source, path, "exec"), script_globals)  # noqa: S102
+    search_paths = [
+        entry for entry in os.environ.get("OPENCAD_SYS_PATH", "").split(os.pathsep) if entry
+    ]
+    search_paths.insert(0, os.path.dirname(path))
+    finder = _ProjectSources(overrides, [os.getcwd(), *search_paths])
+    original_path = sys.path[:]
+    position = sys.meta_path.index(importlib.machinery.PathFinder)
+    sys.meta_path.insert(position, finder)
+    sys.path[:0] = search_paths
+    try:
+        exec(loader.get_code("__main__"), script_globals)  # noqa: S102
+    finally:
+        sys.path[:] = original_path
+        sys.meta_path.remove(finder)
     return shown
 
 

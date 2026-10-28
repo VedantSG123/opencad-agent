@@ -1,21 +1,21 @@
 import * as React from 'react'
-import type { Build123dResult } from 'shared/build123d'
+import type {
+  Build123dProjectRequest,
+  Build123dResult,
+  Build123dRunIdentity,
+} from 'shared/build123d'
 import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
 import type { DecodedModel } from '@/kernels/build123d/decode'
 import { decodeModel } from '@/kernels/build123d/decode'
-import { inSeries } from '@/kernels/replicad/inSeries'
 import type { LogEntry } from '@/types'
 import type { Result } from '@/types/electron'
 
-type BuildRequest = {
-  mainPath: string
-  projectDirectory: string
-  overrides?: Record<string, string>
-}
+type BuildRequest = Omit<Build123dProjectRequest, keyof Build123dRunIdentity>
 
 type Build123dState = {
+  sessionId: string
   model: DecodedModel | null
   error: string | null
   logs: LogEntry[]
@@ -26,6 +26,7 @@ type Build123dState = {
 type Build123dActions = {
   build: (request: BuildRequest) => Promise<void>
   buildSource: (source: string) => Promise<void>
+  cancel: () => Promise<void>
   clearLogs: () => void
 }
 
@@ -41,59 +42,78 @@ export type Build123dStore = ReturnType<typeof createBuild123dStore>
 
 export function createBuild123dStore() {
   return createStore<Build123dState & Build123dActions>((set) => {
-    const apply = (response: Result<Build123dResult> | undefined) => {
-      if (!response) {
-        set({
-          isBuilding: false,
-          error: 'build123d builds need the desktop app.',
-        })
-        return
-      }
-
-      if (!response.success) {
-        set({ isBuilding: false, error: response.error.message })
-        return
-      }
-
-      const result = response.data
-      const logs = toLogs(result.logs)
-
-      if (!result.ok) {
-        set({
-          model: null,
-          error: result.error,
-          logs: [
-            ...logs,
-            { type: 'error', text: result.error, timestamp: Date.now() },
-          ],
-          isBuilding: false,
-          duration: result.duration,
-        })
-        return
-      }
-
-      set({
-        model: decodeModel(result),
-        error: null,
-        logs,
-        isBuilding: false,
-        duration: result.duration,
-      })
+    const sessionId = crypto.randomUUID()
+    let generation = 0
+    const fail = (message: string) => {
+      set((state) => ({
+        model: null,
+        error: message,
+        logs: [
+          ...state.logs,
+          { type: 'error', text: message, timestamp: Date.now() },
+        ],
+      }))
     }
 
-    // Serialised for the same reason the other kernels are: a build that lands
-    // after a newer one would overwrite it with a stale model.
-    const build = inSeries(async (request: BuildRequest) => {
-      set({ isBuilding: true, error: null })
-      apply(await window.electron?.runBuild123d(request))
-    })
+    const run = async (
+      request: (
+        identity: Build123dRunIdentity,
+      ) => Promise<Result<Build123dResult>> | undefined,
+    ) => {
+      const ownGeneration = ++generation
+      set({ isBuilding: true, error: null, logs: [], duration: null })
+      try {
+        const response = await request({
+          sessionId,
+          runId: crypto.randomUUID(),
+        })
+        if (ownGeneration !== generation) return
+        if (!response) {
+          fail('build123d builds need the desktop app.')
+          return
+        }
+        if (!response.success) {
+          fail(response.error.message)
+          return
+        }
 
-    const buildSource = inSeries(async (source: string) => {
-      set({ isBuilding: true, error: null })
-      apply(await window.electron?.runBuild123dSource(source))
-    })
+        const result = response.data
+        set({ logs: toLogs(result.logs), duration: result.duration })
+        if (!result.ok) {
+          fail(result.error)
+          return
+        }
+
+        set({ model: decodeModel(result) })
+      } catch (error) {
+        if (ownGeneration === generation) {
+          fail(error instanceof Error ? error.message : String(error))
+        }
+      } finally {
+        if (ownGeneration === generation) set({ isBuilding: false })
+      }
+    }
+
+    const build = (request: BuildRequest) =>
+      run((identity) =>
+        window.electron?.runBuild123d({ ...request, ...identity }),
+      )
+
+    const buildSource = (source: string) =>
+      run((identity) =>
+        window.electron?.runBuild123dSource({ source, ...identity }),
+      )
+
+    const cancel = async () => {
+      generation++
+      set({ isBuilding: false })
+      try {
+        await window.electron?.cancelBuild123dRun({ sessionId })
+      } catch {}
+    }
 
     return {
+      sessionId,
       model: null,
       error: null,
       logs: [],
@@ -101,6 +121,7 @@ export function createBuild123dStore() {
       duration: null,
       build,
       buildSource,
+      cancel,
       clearLogs: () => set({ logs: [] }),
     }
   })
@@ -110,6 +131,13 @@ const Build123dContext = React.createContext<Build123dStore | null>(null)
 
 export function Build123dProvider({ children }: { children: React.ReactNode }) {
   const [store] = React.useState(createBuild123dStore)
+
+  React.useEffect(
+    () => () => {
+      void store.getState().cancel()
+    },
+    [store],
+  )
 
   return (
     <Build123dContext.Provider value={store}>
