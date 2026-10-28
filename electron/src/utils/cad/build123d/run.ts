@@ -10,7 +10,11 @@ import type {
   Build123dResult,
   Build123dSourceRequest,
 } from 'shared/build123d'
-import { BUILD123D_EXPORT_EXTENSIONS } from 'shared/build123d'
+import {
+  BUILD123D_EXPORT_EXTENSIONS,
+  parseBuild123dExportReport,
+  parseBuild123dResult,
+} from 'shared/build123d'
 
 import { AppError } from '../../ipc-utils.js'
 import { getPythonStatus } from '../../python/status.js'
@@ -80,6 +84,7 @@ export function runBuild123dProject(
       return runPython({
         interpreter,
         entry: resolvePythonEntry('runner.py'),
+        parseResult: parseBuild123dResult,
         args: [request.mainPath],
         cwd: request.projectDirectory,
         overridesPath,
@@ -100,6 +105,7 @@ export function runBuild123dSource(
       return runPython({
         interpreter,
         entry: resolvePythonEntry('runner.py'),
+        parseResult: parseBuild123dResult,
         args: [scriptPath],
         cwd: directory,
         signal,
@@ -120,6 +126,7 @@ export function exportBuild123d(
       const result = await runPython({
         interpreter,
         entry: resolvePythonEntry('exporter.py'),
+        parseResult: parseBuild123dExportReport,
         args: [request.mainPath, request.format, outputPath],
         cwd: request.projectDirectory,
         overridesPath,
@@ -127,12 +134,19 @@ export function exportBuild123d(
       })
       if (!result.ok) return result
       signal.throwIfAborted()
+      const data = await fs.readFile(outputPath)
+      if (data.byteLength !== result.bytes) {
+        throw new AppError(
+          'RUNNER_OUTPUT_INVALID',
+          `The Python exporter reported ${result.bytes} bytes but wrote ${data.byteLength}.`,
+        )
+      }
       return {
         ok: true,
         logs: result.logs,
         duration: result.duration,
         extension,
-        data: await fs.readFile(outputPath),
+        data,
       }
     }),
   )

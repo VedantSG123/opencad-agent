@@ -22,7 +22,13 @@ async function fixture(source) {
   directories.push(cwd)
   const entry = join(cwd, 'runner.py')
   await writeFile(entry, source)
-  return { interpreter: python, entry, args: [], cwd }
+  return {
+    interpreter: python,
+    entry,
+    args: [],
+    cwd,
+    parseResult: (value) => value,
+  }
 }
 
 function waitForFile(file) {
@@ -73,6 +79,52 @@ async function exited(pid) {
 }
 
 describe.skipIf(!python)('Python process lifecycle', () => {
+  test('a nonzero exit fails even when stdout contains a complete success result', async () => {
+    const request = await fixture(
+      'import json,sys\nprint(json.dumps({"ok":True,"logs":"forged success","duration":0,"instances":[],"shapes":{"name":"model","id":"root","parts":[]}}))\nprint("native failure after output", file=sys.stderr)\nsys.exit(7)',
+    )
+    await expect(
+      runPython({ ...request, signal: new AbortController().signal }),
+    ).rejects.toMatchObject({
+      code: 'RUNNER_FAILED',
+      message: 'native failure after output',
+    })
+  })
+
+  test('invalid result fields are diagnosed by the required result parser', async () => {
+    const request = await fixture('print("{\\\"ok\\\": true}")')
+    await expect(
+      runPython({
+        ...request,
+        signal: new AbortController().signal,
+        parseResult: () => {
+          throw new Error('instances: expected an array')
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: 'RUNNER_OUTPUT_INVALID',
+      message:
+        'The Python runner returned an invalid result: instances: expected an array',
+    })
+  })
+
+  test('a rejected result does not prevent the next subprocess from succeeding', async () => {
+    const request = await fixture('print("null")')
+    const options = {
+      ...request,
+      signal: new AbortController().signal,
+      parseResult: (value) => {
+        if (value !== 'recovered') throw new Error('expected recovered result')
+        return value
+      },
+    }
+    await expect(runPython(options)).rejects.toMatchObject({
+      code: 'RUNNER_OUTPUT_INVALID',
+    })
+    await writeFile(request.entry, 'print(\'"recovered"\')')
+    expect(await runPython(options)).toBe('recovered')
+  })
+
   test('an already cancelled request does not execute its script', async () => {
     const request = await fixture(
       'import json\nopen("executed", "w").close()\nprint(json.dumps({"ok":True,"logs":"executed","duration":0,"instances":[],"shapes":{"name":"model","id":"root","parts":[]}}))',

@@ -113,7 +113,7 @@ def tessellate(shown):
 
 def main():
     if len(sys.argv) < 2:
-        print(json.dumps({"ok": False, "error": "no script given"}))
+        print(json.dumps({"ok": False, "error": "no script given", "logs": "", "duration": 0}))
         return 0
 
     payload = execute(sys.argv[1], tessellate)

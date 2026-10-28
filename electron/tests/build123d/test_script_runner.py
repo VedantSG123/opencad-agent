@@ -19,6 +19,24 @@ print(json.dumps(payload))
 
 
 class ScriptRunnerTests(unittest.TestCase):
+    def test_entrypoint_argument_errors_have_complete_failure_payloads(self):
+        for entry, arguments, message in [
+            ('runner.py', [], 'no script given'),
+            ('exporter.py', [], 'usage: exporter.py SCRIPT FORMAT OUT'),
+            ('exporter.py', ['main.py', 'unsupported', 'model.out'], 'Unsupported export format: unsupported'),
+        ]:
+            with self.subTest(entry=entry, arguments=arguments):
+                result = subprocess.run(
+                    [sys.executable, str(RUNNER_DIRECTORY / entry), *arguments],
+                    env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'},
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                self.assertEqual(json.loads(result.stdout), {
+                    'ok': False, 'error': message, 'logs': '', 'duration': 0,
+                })
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)

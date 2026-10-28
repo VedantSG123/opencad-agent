@@ -1,11 +1,9 @@
 import type { ChildProcess } from 'node:child_process'
 import { spawn } from 'node:child_process'
 
-import type { Build123dResult } from 'shared/build123d'
-
 import { AppError } from '../../ipc-utils.js'
 
-type PythonRequest = {
+type PythonRequest<T> = {
   interpreter: string
   entry: string
   args: string[]
@@ -13,6 +11,7 @@ type PythonRequest = {
   overridesPath?: string
   signal: AbortSignal
   timeoutMs?: number
+  parseResult: (value: unknown) => T
 }
 
 function cancellationError(signal: AbortSignal): AppError {
@@ -60,12 +59,12 @@ function terminate(child: ChildProcess): Promise<void> {
   })
 }
 
-export function runPython(request: PythonRequest): Promise<Build123dResult> {
+export function runPython<T>(request: PythonRequest<T>): Promise<T> {
   if (request.signal.aborted) {
     return Promise.reject(cancellationError(request.signal))
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise<T>((resolve, reject) => {
     const child = spawn(request.interpreter, [request.entry, ...request.args], {
       cwd: request.cwd,
       detached: process.platform !== 'win32',
@@ -125,7 +124,7 @@ export function runPython(request: PythonRequest): Promise<Build123dResult> {
         }
         const stdout = Buffer.concat(output).toString('utf-8')
         const stderr = Buffer.concat(errors).toString('utf-8')
-        if (signal || (code !== 0 && !stdout)) {
+        if (signal || code !== 0) {
           reject(
             new AppError(
               'RUNNER_FAILED',
@@ -136,13 +135,27 @@ export function runPython(request: PythonRequest): Promise<Build123dResult> {
           return
         }
 
+        let payload: unknown
         try {
-          resolve(JSON.parse(stdout) as Build123dResult)
+          payload = JSON.parse(stdout)
         } catch {
           reject(
             new AppError(
               'RUNNER_OUTPUT_INVALID',
-              `The runner produced output that is not a payload:\n${(stderr || stdout).slice(0, 2000)}`,
+              `The Python runner did not return valid JSON.${stderr.trim() ? `\n${stderr.trim().slice(0, 2000)}` : ''}`,
+            ),
+          )
+          return
+        }
+
+        try {
+          resolve(request.parseResult(payload))
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          reject(
+            new AppError(
+              'RUNNER_OUTPUT_INVALID',
+              `The Python runner returned an invalid result: ${message.slice(0, 2000)}`,
             ),
           )
         }

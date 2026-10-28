@@ -83,14 +83,14 @@ EXPORTERS = {
 
 def main():
     if len(sys.argv) < 4:
-        print(json.dumps({"ok": False, "error": "usage: exporter.py SCRIPT FORMAT OUT"}))
+        print(json.dumps({"ok": False, "error": "usage: exporter.py SCRIPT FORMAT OUT", "logs": "", "duration": 0}))
         return 0
 
     script, fmt, output = sys.argv[1], sys.argv[2], sys.argv[3]
 
     write = EXPORTERS.get(fmt)
     if write is None:
-        print(json.dumps({"ok": False, "error": f"Unsupported export format: {fmt}"}))
+        print(json.dumps({"ok": False, "error": f"Unsupported export format: {fmt}", "logs": "", "duration": 0}))
         return 0
 
     def produce(shown):

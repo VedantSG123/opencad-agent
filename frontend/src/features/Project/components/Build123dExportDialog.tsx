@@ -1,6 +1,9 @@
 import * as React from 'react'
 import type { Build123dExportFormat } from 'shared/build123d'
-import { BUILD123D_EXPORT_EXTENSIONS } from 'shared/build123d'
+import {
+  BUILD123D_EXPORT_EXTENSIONS,
+  parseBuild123dExportResult,
+} from 'shared/build123d'
 import { toast } from 'sonner'
 
 import { ExportDialog } from '@/components/cad/export/ExportDialog'
@@ -164,7 +167,7 @@ export function Build123dExportDialog({
         return
       }
 
-      const result = response.data
+      const result = parseBuild123dExportResult(response.data)
       const now = Date.now()
       const scriptLogs = toLogs(result.logs, now)
 
@@ -182,7 +185,7 @@ export function Build123dExportDialog({
           timestamp: now + scriptLogs.length,
         },
       ])
-      setExported(new Blob([result.data as BlobPart]))
+      setExported(new Blob([result.data]))
       setStatus('success')
     } catch (error) {
       if (activeRun.current === runId) {
