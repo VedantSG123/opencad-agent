@@ -151,10 +151,13 @@ export async function installPythonEnv(
     await runUv(['venv', MANAGED_ENV_DIR, '--python', PYTHON_VERSION], log)
 
     begin('packages')
+    // Builds run with PYTHONDONTWRITEBYTECODE, so without this every build
+    // compiles build123d's imports from source: about 3 s instead of 1.2 s.
     await runUv(
       [
         'pip',
         'install',
+        '--compile-bytecode',
         '--python',
         MANAGED_INTERPRETER,
         ...PYTHON_INSTALL_SPECS,
@@ -193,7 +196,8 @@ export async function installPythonEnv(
 export async function repairPythonEnv(
   onProgress: (progress: PythonInstallProgress) => void,
 ): Promise<PythonEnvStatus> {
-  await fs.rm(MANAGED_ENV_DIR, { recursive: true, force: true })
+  // Before the delete: invalidating stops processes that hold the env open.
   invalidatePythonStatus()
+  await fs.rm(MANAGED_ENV_DIR, { recursive: true, force: true })
   return installPythonEnv(onProgress)
 }

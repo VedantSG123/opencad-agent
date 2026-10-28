@@ -17,12 +17,19 @@ import {
 } from 'shared/build123d'
 
 import { AppError } from '../../ipc-utils.js'
-import { getPythonStatus } from '../../python/status.js'
+import {
+  getPythonStatus,
+  onPythonStatusInvalidated,
+} from '../../python/status.js'
 import { Build123dRuns } from './jobs.js'
-import { runPython } from './process.js'
+import { PythonProcess } from './process.js'
 import { resolvePythonEntry } from './runnerPath.js'
+import { PreviewSpares } from './spares.js'
 
 const runs = new Build123dRuns()
+const spares = new PreviewSpares(() => resolvePythonEntry('runner.py'))
+
+onPythonStatusInvalidated(() => void spares.discardAll())
 
 export function cancelBuild123dRun(
   request: Build123dCancelRequest,
@@ -33,10 +40,22 @@ export function cancelBuild123dRun(
 
 export function cancelBuild123dOwner(ownerId: number): void {
   runs.cancelOwner(ownerId)
+  void spares.discardOwner(ownerId)
 }
 
-export function cancelAllBuild123dRuns(): Promise<void> {
-  return runs.cancelAll()
+export async function cancelAllBuild123dRuns(): Promise<void> {
+  await runs.cancelAll()
+  await spares.discardAll()
+}
+
+function previewProcess(
+  ownerId: number,
+  interpreter: string,
+  signal: AbortSignal,
+): PythonProcess {
+  // A job cancelled along with its window must not leave a spare behind.
+  signal.throwIfAborted()
+  return spares.take(ownerId, interpreter)
 }
 
 async function withRunFiles<T>(
@@ -67,8 +86,8 @@ async function withRunFiles<T>(
 async function writeOverrides(
   overrides: Build123dProjectRequest['overrides'],
   directory: string,
-): Promise<string | undefined> {
-  if (!overrides || Object.keys(overrides).length === 0) return undefined
+): Promise<string | null> {
+  if (!overrides || Object.keys(overrides).length === 0) return null
   const manifest = path.join(directory, 'overrides.json')
   await fs.writeFile(manifest, JSON.stringify(overrides), 'utf-8')
   return manifest
@@ -81,13 +100,14 @@ export function runBuild123dProject(
   return runs.run({ ...request, ownerId }, 'preview', (signal) =>
     withRunFiles(signal, async (interpreter, directory) => {
       const overridesPath = await writeOverrides(request.overrides, directory)
-      return runPython({
-        interpreter,
-        entry: resolvePythonEntry('runner.py'),
+      return previewProcess(ownerId, interpreter, signal).run({
+        input: {
+          script: request.mainPath,
+          cwd: request.projectDirectory,
+          sysPath: [request.projectDirectory],
+          overridesPath,
+        },
         parseResult: parseBuild123dResult,
-        args: [request.mainPath],
-        cwd: request.projectDirectory,
-        overridesPath,
         signal,
       })
     }),
@@ -102,12 +122,14 @@ export function runBuild123dSource(
     withRunFiles(signal, async (interpreter, directory) => {
       const scriptPath = path.join(directory, 'scratch.py')
       await fs.writeFile(scriptPath, request.source, 'utf-8')
-      return runPython({
-        interpreter,
-        entry: resolvePythonEntry('runner.py'),
+      return previewProcess(ownerId, interpreter, signal).run({
+        input: {
+          script: scriptPath,
+          cwd: directory,
+          sysPath: [directory],
+          overridesPath: null,
+        },
         parseResult: parseBuild123dResult,
-        args: [scriptPath],
-        cwd: directory,
         signal,
       })
     }),
@@ -123,13 +145,19 @@ export function exportBuild123d(
       const overridesPath = await writeOverrides(request.overrides, directory)
       const extension = BUILD123D_EXPORT_EXTENSIONS[request.format]
       const outputPath = path.join(directory, `model.${extension}`)
-      const result = await runPython({
+      const result = await new PythonProcess(
         interpreter,
-        entry: resolvePythonEntry('exporter.py'),
+        resolvePythonEntry('exporter.py'),
+      ).run({
+        input: {
+          script: request.mainPath,
+          cwd: request.projectDirectory,
+          sysPath: [request.projectDirectory],
+          overridesPath,
+          format: request.format,
+          output: outputPath,
+        },
         parseResult: parseBuild123dExportReport,
-        args: [request.mainPath, request.format, outputPath],
-        cwd: request.projectDirectory,
-        overridesPath,
         signal,
       })
       if (!result.ok) return result

@@ -1,3 +1,4 @@
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -12,30 +13,57 @@ DRIVER = """
 import json
 import sys
 sys.path.insert(0, sys.argv[1])
-from script_runner import execute
-payload = execute(sys.argv[2], lambda shown: {"ok": True, "objects": [entry["object"] for entry in shown]})
+from script_runner import execute, read_request
+payload = execute(read_request(), lambda shown: {"ok": True, "objects": [entry["object"] for entry in shown]})
 print(json.dumps(payload))
 """
 
 
 class ScriptRunnerTests(unittest.TestCase):
-    def test_entrypoint_argument_errors_have_complete_failure_payloads(self):
-        for entry, arguments, message in [
-            ('runner.py', [], 'no script given'),
-            ('exporter.py', [], 'usage: exporter.py SCRIPT FORMAT OUT'),
-            ('exporter.py', ['main.py', 'unsupported', 'model.out'], 'Unsupported export format: unsupported'),
-        ]:
-            with self.subTest(entry=entry, arguments=arguments):
-                result = subprocess.run(
-                    [sys.executable, str(RUNNER_DIRECTORY / entry), *arguments],
-                    env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'},
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                )
-                self.assertEqual(json.loads(result.stdout), {
-                    'ok': False, 'error': message, 'logs': '', 'duration': 0,
-                })
+    def run_entry(self, entry, request):
+        return subprocess.run(
+            [sys.executable, str(RUNNER_DIRECTORY / entry)],
+            input=json.dumps(request),
+            env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'},
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+    def request(self, main="main.py", overrides_path=None):
+        return {
+            "script": str(self.project / main),
+            "cwd": str(self.project),
+            "sysPath": [str(self.project)],
+            "overridesPath": overrides_path,
+        }
+
+    def test_exporter_rejects_an_unsupported_format_with_a_complete_payload(self):
+        result = self.run_entry('exporter.py', {**self.request(), 'format': 'unsupported', 'output': 'model.out'})
+        self.assertEqual(json.loads(result.stdout), {
+            'ok': False, 'error': 'Unsupported export format: unsupported', 'logs': '', 'duration': 0,
+        })
+
+    @unittest.skipUnless(importlib.util.find_spec('build123d'), 'needs the build123d environment')
+    def test_runner_builds_the_requested_script_from_another_directory(self):
+        self.write("main.py", "from build123d import Box\nshow(Box(1, 2, 3))\n")
+        payload = json.loads(self.run_entry('runner.py', self.request()).stdout)
+        self.assertTrue(payload['ok'], payload.get('error'))
+        self.assertEqual(len(payload['instances']), 1)
+        self.assertEqual(payload['instances'][0]['triangles']['shape'], [36])
+
+    @unittest.skipUnless(importlib.util.find_spec('build123d'), 'needs the build123d environment')
+    def test_runner_waiting_for_a_request_exits_when_its_parent_closes_stdin(self):
+        result = subprocess.run(
+            [sys.executable, str(RUNNER_DIRECTORY / 'runner.py')],
+            input='',
+            env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'},
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, '')
 
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -56,14 +84,10 @@ class ScriptRunnerTests(unittest.TestCase):
             encoding="utf-8",
         )
         result = subprocess.run(
-            [sys.executable, "-c", DRIVER, str(RUNNER_DIRECTORY), str(self.project / main)],
-            cwd=self.project,
-            env={
-                **os.environ,
-                "OPENCAD_OVERRIDES_PATH": str(manifest),
-                "OPENCAD_SYS_PATH": str(self.project),
-                "PYTHONDONTWRITEBYTECODE": "1",
-            },
+            [sys.executable, "-c", DRIVER, str(RUNNER_DIRECTORY)],
+            input=json.dumps(self.request(main, str(manifest))),
+            cwd=self.temporary.name,
+            env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
             text=True,
             capture_output=True,
             check=True,

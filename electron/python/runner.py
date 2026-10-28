@@ -1,15 +1,22 @@
 """Build a build123d script and emit its tessellated geometry as JSON.
 
-Invoked as `python runner.py <script>`. Running the script is
+Invoked as `python runner.py` with one request on stdin. Running the script is
 `script_runner.execute`; what is left here is turning what it showed into the
 buffers the viewer draws.
+
+Everything is imported before the request is read, so a process started ahead
+of the build is already past the ~1.1 s that importing build123d costs.
 """
 
 import base64
 import json
 import sys
 
-from script_runner import execute
+import build123d  # noqa: F401
+import numpy as np
+from ocp_tessellate.convert import tessellate_group, to_ocpgroup
+
+from script_runner import execute, exit_without_finalizing, read_request
 
 
 def encode_buffer(array):
@@ -41,8 +48,6 @@ INDEX_BUFFERS = (
 
 
 def encode_instance(instance):
-    import numpy as np  # noqa: PLC0415
-
     encoded = {}
     for field in FLOAT_BUFFERS:
         value = instance.get(field)
@@ -64,8 +69,6 @@ def encode_inline_buffers(node):
     every other buffer travels base64, and the consumer would need two readers
     for the same field.
     """
-    import numpy as np  # noqa: PLC0415
-
     for part in node.get("parts") or []:
         encode_inline_buffers(part)
 
@@ -83,8 +86,6 @@ def encode_inline_buffers(node):
 
 def json_default(obj):
     """numpy scalars reach the tree through the bounding box and locations."""
-    import numpy as np  # noqa: PLC0415
-
     if isinstance(obj, np.generic):
         return obj.item()
     if isinstance(obj, np.ndarray):
@@ -93,8 +94,6 @@ def json_default(obj):
 
 
 def tessellate(shown):
-    from ocp_tessellate.convert import tessellate_group, to_ocpgroup  # noqa: PLC0415
-
     group, instances = to_ocpgroup(
         *[entry["object"] for entry in shown],
         names=[entry["name"] for entry in shown],
@@ -112,15 +111,11 @@ def tessellate(shown):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print(json.dumps({"ok": False, "error": "no script given", "logs": "", "duration": 0}))
-        return 0
-
-    payload = execute(sys.argv[1], tessellate)
+    payload = execute(read_request(), tessellate)
     json.dump(payload, sys.stdout, default=json_default)
     sys.stdout.flush()
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    exit_without_finalizing(main())

@@ -110,8 +110,11 @@ class _ProjectSources(importlib.abc.MetaPathFinder):
         return None
 
 
-def _read_overrides():
-    manifest = os.environ.get("OPENCAD_OVERRIDES_PATH")
+def read_request():
+    return json.load(sys.stdin)
+
+
+def _read_overrides(manifest):
     if not manifest:
         return {}
     with open(manifest, "r", encoding="utf-8") as handle:
@@ -126,8 +129,8 @@ def _read_overrides():
     return {_absolute(path): source for path, source in values.items()}
 
 
-def run_script(path):
-    """Execute the script and return what it showed, in order."""
+def run_script(request):
+    """Execute the requested script and return what it showed, in order."""
     shown = []
 
     def show(*objects, names=None, colors=None, alphas=None, **_ignored):
@@ -151,8 +154,8 @@ def run_script(path):
             }
         )
 
-    path = os.path.abspath(path)
-    overrides = _read_overrides()
+    path = os.path.abspath(request["script"])
+    overrides = _read_overrides(request["overridesPath"])
     loader = _ProjectSourceLoader("__main__", path, overrides)
 
     # `__name__` is "__main__" so that a script guarding its body on it still
@@ -164,9 +167,7 @@ def run_script(path):
         "show": show,
         "show_object": show_object,
     }
-    search_paths = [
-        entry for entry in os.environ.get("OPENCAD_SYS_PATH", "").split(os.pathsep) if entry
-    ]
+    search_paths = [entry for entry in request["sysPath"] if entry]
     search_paths.insert(0, os.path.dirname(path))
     finder = _ProjectSources(overrides, [os.getcwd(), *search_paths])
     original_path = sys.path[:]
@@ -181,8 +182,8 @@ def run_script(path):
     return shown
 
 
-def execute(path, produce):
-    """Run the script, hand what it showed to `produce`, and report the result.
+def execute(request, produce):
+    """Run the requested script, hand what it showed to `produce`, and report the result.
 
     The script's own `print` output is captured rather than allowed through,
     because anything it wrote would land in the middle of the payload; it comes
@@ -195,7 +196,9 @@ def execute(path, produce):
 
     try:
         with contextlib.redirect_stdout(captured), contextlib.redirect_stderr(captured):
-            shown = run_script(path)
+            # The process may have been started before the project was known.
+            os.chdir(request["cwd"])
+            shown = run_script(request)
 
             if not shown:
                 payload = {
@@ -210,3 +213,16 @@ def execute(path, produce):
     payload["logs"] = captured.getvalue()
     payload["duration"] = round(time.perf_counter() - started, 3)
     return payload
+
+
+def exit_without_finalizing(status):
+    """End the process once the payload is out.
+
+    Finalizing the interpreter tears down OCCT, scipy and scikit-learn, which
+    takes about 0.3 s after the result has already been written. Nothing an
+    entry point leaves behind needs a finalizer, so the streams are flushed and
+    the process ends without one.
+    """
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(status)

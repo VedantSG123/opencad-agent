@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { existsSync, readFileSync, watch } from 'node:fs'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-import { runPython } from '../../src/utils/cad/build123d/process'
+import { PythonProcess } from '../../src/utils/cad/build123d/process'
 
 const directories = []
 const python = Bun.which('python3') ?? Bun.which('python')
@@ -17,18 +17,31 @@ afterEach(async () => {
   )
 })
 
+// Every real entry point starts this way: the request arrives on stdin, then
+// the process moves into the project.
+const PREAMBLE =
+  'import json, os, sys\nrequest = json.load(sys.stdin)\nos.chdir(request["cwd"])\n'
+
 async function fixture(source) {
   const cwd = await mkdtemp(join(tmpdir(), 'build123d-process-'))
   directories.push(cwd)
   const entry = join(cwd, 'runner.py')
-  await writeFile(entry, source)
+  await writeFile(entry, PREAMBLE + source)
   return {
     interpreter: python,
     entry,
-    args: [],
     cwd,
+    input: { script: entry, cwd, sysPath: [cwd], overridesPath: null },
     parseResult: (value) => value,
   }
+}
+
+function run(request, options) {
+  return new PythonProcess(request.interpreter, request.entry).run({
+    input: request.input,
+    parseResult: request.parseResult,
+    ...options,
+  })
 }
 
 function waitForFile(file) {
@@ -84,7 +97,7 @@ describe.skipIf(!python)('Python process lifecycle', () => {
       'import json,sys\nprint(json.dumps({"ok":True,"logs":"forged success","duration":0,"instances":[],"shapes":{"name":"model","id":"root","parts":[]}}))\nprint("native failure after output", file=sys.stderr)\nsys.exit(7)',
     )
     await expect(
-      runPython({ ...request, signal: new AbortController().signal }),
+      run(request, { signal: new AbortController().signal }),
     ).rejects.toMatchObject({
       code: 'RUNNER_FAILED',
       message: 'native failure after output',
@@ -94,8 +107,7 @@ describe.skipIf(!python)('Python process lifecycle', () => {
   test('invalid result fields are diagnosed by the required result parser', async () => {
     const request = await fixture('print("{\\\"ok\\\": true}")')
     await expect(
-      runPython({
-        ...request,
+      run(request, {
         signal: new AbortController().signal,
         parseResult: () => {
           throw new Error('instances: expected an array')
@@ -111,18 +123,17 @@ describe.skipIf(!python)('Python process lifecycle', () => {
   test('a rejected result does not prevent the next subprocess from succeeding', async () => {
     const request = await fixture('print("null")')
     const options = {
-      ...request,
       signal: new AbortController().signal,
       parseResult: (value) => {
         if (value !== 'recovered') throw new Error('expected recovered result')
         return value
       },
     }
-    await expect(runPython(options)).rejects.toMatchObject({
+    await expect(run(request, options)).rejects.toMatchObject({
       code: 'RUNNER_OUTPUT_INVALID',
     })
-    await writeFile(request.entry, 'print(\'"recovered"\')')
-    expect(await runPython(options)).toBe('recovered')
+    await writeFile(request.entry, PREAMBLE + 'print(\'"recovered"\')')
+    expect(await run(request, options)).toBe('recovered')
   })
 
   test('an already cancelled request does not execute its script', async () => {
@@ -132,7 +143,7 @@ describe.skipIf(!python)('Python process lifecycle', () => {
     const controller = new AbortController()
     controller.abort()
     await expect(
-      runPython({ ...request, signal: controller.signal }),
+      run(request, { signal: controller.signal }),
     ).rejects.toMatchObject({ code: 'BUILD_CANCELLED' })
     expect(existsSync(join(request.cwd, 'executed'))).toBe(false)
   })
@@ -142,27 +153,35 @@ describe.skipIf(!python)('Python process lifecycle', () => {
       'import json,time\ntime.sleep(0.2)\nprint(json.dumps({"ok":True,"logs":"too late","duration":0,"instances":[],"shapes":{"name":"model","id":"root","parts":[]}}))',
     )
     await expect(
-      runPython({
-        ...request,
+      run(request, {
         signal: new AbortController().signal,
         timeoutMs: 20,
       }),
     ).rejects.toMatchObject({ code: 'BUILD_TIMEOUT' })
   })
 
-  test('successful runs receive their own environment and complete payload', async () => {
-    const request = await fixture(`import json,os
-print(json.dumps({"ok": False, "error": "script failure", "logs": "|".join([os.environ["OPENCAD_OVERRIDES_PATH"], os.environ["OPENCAD_SYS_PATH"], os.environ["PYTHONDONTWRITEBYTECODE"]]), "duration": 0.5}))`)
-    const result = await runPython({
-      ...request,
+  test('successful runs receive their request, environment and complete payload', async () => {
+    const request = await fixture(
+      'print(json.dumps({"ok": False, "error": "script failure", "logs": json.dumps({"request": request, "cwd": os.getcwd(), "noBytecode": os.environ["PYTHONDONTWRITEBYTECODE"]}), "duration": 0.5}))',
+    )
+    const input = { ...request.input, overridesPath: 'my-overrides.json' }
+    const result = await new PythonProcess(
+      request.interpreter,
+      request.entry,
+    ).run({
+      input,
+      parseResult: request.parseResult,
       signal: new AbortController().signal,
-      overridesPath: 'my-overrides.json',
     })
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       ok: false,
       error: 'script failure',
-      logs: `my-overrides.json|${request.cwd}|1`,
       duration: 0.5,
+    })
+    expect(JSON.parse(result.logs)).toEqual({
+      request: input,
+      cwd: await realpath(request.cwd),
+      noBytecode: '1',
     })
   })
 
@@ -175,7 +194,7 @@ with open("ready", "w") as handle: handle.write(str(os.getpid()))
 while True: time.sleep(1)`)
       const ready = waitForFile(join(request.cwd, 'ready'))
       const controller = new AbortController()
-      const settled = runPython({ ...request, signal: controller.signal }).then(
+      const settled = run(request, { signal: controller.signal }).then(
         () => ({ status: 'resolved' }),
         (reason) => ({ status: 'rejected', code: reason.code }),
       )
@@ -203,7 +222,7 @@ subprocess.Popen([sys.executable, "-c", "import os,signal,time; signal.signal(si
 while True: time.sleep(1)`)
       const ready = waitForFile(join(request.cwd, 'descendant'))
       const controller = new AbortController()
-      const settled = runPython({ ...request, signal: controller.signal }).then(
+      const settled = run(request, { signal: controller.signal }).then(
         () => ({ status: 'resolved' }),
         (reason) => ({ status: 'rejected', code: reason.code }),
       )
@@ -226,14 +245,13 @@ while True: time.sleep(1)`)
   test('spawn errors and invalid output do not wait for the build timeout', async () => {
     const request = await fixture('print("not JSON")')
     await expect(
-      runPython({ ...request, signal: new AbortController().signal }),
+      run(request, { signal: new AbortController().signal }),
     ).rejects.toMatchObject({ code: 'RUNNER_OUTPUT_INVALID' })
     await expect(
-      runPython({
-        ...request,
-        interpreter: join(request.cwd, 'missing-python'),
-        signal: new AbortController().signal,
-      }),
+      run(
+        { ...request, interpreter: join(request.cwd, 'missing-python') },
+        { signal: new AbortController().signal },
+      ),
     ).rejects.toMatchObject({ code: 'ENOENT' })
   })
 })

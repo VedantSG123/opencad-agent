@@ -1,16 +1,16 @@
 """Export a build123d script's model to a 3D file.
 
-Invoked as `python exporter.py <script> <format> <output>`. Running the script
-is `script_runner.execute`, the same path the viewer's runner takes, so what is
-exported is what was last shown rather than a second interpretation of the
-file.
+Invoked as `python exporter.py` with one request on stdin naming the script,
+the format and the output path. Running the script is `script_runner.execute`,
+the same path the viewer's runner takes, so what is exported is what was last
+shown rather than a second interpretation of the file.
 """
 
 import json
 import os
 import sys
 
-from script_runner import execute
+from script_runner import execute, exit_without_finalizing, read_request
 
 
 def _single_shape(shown):
@@ -82,11 +82,8 @@ EXPORTERS = {
 
 
 def main():
-    if len(sys.argv) < 4:
-        print(json.dumps({"ok": False, "error": "usage: exporter.py SCRIPT FORMAT OUT", "logs": "", "duration": 0}))
-        return 0
-
-    script, fmt, output = sys.argv[1], sys.argv[2], sys.argv[3]
+    request = read_request()
+    fmt, output = request["format"], request["output"]
 
     write = EXPORTERS.get(fmt)
     if write is None:
@@ -99,10 +96,10 @@ def main():
             return {"ok": False, "error": f"{fmt} export wrote no file"}
         return {"ok": True, "bytes": os.path.getsize(output)}
 
-    json.dump(execute(script, produce), sys.stdout)
+    json.dump(execute(request, produce), sys.stdout)
     sys.stdout.flush()
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    exit_without_finalizing(main())
