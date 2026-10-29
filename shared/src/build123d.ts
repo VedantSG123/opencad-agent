@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { geometrySummarySchema } from './build.js'
+
 const countSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)
 const finiteSchema = z.number().finite()
 const resultFields = { logs: z.string(), duration: finiteSchema.nonnegative() }
@@ -185,6 +187,13 @@ export type ShapeNode = z.infer<typeof shapeNodeSchema>
 const failureSchema = z.object({
   ok: z.literal(false),
   error: z.string().min(1),
+  location: z
+    .object({
+      file: z.string(),
+      line: countSchema.positive(),
+      column: countSchema.positive().optional(),
+    })
+    .optional(),
   ...resultFields,
 })
 const previewSuccessSchema = z
@@ -192,6 +201,7 @@ const previewSuccessSchema = z
     ok: z.literal(true),
     instances: z.array(encodedInstanceSchema),
     shapes: shapeNodeSchema,
+    geometry: geometrySummarySchema.optional(),
     ...resultFields,
   })
   .superRefine((result, context) => {
@@ -283,6 +293,7 @@ export type Build123dProjectRequest = Build123dRunIdentity & {
   mainPath: string
   projectDirectory: string
   overrides?: Record<string, string>
+  geometrySummary?: boolean
 }
 
 export type Build123dSourceRequest = Build123dRunIdentity & { source: string }

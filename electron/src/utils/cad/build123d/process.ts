@@ -14,6 +14,7 @@ export type ScriptInput = {
   cwd: string
   sysPath: string[]
   overridesPath: string | null
+  geometrySummary?: boolean
 }
 
 export type ExportInput = ScriptInput & {

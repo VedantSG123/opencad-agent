@@ -156,6 +156,22 @@ class ScriptRunnerTests(unittest.TestCase):
         self.assertIn(str(self.project / "main.py"), result["error"])
         self.assertIn("raise ValueError('unsaved failure')", result["error"])
 
+    def test_runtime_and_syntax_errors_identify_the_original_main_file(self):
+        for source, line in [("print('before')\nraise ValueError('bad')\n", 2), ("def broken(:\n    pass\n", 1)]:
+            with self.subTest(source=source):
+                result = self.run_script(overrides={"main.py": source})
+                self.assertFalse(result['ok'])
+                self.assertEqual(result['location']['file'], str(self.project / 'main.py'))
+                self.assertEqual(result['location']['line'], line)
+
+    def test_imported_exception_does_not_claim_a_main_file_location(self):
+        self.write('main.py', 'import sibling\n')
+        self.write('sibling.py', "raise ValueError('from sibling')\n")
+        result = self.run_script()
+        self.assertFalse(result['ok'])
+        self.assertNotIn('location', result)
+        self.assertIn(str(self.project / 'sibling.py'), result['error'])
+
     def test_saved_modules_do_not_reuse_stale_bytecode(self):
         self.write("main.py", "import part\nshow(part.value)\n")
         module = self.write("part.py", "value = 1\n")

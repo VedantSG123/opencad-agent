@@ -10,8 +10,8 @@ import { formatBuildReport } from './formatResult'
 import { prompt } from './prompt'
 
 /**
- * Puts a build to whoever is driving the run. The app builds in its own
- * kernel worker, so the backend can only ask and wait.
+ * Puts a build to whoever is driving the run. The app owns kernel execution,
+ * so the backend can only ask and wait.
  */
 export type BuildRequester = (
   request: BuildRequest,

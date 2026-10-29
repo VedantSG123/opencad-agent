@@ -65,12 +65,12 @@ describe('tool allowance', () => {
     }
   })
 
-  test('only replicad can build until another kernel answers builds', () => {
+  test('replicad and build123d can answer agent builds', () => {
     // The app answers a build with the kernel the project is open in; a
     // kernel with no builder there would leave every build unavailable.
     for (const kernel of KERNELS) {
       expect(offeredToolNames(kernel).includes(BUILD_TOOL_NAME)).toBe(
-        kernel === 'replicad',
+        kernel === 'replicad' || kernel === 'build123d',
       )
     }
   })

@@ -50,6 +50,12 @@ function validateRunRequest(
     validateString(request.projectDirectory, 'projectDirectory'),
   )
   const overrides: Record<string, string> = {}
+  if (
+    request.geometrySummary !== undefined &&
+    typeof request.geometrySummary !== 'boolean'
+  ) {
+    throw new AppError('INVALID_INPUT', 'geometrySummary must be a boolean.')
+  }
   for (const [filePath, content] of Object.entries(request.overrides ?? {})) {
     if (typeof content !== 'string') {
       throw new AppError('INVALID_INPUT', `${filePath} has no content`)
@@ -64,6 +70,9 @@ function validateRunRequest(
     ),
     projectDirectory,
     overrides,
+    ...(request.geometrySummary === undefined
+      ? {}
+      : { geometrySummary: request.geometrySummary }),
   }
 }
 

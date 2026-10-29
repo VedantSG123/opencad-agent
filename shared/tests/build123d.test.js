@@ -364,3 +364,54 @@ describe('build123d export protocol', () => {
     }
   })
 })
+
+test('preview results retain requested geometry and reject malformed summaries', () => {
+  const geometry = {
+    parts: [
+      {
+        kind: '3d',
+        name: 'box',
+        bounds: { min: [0, 0, 0], max: [1, 2, 3] },
+        solidCount: 1,
+        valid: true,
+        shellsClosed: true,
+        volume: 6,
+        surfaceArea: 22,
+        centerOfMass: [0.5, 1, 1.5],
+      },
+    ],
+    overall: {
+      bounds: { min: [0, 0, 0], max: [1, 2, 3] },
+      solidCount: 1,
+      volumeSum: 6,
+      surfaceAreaSum: 22,
+    },
+  }
+  expect(parseBuild123dResult({ ...preview(), geometry }).geometry).toEqual(
+    geometry,
+  )
+  expect(() =>
+    parseBuild123dResult({
+      ...preview(),
+      geometry: { ...geometry, parts: [{ ...geometry.parts[0], volume: NaN }] },
+    }),
+  ).toThrow('geometry.parts.0.volume')
+  expect(parseBuild123dResult(preview())).not.toHaveProperty('geometry')
+})
+
+test('failure results retain source metadata and reject invalid line numbers', () => {
+  const failure = {
+    ok: false,
+    logs: '',
+    duration: 1,
+    error: 'NameError',
+    location: { file: '/project/main.py', line: 3, column: 1 },
+  }
+  expect(parseBuild123dResult(failure)).toEqual(failure)
+  expect(() =>
+    parseBuild123dResult({
+      ...failure,
+      location: { ...failure.location, line: 0 },
+    }),
+  ).toThrow('location.line')
+})

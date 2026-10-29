@@ -93,13 +93,18 @@ def json_default(obj):
     raise TypeError(f"{type(obj)} is not JSON serializable")
 
 
-def tessellate(shown):
+def tessellate(shown, geometry_summary=False):
     group, instances = to_ocpgroup(
         *[entry["object"] for entry in shown],
         names=[entry["name"] for entry in shown],
         colors=[entry["color"] for entry in shown],
         alphas=[entry["alpha"] for entry in shown],
     )
+    geometry = None
+    if geometry_summary:
+        from geometry_summary import summarize_geometry
+
+        geometry = summarize_geometry(group, instances)
     meshed, shapes, _mapping = tessellate_group(group, instances, {})
     encode_inline_buffers(shapes)
 
@@ -107,11 +112,13 @@ def tessellate(shown):
         "ok": True,
         "instances": [encode_instance(instance) for instance in meshed],
         "shapes": shapes,
+        **({"geometry": geometry} if geometry_summary else {}),
     }
 
 
 def main():
-    payload = execute(read_request(), tessellate)
+    request = read_request()
+    payload = execute(request, lambda shown: tessellate(shown, request.get("geometrySummary", False)))
     json.dump(payload, sys.stdout, default=json_default)
     sys.stdout.flush()
     return 0

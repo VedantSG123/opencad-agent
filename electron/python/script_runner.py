@@ -207,8 +207,18 @@ def execute(request, produce):
                 }
             else:
                 payload = produce(shown)
-    except BaseException:  # noqa: BLE001
+    except BaseException as error:  # noqa: BLE001
         payload = {"ok": False, "error": traceback.format_exc()}
+        if isinstance(error, SyntaxError):
+            filename, line, column = error.filename, error.lineno, error.offset
+        else:
+            frames = traceback.extract_tb(error.__traceback__)
+            frame = frames[-1] if frames else None
+            filename, line, column = (frame.filename, frame.lineno, None) if frame else (None, None, None)
+        if filename and line and _absolute(filename) == _absolute(request["script"]):
+            payload["location"] = {"file": os.path.abspath(filename), "line": line}
+            if column and column > 0:
+                payload["location"]["column"] = column
 
     payload["logs"] = captured.getvalue()
     payload["duration"] = round(time.perf_counter() - started, 3)

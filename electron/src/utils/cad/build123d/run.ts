@@ -106,6 +106,9 @@ export function runBuild123dProject(
           cwd: request.projectDirectory,
           sysPath: [request.projectDirectory],
           overridesPath,
+          ...(request.geometrySummary === undefined
+            ? {}
+            : { geometrySummary: request.geometrySummary }),
         },
         parseResult: parseBuild123dResult,
         signal,
