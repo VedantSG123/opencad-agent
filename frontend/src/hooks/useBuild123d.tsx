@@ -109,7 +109,9 @@ export function createBuild123dStore() {
       set({ isBuilding: false })
       try {
         await window.electron?.cancelBuild123dRun({ sessionId })
-      } catch {}
+      } catch {
+        return
+      }
     }
 
     return {

@@ -24,6 +24,7 @@ export function ExportDialog({
   projectName,
   kernel,
   note,
+  description,
   formats,
   format,
   onFormatChange,
@@ -43,6 +44,7 @@ export function ExportDialog({
   kernel: string
   /** A short qualifier after the kernel name in the header. */
   note?: string
+  description?: string
   formats: ExportFormat[]
   format: string
   onFormatChange: (id: string) => void
@@ -84,6 +86,11 @@ export function ExportDialog({
 
             <Modal.Body>
               <div className='flex flex-col gap-4 py-1'>
+                {description && (
+                  <p className='text-xs leading-relaxed text-muted'>
+                    {description}
+                  </p>
+                )}
                 <ExportFormatList
                   formats={formats}
                   selected={format}

@@ -2,6 +2,7 @@ import * as React from 'react'
 import type { Build123dExportFormat } from 'shared/build123d'
 import {
   BUILD123D_EXPORT_EXTENSIONS,
+  BUILD123D_EXPORT_FORMATS,
   parseBuild123dExportResult,
 } from 'shared/build123d'
 import { toast } from 'sonner'
@@ -111,7 +112,9 @@ export function Build123dExportDialog({
   const filename = `${project.name.replace(/[^a-zA-Z0-9-_]/g, '_') || 'model'}.${extension}`
 
   const handleFormatChange = (id: string) => {
-    setFormat(id as Build123dExportFormat)
+    const selected = BUILD123D_EXPORT_FORMATS.find((format) => format === id)
+    if (!selected) return
+    setFormat(selected)
     setStatus('idle')
     setErrorMessage('')
     setLogs([])
@@ -176,6 +179,10 @@ export function Build123dExportDialog({
         fail(result.error, toLogs(result.error, now + scriptLogs.length))
         return
       }
+      if (result.extension !== extension) {
+        fail(`The exporter returned a ${result.extension} file for ${format}.`)
+        return
+      }
 
       setLogs([
         ...scriptLogs,
@@ -218,7 +225,8 @@ export function Build123dExportDialog({
       onClose={onClose}
       projectName={project.name}
       kernel='build123d'
-      note='includes unsaved edits'
+      note='reruns current source'
+      description='Runs the current script with unsaved edits and exports all parts, including hidden parts. Random or time-dependent models may differ from the preview.'
       formats={FORMATS}
       format={format}
       onFormatChange={handleFormatChange}

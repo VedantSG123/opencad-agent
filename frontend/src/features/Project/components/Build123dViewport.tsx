@@ -1,5 +1,4 @@
 import * as React from 'react'
-import type { ShapeNode } from 'shared/build123d'
 
 import { Build123dViewer } from '@/components-3d/cad-viewer/Build123dViewer'
 import type { StageHandle } from '@/components-3d/helpers/Stage'
@@ -14,10 +13,8 @@ import {
   PythonEnvPanel,
 } from '@/components/python/PythonEnvPanel'
 import { useBuild123d } from '@/hooks/useBuild123d'
-import { useBuild123dVisibility } from '@/hooks/useBuild123dVisibility'
+import { useBuild123dInteraction } from '@/hooks/useBuild123dInteraction'
 import { usePythonEnv } from '@/hooks/usePythonEnv'
-import { leafIds } from '@/kernels/build123d/tree'
-import type { SelectedComponent } from '@/types'
 
 import { Build123dCompiler } from './Build123dCompiler'
 import { Build123dExportDialog } from './Build123dExportDialog'
@@ -30,38 +27,25 @@ function Build123dViewportInner() {
   const error = useBuild123d((state) => state.error)
   const isBuilding = useBuild123d((state) => state.isBuilding)
 
-  const { visibility, setVisible } = useBuild123dVisibility(model?.tree ?? null)
-  const [selectedNode, setSelectedNode] = React.useState<string | null>(null)
-  const [selectedParts, setSelectedParts] = React.useState<string[]>([])
-  const [selection, setSelection] = React.useState<SelectedComponent | null>(
-    null,
-  )
+  const interaction = useBuild123dInteraction(model)
   const stageRef = React.useRef<StageHandle>(null)
-
-  const select = (node: ShapeNode) => {
-    const same = selectedNode === node.id
-    setSelectedNode(same ? null : node.id)
-    setSelectedParts(same ? [] : leafIds(node))
-  }
 
   return (
     <div className='relative h-full w-full'>
       <Build123dViewer
         model={model}
         hasError={Boolean(error)}
-        visibility={visibility}
-        selectedPartIds={selectedParts}
+        interaction={interaction}
         stageRef={stageRef}
-        onSelect={setSelection}
       />
 
       {model && (
         <PartTreePanel
           tree={model.tree}
-          visibility={visibility}
-          onToggle={setVisible}
-          selectedId={selectedNode}
-          onSelect={select}
+          visibility={interaction.visibility}
+          onToggle={interaction.setVisible}
+          selectedId={interaction.selectedNode}
+          onSelect={interaction.selectNode}
         />
       )}
 
@@ -80,7 +64,7 @@ function Build123dViewportInner() {
 
       <ViewportStatusBar>
         <ResetViewButton stageRef={stageRef} />
-        <SelectionReadout selection={selection} />
+        <SelectionReadout selection={interaction.selection} />
         <BusyIndicator active={isBuilding} label='Building...' />
       </ViewportStatusBar>
 
