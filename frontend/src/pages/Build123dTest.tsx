@@ -11,10 +11,8 @@ import { SelectionReadout } from '@/components/cad/SelectionReadout'
 import { ViewportStatusBar } from '@/components/cad/ViewportStatusBar'
 import { Console } from '@/components/console/Console'
 import { Build123dProvider, useBuild123d } from '@/hooks/useBuild123d'
-import { useBuild123dVisibility } from '@/hooks/useBuild123dVisibility'
+import { useBuild123dInteraction } from '@/hooks/useBuild123dInteraction'
 import { usePythonEnv } from '@/hooks/usePythonEnv'
-import { leafIds } from '@/kernels/build123d/tree'
-import type { SelectedComponent } from '@/types'
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1)
 
@@ -49,12 +47,7 @@ function Build123dTestInner() {
   const buildSource = useBuild123d((state) => state.buildSource)
   const clearLogs = useBuild123d((state) => state.clearLogs)
   const [source, setSource] = React.useState(DEMO_SCRIPT)
-  const [selectedNode, setSelectedNode] = React.useState<string | null>(null)
-  const { visibility, setVisible } = useBuild123dVisibility(model?.tree ?? null)
-  const [selectedParts, setSelectedParts] = React.useState<string[]>([])
-  const [selection, setSelection] = React.useState<SelectedComponent | null>(
-    null,
-  )
+  const interaction = useBuild123dInteraction(model)
   const stageRef = React.useRef<StageHandle>(null)
 
   const isReady = env.status?.state === 'ready'
@@ -106,27 +99,21 @@ function Build123dTestInner() {
           <Build123dViewer
             model={model}
             hasError={!!error}
-            visibility={visibility}
-            selectedPartIds={selectedParts}
+            interaction={interaction}
             stageRef={stageRef}
-            onSelect={setSelection}
           />
           <ViewportStatusBar>
             <ResetViewButton stageRef={stageRef} />
-            <SelectionReadout selection={selection} />
+            <SelectionReadout selection={interaction.selection} />
             <BusyIndicator active={isBuilding} label='Building...' />
           </ViewportStatusBar>
           {model && (
             <PartTreePanel
               tree={model.tree}
-              visibility={visibility}
-              onToggle={setVisible}
-              selectedId={selectedNode}
-              onSelect={(node) => {
-                const same = selectedNode === node.id
-                setSelectedNode(same ? null : node.id)
-                setSelectedParts(same ? [] : leafIds(node))
-              }}
+              visibility={interaction.visibility}
+              onToggle={interaction.setVisible}
+              selectedId={interaction.selectedNode}
+              onSelect={interaction.selectNode}
             />
           )}
         </div>

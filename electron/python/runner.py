@@ -1,15 +1,22 @@
 """Build a build123d script and emit its tessellated geometry as JSON.
 
-Invoked as `python runner.py <script>`. Running the script is
+Invoked as `python runner.py` with one request on stdin. Running the script is
 `script_runner.execute`; what is left here is turning what it showed into the
 buffers the viewer draws.
+
+Everything is imported before the request is read, so a process started ahead
+of the build is already past the ~1.1 s that importing build123d costs.
 """
 
 import base64
 import json
 import sys
 
-from script_runner import execute
+import build123d  # noqa: F401
+import numpy as np
+from ocp_tessellate.convert import tessellate_group, to_ocpgroup
+
+from script_runner import execute, exit_without_finalizing, read_request
 
 
 def encode_buffer(array):
@@ -41,8 +48,6 @@ INDEX_BUFFERS = (
 
 
 def encode_instance(instance):
-    import numpy as np  # noqa: PLC0415
-
     encoded = {}
     for field in FLOAT_BUFFERS:
         value = instance.get(field)
@@ -64,8 +69,6 @@ def encode_inline_buffers(node):
     every other buffer travels base64, and the consumer would need two readers
     for the same field.
     """
-    import numpy as np  # noqa: PLC0415
-
     for part in node.get("parts") or []:
         encode_inline_buffers(part)
 
@@ -83,8 +86,6 @@ def encode_inline_buffers(node):
 
 def json_default(obj):
     """numpy scalars reach the tree through the bounding box and locations."""
-    import numpy as np  # noqa: PLC0415
-
     if isinstance(obj, np.generic):
         return obj.item()
     if isinstance(obj, np.ndarray):
@@ -92,15 +93,18 @@ def json_default(obj):
     raise TypeError(f"{type(obj)} is not JSON serializable")
 
 
-def tessellate(shown):
-    from ocp_tessellate.convert import tessellate_group, to_ocpgroup  # noqa: PLC0415
-
+def tessellate(shown, geometry_summary=False):
     group, instances = to_ocpgroup(
         *[entry["object"] for entry in shown],
         names=[entry["name"] for entry in shown],
         colors=[entry["color"] for entry in shown],
         alphas=[entry["alpha"] for entry in shown],
     )
+    geometry = None
+    if geometry_summary:
+        from geometry_summary import summarize_geometry
+
+        geometry = summarize_geometry(group, instances)
     meshed, shapes, _mapping = tessellate_group(group, instances, {})
     encode_inline_buffers(shapes)
 
@@ -108,19 +112,17 @@ def tessellate(shown):
         "ok": True,
         "instances": [encode_instance(instance) for instance in meshed],
         "shapes": shapes,
+        **({"geometry": geometry} if geometry_summary else {}),
     }
 
 
 def main():
-    if len(sys.argv) < 2:
-        print(json.dumps({"ok": False, "error": "no script given"}))
-        return 0
-
-    payload = execute(sys.argv[1], tessellate)
+    request = read_request()
+    payload = execute(request, lambda shown: tessellate(shown, request.get("geometrySummary", False)))
     json.dump(payload, sys.stdout, default=json_default)
     sys.stdout.flush()
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    exit_without_finalizing(main())

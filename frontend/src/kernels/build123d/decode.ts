@@ -70,9 +70,15 @@ function expectDtype(buffer: EncodedBuffer, dtype: EncodedBuffer['dtype']) {
 const NO_FLOATS = new Float32Array(0)
 const NO_INDICES = new Uint32Array(0)
 
-function toFloat32(buffer: EncodedBuffer): Float32Array {
+function toFloat32(buffer: EncodedBuffer, name: string): Float32Array {
   expectDtype(buffer, 'float32')
-  return new Float32Array(decodeBase64(buffer.buffer))
+  const values = new Float32Array(decodeBase64(buffer.buffer))
+  for (const value of values) {
+    if (!Number.isFinite(value)) {
+      throw new Error(`${name} contains a non-finite value`)
+    }
+  }
+  return values
 }
 
 function toUint32(buffer: EncodedBuffer): Uint32Array {
@@ -80,8 +86,11 @@ function toUint32(buffer: EncodedBuffer): Uint32Array {
   return new Uint32Array(decodeBase64(buffer.buffer))
 }
 
-function optionalFloat32(buffer?: EncodedBuffer): Float32Array {
-  return buffer ? toFloat32(buffer) : NO_FLOATS
+function optionalFloat32(
+  buffer: EncodedBuffer | undefined,
+  name: string,
+): Float32Array {
+  return buffer ? toFloat32(buffer, name) : NO_FLOATS
 }
 
 function optionalUint32(buffer?: EncodedBuffer): Uint32Array {
@@ -95,31 +104,94 @@ function optionalUint32(buffer?: EncodedBuffer): Uint32Array {
  * edge that owns it, which is a search over these rather than a scan of the
  * counts themselves.
  */
-function cumulative(counts: Uint32Array): Uint32Array {
+function cumulative(counts: Uint32Array, name: string): Uint32Array {
   const offsets = new Uint32Array(counts.length + 1)
   for (let i = 0; i < counts.length; i++) {
-    offsets[i + 1] = offsets[i] + counts[i]
+    const total = offsets[i] + counts[i]
+    if (total > 0xffffffff) {
+      throw new Error(`${name} totals exceed the Uint32 range`)
+    }
+    offsets[i + 1] = total
   }
   return offsets
 }
 
-function decodeInstance(instance: EncodedInstance): DecodedInstance {
+function decodeInstance(
+  instance: EncodedInstance,
+  name: string,
+): DecodedInstance {
+  const vertices = optionalFloat32(instance.vertices, `${name}.vertices`)
+  const normals = optionalFloat32(instance.normals, `${name}.normals`)
+  const triangles = optionalUint32(instance.triangles)
+  const edges = optionalFloat32(instance.edges, `${name}.edges`)
+  const objVertices = optionalFloat32(
+    instance.obj_vertices,
+    `${name}.obj_vertices`,
+  )
+  const faceTypes = optionalUint32(instance.face_types)
+  const edgeTypes = optionalUint32(instance.edge_types)
   const trianglesPerFace = optionalUint32(instance.triangles_per_face)
   const segmentsPerEdge = optionalUint32(instance.segments_per_edge)
+  const uvs = instance.uvs ? toFloat32(instance.uvs, `${name}.uvs`) : undefined
+  const faceOffsets = cumulative(trianglesPerFace, `${name}.triangles_per_face`)
+  const edgeOffsets = cumulative(segmentsPerEdge, `${name}.segments_per_edge`)
+
+  if (vertices.length % 3 !== 0)
+    throw new Error(
+      `${name}.vertices must contain complete 3-component vectors`,
+    )
+  if (normals.length % 3 !== 0)
+    throw new Error(`${name}.normals must contain complete 3-component vectors`)
+  if (objVertices.length % 3 !== 0)
+    throw new Error(
+      `${name}.obj_vertices must contain complete 3-component vectors`,
+    )
+  if (edges.length % 6 !== 0)
+    throw new Error(`${name}.edges must contain complete line segments`)
+  if (triangles.length % 3 !== 0)
+    throw new Error(`${name}.triangles must contain complete triangles`)
+
+  const vertexCount = vertices.length / 3
+  if (
+    (normals.length > 0 || triangles.length > 0) &&
+    normals.length !== vertices.length
+  )
+    throw new Error(`${name}.normals must match the vertex count`)
+  if (uvs?.length && uvs.length !== vertexCount * 2)
+    throw new Error(`${name}.uvs must contain two coordinates per vertex`)
+  for (const index of triangles) {
+    if (index >= vertexCount) {
+      throw new Error(
+        `${name}.triangles references vertex ${index}, but only ${vertexCount} vertices exist`,
+      )
+    }
+  }
+  if (faceTypes.length !== trianglesPerFace.length)
+    throw new Error(`${name}.face_types must match triangles_per_face`)
+  if (edgeTypes.length !== segmentsPerEdge.length)
+    throw new Error(`${name}.edge_types must match segments_per_edge`)
+  if (faceOffsets[faceOffsets.length - 1] !== triangles.length / 3)
+    throw new Error(
+      `${name}.triangles_per_face totals do not match the triangle count`,
+    )
+  if (edgeOffsets[edgeOffsets.length - 1] !== edges.length / 6)
+    throw new Error(
+      `${name}.segments_per_edge totals do not match the line segment count`,
+    )
 
   return {
-    vertices: optionalFloat32(instance.vertices),
-    normals: optionalFloat32(instance.normals),
-    triangles: optionalUint32(instance.triangles),
-    edges: optionalFloat32(instance.edges),
-    objVertices: optionalFloat32(instance.obj_vertices),
-    faceTypes: optionalUint32(instance.face_types),
-    edgeTypes: optionalUint32(instance.edge_types),
+    vertices,
+    normals,
+    triangles,
+    edges,
+    objVertices,
+    faceTypes,
+    edgeTypes,
     trianglesPerFace,
     segmentsPerEdge,
-    uvs: instance.uvs ? toFloat32(instance.uvs) : undefined,
-    faceOffsets: cumulative(trianglesPerFace),
-    edgeOffsets: cumulative(segmentsPerEdge),
+    uvs: uvs?.length ? uvs : undefined,
+    faceOffsets,
+    edgeOffsets,
   }
 }
 
@@ -149,6 +221,12 @@ function collectParts(
   parts: DecodedPart[],
 ) {
   const location = composeLocation(parent, node.loc ?? IDENTITY)
+  if (
+    !location[0].every(Number.isFinite) ||
+    !location[1].every(Number.isFinite)
+  ) {
+    throw new Error(`Shape ${node.id} location contains a non-finite value`)
+  }
 
   if (node.parts) {
     for (const child of node.parts) {
@@ -166,14 +244,17 @@ function collectParts(
   // on the node instead.
   const shape = node.shape
   const pointer = 'ref' in shape
-  const instance = pointer ? instances[shape.ref] : decodeInstance(shape)
+  const ref = pointer ? shape.ref : -1
+  const instance = pointer
+    ? instances[ref]
+    : decodeInstance(shape, `shape ${node.id}`)
   if (!instance) {
-    return
+    throw new Error(`Shape ${node.id} refers to missing instance ${ref}`)
   }
 
   parts.push({
     id: node.id,
-    instanceRef: pointer ? shape.ref : -1,
+    instanceRef: ref,
     name: node.name,
     instance,
     location,
@@ -237,7 +318,9 @@ function multiplyQuaternions(
 export function decodeModel(
   result: Extract<Build123dResult, { ok: true }>,
 ): DecodedModel {
-  const instances = result.instances.map(decodeInstance)
+  const instances = result.instances.map((instance, index) =>
+    decodeInstance(instance, `instances[${index}]`),
+  )
   const parts: DecodedPart[] = []
   collectParts(result.shapes, instances, IDENTITY, parts)
   return { parts, tree: result.shapes, instances }

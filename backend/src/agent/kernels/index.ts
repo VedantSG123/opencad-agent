@@ -42,7 +42,7 @@ const KERNEL_PROFILES: Record<SupportedCADKernels, KernelProfile> = {
   },
   build123d: {
     prompt: inlineFile('agent/kernels/build123d.md'),
-    tools: [],
+    tools: [BUILD_TOOL_NAME],
     library: null,
   },
 }

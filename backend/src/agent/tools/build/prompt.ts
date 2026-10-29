@@ -7,8 +7,8 @@ WHEN NOT TO USE: when nothing that the main file depends on has changed since
   the last build, unless you need geometry measurements the last build did not request.
 
 USAGE: builds the main file as saved on disk, so make
-  your edits first. A failure names the line in the main file, shows the code
-  around it, and includes the console output - log a value from the model when
+  your edits first. A failure includes console output and, when available, the
+  main-file location and surrounding code - log a value from the model when
   you need to see it. A success lists the shapes the model produced; check they
   are the ones you meant, because a build that succeeds can still be wrong.
 

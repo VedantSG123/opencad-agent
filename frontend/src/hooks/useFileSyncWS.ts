@@ -214,10 +214,22 @@ export function useFileSyncWS(
     [status, resolvePath],
   )
 
-  const onWatch = useCallback((handler: (event: WatchEvent) => void) => {
-    if (!window.electron) return () => {}
-    return window.electron.onWatch(handler)
-  }, [])
+  const onWatch = useCallback(
+    (handler: (event: WatchEvent) => void) => {
+      if (!window.electron) return () => {}
+      const normalize = (directory: string) => {
+        const normalized = directory.replace(/\\/g, '/').replace(/\/+$/, '')
+        return window.electron?.platform === 'win32'
+          ? normalized.toLowerCase()
+          : normalized
+      }
+      return window.electron.onWatch((event) => {
+        if (normalize(event.directory) === normalize(projectDirectory))
+          handler(event)
+      })
+    },
+    [projectDirectory],
+  )
 
   return {
     status,

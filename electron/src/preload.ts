@@ -10,6 +10,9 @@ import type {
   UserPreferencesPatch,
 } from 'shared'
 import type {
+  Build123dCancelRequest,
+  Build123dProjectRequest,
+  Build123dSourceRequest,
   Build123dExportFormat,
   Build123dExportResult,
   Build123dResult,
@@ -18,6 +21,7 @@ import type { PythonEnvStatus, PythonInstallProgress } from 'shared/python'
 
 export interface WatchEvent {
   event: 'fs:watch'
+  directory: string
   type: 'change' | 'add' | 'unlink' | 'addDir' | 'unlinkDir'
   path: string
 }
@@ -134,19 +138,18 @@ export interface ElectronAPI {
       parameterSet?: unknown
     }>
   >
-  runBuild123d: (request: {
-    mainPath: string
-    projectDirectory: string
-    overrides?: Record<string, string>
-  }) => Promise<Result<Build123dResult>>
-  runBuild123dSource: (source: string) => Promise<Result<Build123dResult>>
-  exportBuild123d: (request: {
-    mainPath: string
-    projectDirectory: string
-    overrides?: Record<string, string>
-    format: Build123dExportFormat
-  }) => Promise<Result<Build123dExportResult>>
-  cancelBuild123dRun: () => Promise<Result<boolean>>
+  runBuild123d: (
+    request: Build123dProjectRequest,
+  ) => Promise<Result<Build123dResult>>
+  runBuild123dSource: (
+    request: Build123dSourceRequest,
+  ) => Promise<Result<Build123dResult>>
+  exportBuild123d: (
+    request: Build123dProjectRequest & { format: Build123dExportFormat },
+  ) => Promise<Result<Build123dExportResult>>
+  cancelBuild123dRun: (
+    request: Build123dCancelRequest,
+  ) => Promise<Result<boolean>>
   getPythonStatus: () => Promise<Result<PythonEnvStatus>>
   installPython: () => Promise<Result<PythonEnvStatus>>
   repairPython: () => Promise<Result<PythonEnvStatus>>
@@ -238,10 +241,11 @@ const api: ElectronAPI = {
     ),
   executeOpenSCAD: (request) => ipcRenderer.invoke('openscad:execute', request),
   runBuild123d: (request) => ipcRenderer.invoke('build123d:run', request),
-  runBuild123dSource: (source) =>
-    ipcRenderer.invoke('build123d:runSource', source),
+  runBuild123dSource: (request) =>
+    ipcRenderer.invoke('build123d:runSource', request),
   exportBuild123d: (request) => ipcRenderer.invoke('build123d:export', request),
-  cancelBuild123dRun: () => ipcRenderer.invoke('build123d:cancel'),
+  cancelBuild123dRun: (request) =>
+    ipcRenderer.invoke('build123d:cancel', request),
   getPythonStatus: () => ipcRenderer.invoke('python:status'),
   installPython: () => ipcRenderer.invoke('python:install'),
   repairPython: () => ipcRenderer.invoke('python:repair'),

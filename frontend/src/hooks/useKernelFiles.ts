@@ -7,6 +7,8 @@ type FileEntry = {
 
 export type KernelFilesState = {
   files: Record<string, FileEntry>
+  filesystemRevision: number
+  invalidateFilesystem: () => void
   setFileContent: (path: string, content: string) => void
   clearFile: (path: string) => void
   clearAll: () => void
@@ -27,6 +29,9 @@ export type KernelFilesState = {
  */
 export const kernelFilesStore = createStore<KernelFilesState>((set) => ({
   files: {},
+  filesystemRevision: 0,
+  invalidateFilesystem: () =>
+    set((state) => ({ filesystemRevision: state.filesystemRevision + 1 })),
   setFileContent: (path, content) =>
     set((state) => ({
       files: {
@@ -39,7 +44,7 @@ export const kernelFilesStore = createStore<KernelFilesState>((set) => ({
       const { [path]: _removed, ...rest } = state.files
       return { files: rest }
     }),
-  clearAll: () => set({ files: {} }),
+  clearAll: () => set({ files: {}, filesystemRevision: 0 }),
 }))
 
 /**

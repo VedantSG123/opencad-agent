@@ -10,9 +10,15 @@ import { probeInterpreter } from './probe.js'
 // Probing costs an OCCT import, so the answer is held until something that
 // could change it happens - an install, a repair, a new interpreter.
 let cached: PythonEnvStatus | null = null
+const invalidationListeners = new Set<() => void>()
+
+export function onPythonStatusInvalidated(listener: () => void) {
+  invalidationListeners.add(listener)
+}
 
 export function invalidatePythonStatus() {
   cached = null
+  for (const listener of invalidationListeners) listener()
 }
 
 export async function getPythonStatus(): Promise<PythonEnvStatus> {

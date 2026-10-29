@@ -187,7 +187,12 @@ export function ProjectPage() {
         <NodeOpenSCADProvider key={project.id}>{content}</NodeOpenSCADProvider>
       )}
       {project.cad_kernel === 'build123d' && (
-        <Build123dProvider key={project.id}>{content}</Build123dProvider>
+        <Build123dProvider
+          key={project.id}
+          projectDirectory={project.directory}
+        >
+          {content}
+        </Build123dProvider>
       )}
     </PanelProvider>
   )

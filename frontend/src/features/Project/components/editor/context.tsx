@@ -18,6 +18,7 @@ import {
   type WatchEvent,
 } from '@/hooks/useFileSyncWS'
 import { useFileSyncWS } from '@/hooks/useFileSyncWS'
+import { kernelFilesStore } from '@/hooks/useKernelFiles'
 import { toFsPath } from '@/lib/utils'
 import type { Project } from '@/types/project'
 
@@ -170,6 +171,7 @@ function isDescendantPath(ancestor: string, child: string): boolean {
 export interface EditorAPI {
   getContent: (path: string) => string | null
   applyContent: (path: string, content: string) => void
+  renamePath: (oldPath: string, newPath: string) => void
 }
 
 interface EditorContextValue extends EditorDialogs {
@@ -286,6 +288,7 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
   const dirtyTabsRef = useRef(dirtyTabs)
   const editorAPIRef = useRef<EditorAPI | null>(null)
   const treeDataRef = useRef(treeData)
+  const pendingRenamesRef = useRef(new Set<string>())
 
   useEffect(() => {
     activeTabRef.current = activeTab
@@ -319,12 +322,28 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
   useEffect(() => {
     const cleanup = onWatch((event: WatchEvent) => {
       setTreeVersion((v) => v + 1)
-      if (event.type === 'unlink') {
+      if (event.type === 'unlink' || event.type === 'unlinkDir') {
+        if (
+          [...pendingRenamesRef.current].some((path) =>
+            isDescendantPath(path, event.path),
+          )
+        )
+          return
         setOpenTabs((prev) => {
-          if (!prev.includes(event.path)) return prev
-          const next = prev.filter((t) => t !== event.path)
+          const next = prev.filter(
+            (tab) =>
+              dirtyTabsRef.current.has(tab) ||
+              !(
+                tab === event.path ||
+                (event.type === 'unlinkDir' &&
+                  isDescendantPath(event.path, tab))
+              ),
+          )
+          if (next.length === prev.length) return prev
           setActiveTab((current) =>
-            current === event.path ? (next[next.length - 1] ?? null) : current,
+            current && !next.includes(current)
+              ? (next[next.length - 1] ?? null)
+              : current,
           )
           return next
         })
@@ -523,6 +542,16 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
 
       try {
         await fsync.deleteFile(path)
+        const buffers = kernelFilesStore.getState()
+        for (const filePath of Object.keys(buffers.files)) {
+          if (isDescendantPath(path, filePath)) buffers.clearFile(filePath)
+        }
+        setDirtyTabs(
+          (previous) =>
+            new Set(
+              [...previous].filter((tab) => !isDescendantPath(path, tab)),
+            ),
+        )
       } catch (err: unknown) {
         setTreeData(prevTree)
         setTreeVersion((v) => v + 1)
@@ -544,72 +573,53 @@ export function EditorProvider({ project, children }: EditorProviderProps) {
         return
       }
 
-      // Check dirty tabs
-      const canProceed = confirmAffectsDirty(oldPath, false)
-      if (!canProceed) return
-
-      // Save editor buffer content before rename
-      const editorContent = editorAPIRef.current?.getContent(oldPath)
-
-      // Optimistic: update tree and remap tabs
-      const prevTree = treeDataRef.current
-      setTreeData((prev) => renameItemInTree(prev, oldPath, newPath))
-      setOpenTabs((prev) => {
-        const next = prev.map((t) => {
-          if (t === oldPath) return newPath
-          if (t.startsWith(oldPath + '/')) {
-            return newPath + t.substring(oldPath.length)
-          }
-          return t
-        })
-        setActiveTab((current) => {
-          if (current === oldPath) return newPath
-          if (current && current.startsWith(oldPath + '/')) {
-            return newPath + current.substring(oldPath.length)
-          }
-          return current
-        })
-        return next
-      })
-
+      pendingRenamesRef.current.add(oldPath)
       try {
         await fsync.rename(oldPath, newPath)
-        // Transfer content from old editor buffer to new path
-        if (editorContent !== null && editorContent !== undefined) {
-          editorAPIRef.current?.applyContent(newPath, editorContent)
+        editorAPIRef.current?.renamePath(oldPath, newPath)
+        const buffers = kernelFilesStore.getState()
+        for (const [filePath, file] of Object.entries(buffers.files)) {
+          if (isDescendantPath(oldPath, filePath)) {
+            buffers.setFileContent(
+              newPath + filePath.slice(oldPath.length),
+              file.content,
+            )
+            buffers.clearFile(filePath)
+          }
         }
-        // Mark the dirty flag for the new path
-        if (dirtyTabsRef.current.has(oldPath)) {
-          setTabDirty(oldPath, false)
-          setTabDirty(newPath, true)
-        }
+        setTreeData((previous) => renameItemInTree(previous, oldPath, newPath))
+        setOpenTabs((previous) =>
+          previous.map((tab) =>
+            isDescendantPath(oldPath, tab)
+              ? newPath + tab.slice(oldPath.length)
+              : tab,
+          ),
+        )
+        setActiveTab((current) =>
+          current && isDescendantPath(oldPath, current)
+            ? newPath + current.slice(oldPath.length)
+            : current,
+        )
+        setDirtyTabs(
+          (previous) =>
+            new Set(
+              [...previous].map((tab) =>
+                isDescendantPath(oldPath, tab)
+                  ? newPath + tab.slice(oldPath.length)
+                  : tab,
+              ),
+            ),
+        )
       } catch (err: unknown) {
-        // Rollback
-        setTreeData(prevTree)
         setTreeVersion((v) => v + 1)
-        setOpenTabs((prev) => {
-          const rolledBack = prev.map((t) => {
-            if (t === newPath) return oldPath
-            if (t.startsWith(newPath + '/')) {
-              return oldPath + t.substring(newPath.length)
-            }
-            return t
-          })
-          setActiveTab((current) => {
-            if (current === newPath) return oldPath
-            if (current && current.startsWith(newPath + '/')) {
-              return oldPath + current.substring(newPath.length)
-            }
-            return current
-          })
-          return rolledBack
-        })
         const msg = err instanceof Error ? err.message : 'Unknown error'
         toast.error(`Failed to rename: ${msg}`)
         throw err
+      } finally {
+        pendingRenamesRef.current.delete(oldPath)
       }
     },
-    [fsync, confirmAffectsDirty, setTabDirty],
+    [fsync],
   )
 
   // ── Dialog management ─────────────────────────────────────────────────────────

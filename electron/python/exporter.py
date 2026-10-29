@@ -1,40 +1,70 @@
-"""Export a build123d script's model to a 3D file.
+"""Export the objects shown by a fresh execution of the requested script.
 
-Invoked as `python exporter.py <script> <format> <output>`. Running the script
-is `script_runner.execute`, the same path the viewer's runner takes, so what is
-exported is what was last shown rather than a second interpretation of the
-file.
+Invoked as `python exporter.py` with one request on stdin naming the script,
+the format and the output path.
 """
 
 import json
 import os
 import sys
 
-from script_runner import execute
+from script_runner import execute, exit_without_finalizing, read_request
 
 
 def _single_shape(shown):
-    """One shape to export, keeping labels and colours.
+    from copy import deepcopy
 
-    Several shown objects become a Compound rather than being exported one at a
-    time: STEP and 3MF both carry an assembly, and flattening it here would
-    throw away the structure the viewer's tree shows.
-    """
-    from build123d import Compound  # noqa: PLC0415
+    from build123d import Color, Compound, Location, Shape
+    from ocp_tessellate.convert import to_ocpgroup
 
-    objects = []
-    for entry in shown:
-        obj = entry["object"]
-        if entry["name"] and not getattr(obj, "label", ""):
-            obj.label = entry["name"]
-        objects.append(obj)
+    group, instances = to_ocpgroup(
+        *[entry["object"] for entry in shown],
+        names=[entry["name"] for entry in shown],
+        colors=[entry["color"] for entry in shown],
+        alphas=[entry["alpha"] for entry in shown],
+    )
 
-    if len(objects) == 1:
-        return objects[0]
+    def convert(node):
+        if node.kind == "group":
+            shape = Compound(children=[convert(child) for child in node.objects])
+        else:
+            raw = instances[node.ref]["obj"] if node.ref is not None else node.obj
+            if isinstance(raw, (tuple, list)):
+                shape = Compound([deepcopy(Shape.cast(item)) for item in raw])
+            else:
+                shape = deepcopy(Shape.cast(raw))
+            color = node.color
+            if isinstance(color, tuple):
+                raise ValueError("An export cannot apply multiple helper colors to one shape.")
+            shape.color = Color(*color.percentage, color.a)
+            shape.material = deepcopy(node.material)
+        shape.label = node.name
+        if node.loc is not None:
+            shape.location = Location(node.loc)
+        return shape
 
-    combined = Compound(children=objects)
-    combined.label = "assembly"
-    return combined
+    if not group.objects:
+        raise ValueError("The script showed no exportable shapes.")
+    return convert(group)
+
+
+def _world_leaves(shape):
+    from copy import copy
+
+    from build123d import Location
+
+    def walk(node, parent):
+        location = parent * node.location
+        if node.children:
+            for child in node.children:
+                yield from walk(child, location)
+        else:
+            leaf = copy(node)
+            leaf.parent = None
+            leaf.location = location
+            yield leaf
+
+    return list(walk(shape, Location()))
 
 
 def _export_step(shape, path):
@@ -59,7 +89,7 @@ def _export_3mf(shape, path):
     from build123d import Mesher, Unit  # noqa: PLC0415
 
     mesher = Mesher(unit=Unit.MM)
-    mesher.add_shape(shape)
+    mesher.add_shape(_world_leaves(shape))
     mesher.write(path)
 
 
@@ -82,15 +112,12 @@ EXPORTERS = {
 
 
 def main():
-    if len(sys.argv) < 4:
-        print(json.dumps({"ok": False, "error": "usage: exporter.py SCRIPT FORMAT OUT"}))
-        return 0
-
-    script, fmt, output = sys.argv[1], sys.argv[2], sys.argv[3]
+    request = read_request()
+    fmt, output = request["format"], request["output"]
 
     write = EXPORTERS.get(fmt)
     if write is None:
-        print(json.dumps({"ok": False, "error": f"Unsupported export format: {fmt}"}))
+        print(json.dumps({"ok": False, "error": f"Unsupported export format: {fmt}", "logs": "", "duration": 0}))
         return 0
 
     def produce(shown):
@@ -99,10 +126,10 @@ def main():
             return {"ok": False, "error": f"{fmt} export wrote no file"}
         return {"ok": True, "bytes": os.path.getsize(output)}
 
-    json.dump(execute(script, produce), sys.stdout)
+    json.dump(execute(request, produce), sys.stdout)
     sys.stdout.flush()
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    exit_without_finalizing(main())

@@ -18,6 +18,7 @@ import { registerPythonIpc } from './ipc/python.js'
 import { registerSettingsIpc } from './ipc/settings.js'
 import { registerShellIpc } from './ipc/shell.js'
 import { registerWorkspaceIpc } from './ipc/workspace.js'
+import { cancelAllBuild123dRuns } from './utils/cad/build123d/run.js'
 import { findFreePort } from './utils/network.js'
 import { getSettings } from './utils/settings.js'
 import { getResolvedTheme, getTitleBarOverlay } from './utils/theme.js'
@@ -254,6 +255,14 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+let finishingBuilds = false
+app.on('before-quit', (event) => {
+  if (finishingBuilds) return
+  event.preventDefault()
+  finishingBuilds = true
+  void cancelAllBuild123dRuns().then(() => app.quit())
 })
 
 app.on('will-quit', () => {
