@@ -1,6 +1,6 @@
 import type { IpcMain } from 'electron'
 
-import { executeOpenSCAD } from '../utils/cad/openscad-worker.js'
+import { executeOpenSCAD } from '../utils/cad/openscad/run.js'
 import { createHandler } from '../utils/ipc-utils.js'
 import { validatePath } from '../utils/workspace.js'
 

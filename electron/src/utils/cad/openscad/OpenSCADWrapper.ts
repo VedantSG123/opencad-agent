@@ -73,6 +73,15 @@ function formatValue(val: unknown): string {
   }
 }
 
+function openscadBinaryPath(resourcesPath: string): string {
+  const binDir = path.join(resourcesPath, 'bin')
+  if (process.platform === 'win32') return path.join(binDir, 'openscad.exe')
+  if (process.platform === 'linux') {
+    return path.join(binDir, 'OpenSCAD.AppDir', 'usr', 'bin', 'openscad')
+  }
+  return path.join(binDir, 'openscad')
+}
+
 async function runOpenSCAD(
   binaryPath: string,
   args: string[],
@@ -176,13 +185,7 @@ export class OpenSCADWrapper {
   }): Promise<CompileResult> {
     const { action, main, overrides, projectDirectory, vars, format } = request
 
-    // Resolve native OpenSCAD binary path
-    const ext = process.platform === 'win32' ? '.exe' : ''
-    const binaryPath = path.join(
-      this.openscadResourcesPath,
-      'bin',
-      `openscad${ext}`,
-    )
+    const binaryPath = openscadBinaryPath(this.openscadResourcesPath)
 
     if (!fs.existsSync(binaryPath)) {
       return {
