@@ -1,3 +1,4 @@
+import type { BuildReport, OpenSCADBuildRequest } from 'shared'
 import type {
   AppSettings,
   ResolvedTheme,
@@ -85,6 +86,7 @@ export interface ElectronAPI {
   onWatch: (handler: (event: WatchEvent) => void) => () => void
   refreshProjectRoots: () => Promise<Result<{ count: number }>>
   addProjectRoot: (directory: string) => Promise<Result<{ count: number }>>
+  buildOpenSCAD: (request: OpenSCADBuildRequest) => Promise<Result<BuildReport>>
   compileOpenSCAD: (
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,

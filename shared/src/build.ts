@@ -5,7 +5,7 @@ export const buildOptionsSchema = z.object({
     .boolean()
     .optional()
     .describe(
-      'Request geometry measurements and validity checks. Omit for appearance-only changes.',
+      'Request the kernel’s available geometry measurements. Omit for appearance-only changes.',
     ),
 })
 
@@ -18,13 +18,35 @@ export type BuildRequest = {
   source: string
 } & BuildOptions
 
+export const openSCADBuildRequestSchema = buildOptionsSchema.extend({
+  file: z.string().min(1),
+  source: z.string(),
+  projectDirectory: z.string().min(1),
+})
+
+export type OpenSCADBuildRequest = z.infer<typeof openSCADBuildRequestSchema>
+
 const point3Schema = z.tuple([z.number(), z.number(), z.number()])
 const point2Schema = z.tuple([z.number(), z.number()])
 
 const bounds3Schema = z.object({ min: point3Schema, max: point3Schema })
 const bounds2Schema = z.object({ min: point2Schema, max: point2Schema })
 
+export const openSCADDrawingSummarySchema = z.object({
+  geometry: z.object({
+    dimensions: z.literal(2),
+    bounding_box: bounds2Schema,
+  }),
+})
+
 const geometryPartSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('mesh'),
+    name: z.string(),
+    bounds: bounds3Schema,
+    vertexCount: z.number().int().nonnegative(),
+    faceCount: z.number().int().nonnegative(),
+  }),
   z.object({
     kind: z.literal('3d'),
     name: z.string(),

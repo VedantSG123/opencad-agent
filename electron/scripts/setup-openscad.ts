@@ -9,7 +9,7 @@
  *   4. Copies config to electron/openscad-libs/
  */
 
-import { exec } from 'node:child_process'
+import { exec, spawnSync } from 'node:child_process'
 import { chmodSync, createWriteStream, existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import https from 'node:https'
@@ -279,6 +279,10 @@ class OpenSCADSetup {
 
   private async setupNativeBinary(binDir: string): Promise<void> {
     const p = detectPlatform()
+    if (p === 'linux') {
+      await this.setupLinuxAppDir(binDir)
+      return
+    }
     const url = BINARY_URLS[p]
     const isWin = p === 'windows'
     const binaryDest = path.join(binDir, isWin ? 'openscad.exe' : 'openscad')
@@ -290,7 +294,7 @@ class OpenSCADSetup {
       return
     }
 
-    const ext = p === 'windows' ? '.zip' : p === 'macos' ? '.dmg' : '.AppImage'
+    const ext = p === 'windows' ? '.zip' : '.dmg'
     const dlPath = path.join(TEMP_DIR, `openscad-download${ext}`)
 
     // Download file
@@ -318,7 +322,7 @@ class OpenSCADSetup {
           await fs.writeFile(targetPath, data)
         }
       }
-    } else if (p === 'macos') {
+    } else {
       console.log('[setup-openscad] Mounting macOS DMG...')
       const mountPoint = path.join(TEMP_DIR, 'mnt')
       await fs.mkdir(mountPoint, { recursive: true })
@@ -346,10 +350,6 @@ class OpenSCADSetup {
           .rm(mountPoint, { recursive: true, force: true })
           .catch(() => {})
       }
-    } else {
-      console.log('[setup-openscad] Preparing Linux AppImage...')
-      await fs.copyFile(dlPath, binaryDest)
-      chmodSync(binaryDest, 0o755)
     }
 
     // Clean download file
@@ -357,6 +357,42 @@ class OpenSCADSetup {
     console.log(
       `[setup-openscad] Native OpenSCAD binary prepared at ${binaryDest}`,
     )
+  }
+
+  // AppImages mount through FUSE on every launch and cannot start without it.
+  private async setupLinuxAppDir(binDir: string): Promise<void> {
+    const appDir = path.join(binDir, 'OpenSCAD.AppDir')
+    if (existsSync(path.join(appDir, 'usr', 'bin', 'openscad'))) {
+      console.log(`[setup-openscad] Native binary already present in ${appDir}`)
+      return
+    }
+
+    const appImage = path.join(TEMP_DIR, 'openscad-download.AppImage')
+    // Earlier setups kept the AppImage itself at bin/openscad.
+    const previousAppImage = path.join(binDir, 'openscad')
+    if (existsSync(previousAppImage)) {
+      await fs.rename(previousAppImage, appImage)
+    } else {
+      await this.downloadFile(BINARY_URLS.linux, appImage)
+    }
+    chmodSync(appImage, 0o755)
+
+    console.log('[setup-openscad] Extracting Linux AppImage...')
+    const extracted = path.join(TEMP_DIR, 'squashfs-root')
+    await fs.rm(extracted, { recursive: true, force: true })
+    const { status, error } = spawnSync(appImage, ['--appimage-extract'], {
+      cwd: TEMP_DIR,
+      stdio: 'ignore',
+    })
+    if (error || status !== 0) {
+      throw new Error(
+        `Extracting the OpenSCAD AppImage failed: ${error?.message ?? `exit code ${status}`}`,
+      )
+    }
+    await fs.rm(appDir, { recursive: true, force: true })
+    await fs.rename(extracted, appDir)
+    await fs.rm(appImage, { force: true })
+    console.log(`[setup-openscad] Native OpenSCAD extracted to ${appDir}`)
   }
 
   // ── Libraries Setup ──────────────────────────────────────────────────

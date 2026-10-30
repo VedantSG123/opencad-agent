@@ -65,13 +65,11 @@ describe('tool allowance', () => {
     }
   })
 
-  test('replicad and build123d can answer agent builds', () => {
+  test('every supported kernel can answer agent builds', () => {
     // The app answers a build with the kernel the project is open in; a
     // kernel with no builder there would leave every build unavailable.
     for (const kernel of KERNELS) {
-      expect(offeredToolNames(kernel).includes(BUILD_TOOL_NAME)).toBe(
-        kernel === 'replicad' || kernel === 'build123d',
-      )
+      expect(offeredToolNames(kernel)).toContain(BUILD_TOOL_NAME)
     }
   })
 

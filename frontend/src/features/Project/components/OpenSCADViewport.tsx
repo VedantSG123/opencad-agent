@@ -9,16 +9,21 @@ import { ExportButton } from '@/components/cad/export/ExportButton'
 import { ResetViewButton } from '@/components/cad/ResetViewButton'
 import { ViewportStatusBar } from '@/components/cad/ViewportStatusBar'
 import { Icon } from '@/components/icons/HugeIcon'
-import { type KernelFilesState, useKernelFiles } from '@/hooks/useKernelFiles'
 import { useNodeOpenSCAD } from '@/hooks/useNodeOpenSCAD'
-import { cn, toFsPath } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 
 import { useEditor } from './editor/context'
 import { OpenSCADParametersPanel } from './editor/OpenSCADParametersPanel'
-import { OpenSCADCompiler } from './OpenSCADCompiler'
+import { OpenSCADCompiler, useOpenSCADMainFile } from './OpenSCADCompiler'
 import { OpenSCADExportDialog } from './OpenSCADExportDialog'
 
-function OpenSCADViewportInner() {
+function OpenSCADViewportInner({
+  mainFilePath,
+  mainFileContent,
+}: {
+  mainFilePath: string | null
+  mainFileContent: string | undefined
+}) {
   const result = useNodeOpenSCAD((state) => state.result)
   const error = useNodeOpenSCAD((state) => state.error)
   const isCompiling = useNodeOpenSCAD((state) => state.isCompiling)
@@ -32,52 +37,7 @@ function OpenSCADViewportInner() {
 
   const hasError = Boolean(error)
 
-  const { project, readFile } = useEditor()
-
-  const mainFilePath = React.useMemo(() => {
-    if (!project?.file || !project.directory) return null
-    if (!project.file.toLowerCase().endsWith('.scad')) return null
-    return toFsPath(project.directory, project.file)
-  }, [project])
-
-  const selectMainFileContent = React.useCallback(
-    (state: KernelFilesState) =>
-      mainFilePath ? state.files[mainFilePath]?.content : undefined,
-    [mainFilePath],
-  )
-  const editorContent = useKernelFiles(selectMainFileContent)
-
-  const [fsContent, setFsContent] = React.useState<string | undefined>()
-
-  React.useEffect(() => {
-    let cancelled = false
-    if (!mainFilePath || editorContent !== undefined) {
-      Promise.resolve().then(() => {
-        if (!cancelled) {
-          setFsContent(undefined)
-        }
-      })
-      return
-    }
-
-    const normalizedPath = mainFilePath.startsWith('/')
-      ? mainFilePath.slice(1)
-      : mainFilePath
-    readFile(normalizedPath)
-      .then((content) => {
-        if (!cancelled) setFsContent(content)
-      })
-      .catch((error) => {
-        if (cancelled) return
-        console.error('Failed to read file from remote FS:', error)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [mainFilePath, editorContent, readFile])
-
-  const mainFileContent = editorContent ?? fsContent
+  const { project } = useEditor()
 
   const hasParams = React.useMemo(() => {
     return parameterSet ? (parameterSet.parameters?.length ?? 0) > 0 : false
@@ -162,10 +122,18 @@ function OpenSCADViewportInner() {
 }
 
 export function OpenSCADViewport() {
+  const { mainFilePath, mainFileContent } = useOpenSCADMainFile()
+
   return (
     <>
-      <OpenSCADCompiler />
-      <OpenSCADViewportInner />
+      <OpenSCADCompiler
+        mainFilePath={mainFilePath}
+        mainFileContent={mainFileContent}
+      />
+      <OpenSCADViewportInner
+        mainFilePath={mainFilePath}
+        mainFileContent={mainFileContent}
+      />
     </>
   )
 }

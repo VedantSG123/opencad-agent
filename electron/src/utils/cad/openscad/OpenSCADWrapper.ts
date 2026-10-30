@@ -3,6 +3,16 @@ import * as fs from 'node:fs'
 import * as fsPromises from 'node:fs/promises'
 import * as path from 'node:path'
 
+import type { BuildReport, GeometrySummary, OpenSCADBuildRequest } from 'shared'
+
+import { AppError } from '../../ipc-utils.js'
+import { openSCADBuildReport, remapOpenSCADDiagnostic } from './diagnostics.js'
+import {
+  summarizeDrawing,
+  summarizeOff,
+  summarizeOpenSCAD,
+} from './geometrySummary.js'
+
 export interface ParameterOption {
   name: string
   value: number | string
@@ -61,6 +71,13 @@ export interface CompileResult {
   stderr: string[]
   error: boolean
   parameterSet?: ParameterSet
+  geometry?: GeometrySummary
+}
+
+export type OpenSCADExecutionOptions = {
+  agentBuild?: boolean
+  signal?: AbortSignal
+  geometrySummary?: boolean
 }
 
 function formatValue(val: unknown): string {
@@ -73,43 +90,70 @@ function formatValue(val: unknown): string {
   }
 }
 
+function openscadBinaryPath(resourcesPath: string): string {
+  const binDir = path.join(resourcesPath, 'bin')
+  if (process.platform === 'win32') return path.join(binDir, 'openscad.exe')
+  if (process.platform === 'linux') {
+    return path.join(binDir, 'OpenSCAD.AppDir', 'usr', 'bin', 'openscad')
+  }
+  return path.join(binDir, 'openscad')
+}
+
 async function runOpenSCAD(
   binaryPath: string,
   args: string[],
   env?: Record<string, string>,
+  signal?: AbortSignal,
 ): Promise<{ stdout: string[]; stderr: string[]; exitCode: number }> {
-  return new Promise((resolve) => {
-    const stdout: string[] = []
-    const stderr: string[] = []
+  signal?.throwIfAborted()
+  return new Promise((resolve, reject) => {
+    const stdout: Buffer[] = []
+    const stderr: Buffer[] = []
     const proc = spawn(binaryPath, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, ...env },
+      signal,
+      killSignal: 'SIGKILL',
     })
 
     proc.stdout.on('data', (data: Buffer) => {
-      const lines = data.toString().split('\n').filter(Boolean)
-      stdout.push(...lines)
+      stdout.push(data)
     })
 
     proc.stderr.on('data', (data: Buffer) => {
-      const lines = data.toString().split('\n').filter(Boolean)
-      stderr.push(...lines)
+      stderr.push(data)
     })
 
+    let processError: Error | undefined
     proc.on('close', (exitCode) => {
+      if (signal?.aborted) {
+        const reason: unknown = signal.reason
+        reject(
+          reason instanceof Error
+            ? reason
+            : new Error('The OpenSCAD build was cancelled.'),
+        )
+        return
+      }
+      if (processError) {
+        reject(processError)
+        return
+      }
       resolve({
-        stdout,
-        stderr,
+        stdout: Buffer.concat(stdout)
+          .toString('utf8')
+          .split(/\r?\n/)
+          .filter(Boolean),
+        stderr: Buffer.concat(stderr)
+          .toString('utf8')
+          .split(/\r?\n/)
+          .filter(Boolean),
         exitCode: exitCode ?? -1,
       })
     })
 
-    proc.on('error', (err) => {
-      resolve({
-        stdout,
-        stderr: [...stderr, `Process error: ${err.message}`],
-        exitCode: -1,
-      })
+    proc.on('error', (error) => {
+      processError = error
     })
   })
 }
@@ -127,12 +171,15 @@ export class OpenSCADWrapper {
     srcDir: string,
     destDir: string,
     overrides: Record<string, { content: string }>,
+    signal?: AbortSignal,
   ): Promise<void> {
     const walk = async (currentSrc: string, currentDest: string) => {
+      signal?.throwIfAborted()
       const entries = await fsPromises.readdir(currentSrc, {
         withFileTypes: true,
       })
       for (const entry of entries) {
+        signal?.throwIfAborted()
         const srcPath = path.join(currentSrc, entry.name)
         const destPath = path.join(currentDest, entry.name)
         const relPath = path.relative(srcDir, srcPath)
@@ -166,34 +213,68 @@ export class OpenSCADWrapper {
     await walk(srcDir, destDir)
   }
 
-  async execute(request: {
-    action: 'compile' | 'export' | 'checkSyntax'
-    main: { path: string; code: string }
-    overrides?: Record<string, { content: string }>
-    projectDirectory?: string
-    vars?: Record<string, unknown>
-    format?: string
-  }): Promise<CompileResult> {
+  async buildForAgent(
+    request: OpenSCADBuildRequest,
+    signal?: AbortSignal,
+  ): Promise<BuildReport> {
+    const started = performance.now()
+    const controller = new AbortController()
+    const timer = setTimeout(
+      () =>
+        controller.abort(
+          new AppError('BUILD_TIMEOUT', 'OpenSCAD build exceeded 110 seconds.'),
+        ),
+      110_000,
+    )
+    timer.unref()
+    try {
+      const result = await this.execute(
+        {
+          action: 'compile',
+          main: { path: '/' + request.file, code: request.source },
+          overrides: { ['/' + request.file]: { content: request.source } },
+          projectDirectory: request.projectDirectory,
+        },
+        {
+          signal: signal
+            ? AbortSignal.any([controller.signal, signal])
+            : controller.signal,
+          geometrySummary: request.geometrySummary,
+          agentBuild: true,
+        },
+      )
+      return openSCADBuildReport(result, request, performance.now() - started)
+    } catch (error) {
+      return {
+        status: 'unavailable',
+        reason: error instanceof Error ? error.message : String(error),
+      }
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  async execute(
+    request: {
+      action: 'compile' | 'export' | 'checkSyntax'
+      main: { path: string; code: string }
+      overrides?: Record<string, { content: string }>
+      projectDirectory?: string
+      vars?: Record<string, unknown>
+      format?: string
+    },
+    options: OpenSCADExecutionOptions = {},
+  ): Promise<CompileResult> {
+    options.signal?.throwIfAborted()
     const { action, main, overrides, projectDirectory, vars, format } = request
 
-    // Resolve native OpenSCAD binary path
-    const ext = process.platform === 'win32' ? '.exe' : ''
-    const binaryPath = path.join(
-      this.openscadResourcesPath,
-      'bin',
-      `openscad${ext}`,
-    )
+    const binaryPath = openscadBinaryPath(this.openscadResourcesPath)
 
     if (!fs.existsSync(binaryPath)) {
-      return {
-        blob: null,
-        format: null,
-        stdout: [],
-        stderr: [
-          `OpenSCAD native binary not found at: ${binaryPath}. Please run setup.`,
-        ],
-        error: true,
-      }
+      throw new AppError(
+        'OPENSCAD_NOT_FOUND',
+        `OpenSCAD native binary not found at: ${binaryPath}. Please run setup.`,
+      )
     }
 
     // Resolve libraries directory path
@@ -208,64 +289,94 @@ export class OpenSCADWrapper {
     }
 
     // Mirror folder resolution (if overrides exist, or if we have no projectDirectory)
-    let runDir: string
+    let runDir = projectDirectory ?? ''
     let mainFilePath: string
     let isTemp = false
 
-    const hasOverrides = overrides && Object.keys(overrides).length > 0
+    try {
+      const hasOverrides = overrides && Object.keys(overrides).length > 0
 
-    if (hasOverrides || !projectDirectory) {
-      isTemp = true
-      runDir = path.join(
-        this.userDataPath,
-        'temp',
-        `run-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      )
-      await fsPromises.mkdir(runDir, { recursive: true })
+      if (hasOverrides || !projectDirectory) {
+        isTemp = true
+        runDir = path.join(
+          this.userDataPath,
+          'temp',
+          `run-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        )
+        await fsPromises.mkdir(runDir, { recursive: true })
 
-      if (projectDirectory) {
-        await this.mirrorDirectory(projectDirectory, runDir, overrides || {})
+        if (projectDirectory) {
+          await this.mirrorDirectory(
+            projectDirectory,
+            runDir,
+            overrides || {},
+            options.signal,
+          )
+        }
+
+        if (overrides) {
+          for (const [vPath, entry] of Object.entries(overrides)) {
+            const rel = vPath.startsWith('/') ? vPath.slice(1) : vPath
+            const dest = path.join(runDir, rel)
+            await fsPromises.mkdir(path.dirname(dest), { recursive: true })
+            await fsPromises.rm(dest, { force: true })
+            await fsPromises.writeFile(dest, entry.content, 'utf8')
+          }
+        }
+
+        const mainRel = main.path.startsWith('/')
+          ? main.path.slice(1)
+          : main.path
+        mainFilePath = path.join(runDir, mainRel)
+        await fsPromises.mkdir(path.dirname(mainFilePath), { recursive: true })
+        await fsPromises.rm(mainFilePath, { force: true })
+        await fsPromises.writeFile(mainFilePath, main.code, 'utf8')
+      } else {
+        runDir = projectDirectory
+        const mainRel = main.path.startsWith('/')
+          ? main.path.slice(1)
+          : main.path
+        mainFilePath = path.join(projectDirectory, mainRel)
       }
 
-      // Write overrides (deleting any existing file/symlink first)
-      if (overrides) {
-        for (const [vPath, entry] of Object.entries(overrides)) {
-          const rel = vPath.startsWith('/') ? vPath.slice(1) : vPath
-          const dest = path.join(runDir, rel)
-          await fsPromises.mkdir(path.dirname(dest), { recursive: true })
-          try {
-            await fsPromises.unlink(dest)
-          } catch {
-            // ignore
-          }
-          await fsPromises.writeFile(dest, entry.content, 'utf8')
+      const run = async (args: string[]) => {
+        const result = await runOpenSCAD(
+          binaryPath,
+          args,
+          spawnEnv,
+          options.signal,
+        )
+        if (!options.agentBuild) return result
+        return {
+          ...result,
+          stdout: result.stdout.map((line) =>
+            remapOpenSCADDiagnostic(line, runDir, mainFilePath),
+          ),
+          stderr: result.stderr.map((line) =>
+            remapOpenSCADDiagnostic(line, runDir, mainFilePath),
+          ),
         }
       }
 
-      // Ensure main file code is written/overwritten
-      const mainRel = main.path.startsWith('/') ? main.path.slice(1) : main.path
-      mainFilePath = path.join(runDir, mainRel)
-      await fsPromises.mkdir(path.dirname(mainFilePath), { recursive: true })
-      try {
-        await fsPromises.unlink(mainFilePath)
-      } catch {
-        // ignore
-      }
-      await fsPromises.writeFile(mainFilePath, main.code, 'utf8')
-    } else {
-      runDir = projectDirectory
-      const mainRel = main.path.startsWith('/') ? main.path.slice(1) : main.path
-      mainFilePath = path.join(projectDirectory, mainRel)
-    }
+      const varArgs = vars
+        ? Object.entries(vars).map(([k, v]) => `-D${k}=${formatValue(v)}`)
+        : []
 
-    // Set variable arguments
-    const varArgs = vars
-      ? Object.entries(vars).map(([k, v]) => `-D${k}=${formatValue(v)}`)
-      : []
-
-    try {
+      options.signal?.throwIfAborted()
+      const outputDirectory = options.agentBuild
+        ? await fsPromises.mkdtemp(path.join(runDir, '.opencad-output-'))
+        : runDir
+      const summaryPath = path.join(outputDirectory, 'summary.json')
+      const summaryArgs = options.geometrySummary
+        ? [
+            '--summary=geometry',
+            '--summary=bounding-box',
+            '--summary-file',
+            summaryPath,
+          ]
+        : []
       if (action === 'checkSyntax') {
-        const outPath = path.join(runDir, 'out.json')
+        const outPath = path.join(outputDirectory, 'out.json')
         const args = [
           '-o',
           outPath,
@@ -274,13 +385,10 @@ export class OpenSCADWrapper {
           mainFilePath,
         ]
 
-        const { stdout, stderr, exitCode } = await runOpenSCAD(
-          binaryPath,
-          args,
-          spawnEnv,
-        )
+        const { stdout, stderr, exitCode } = await run(args)
         const error =
-          exitCode !== 0 || stderr.some((line) => line.includes('ERROR:'))
+          exitCode !== 0 ||
+          stderr.some((line) => /^ERROR:/i.test(line.trimStart()))
 
         let parameterSet: ParameterSet | undefined = undefined
         try {
@@ -306,24 +414,22 @@ export class OpenSCADWrapper {
       }
 
       if (action === 'compile') {
-        const outPath = path.join(runDir, 'out.off')
+        const outPath = path.join(outputDirectory, 'out.off')
         const args = [
           '-o',
           outPath,
           '--export-format=off',
           '--backend=manifold',
           '--enable=lazy-union',
+          ...summaryArgs,
           ...varArgs,
           mainFilePath,
         ]
 
-        const { stdout, stderr, exitCode } = await runOpenSCAD(
-          binaryPath,
-          args,
-          spawnEnv,
-        )
+        const { stdout, stderr, exitCode } = await run(args)
         const error =
-          exitCode !== 0 || stderr.some((line) => line.includes('ERROR:'))
+          exitCode !== 0 ||
+          stderr.some((line) => /^ERROR:/i.test(line.trimStart()))
 
         // Check if output file was created and read it
         if (!error && fs.existsSync(outPath)) {
@@ -331,6 +437,13 @@ export class OpenSCADWrapper {
           return {
             blob: new Uint8Array(blob),
             format: 'off',
+            ...(options.geometrySummary
+              ? {
+                  geometry: summarizeOpenSCAD(main.path.slice(1), () =>
+                    summarizeOff(blob.toString('utf8'), main.path.slice(1)),
+                  ),
+                }
+              : {}),
             stdout,
             stderr,
             error: false,
@@ -343,19 +456,20 @@ export class OpenSCADWrapper {
             line.includes('Current top level object is not a 3D object.'),
           )
         ) {
-          const svgOutPath = path.join(runDir, 'out.svg')
+          const svgOutPath = path.join(outputDirectory, 'out.svg')
           const svgArgs = [
             '-o',
             svgOutPath,
             '--export-format=svg',
+            ...summaryArgs,
             ...varArgs,
             mainFilePath,
           ]
 
-          const svgRes = await runOpenSCAD(binaryPath, svgArgs, spawnEnv)
+          const svgRes = await run(svgArgs)
           const svgError =
             svgRes.exitCode !== 0 ||
-            svgRes.stderr.some((line) => line.includes('ERROR:'))
+            svgRes.stderr.some((line) => /^ERROR:/i.test(line.trimStart()))
 
           stdout.push(...svgRes.stdout)
           stderr.push(...svgRes.stderr)
@@ -365,6 +479,16 @@ export class OpenSCADWrapper {
             return {
               blob: new Uint8Array(blob),
               format: 'svg',
+              ...(options.geometrySummary
+                ? {
+                    geometry: summarizeOpenSCAD(main.path.slice(1), () =>
+                      summarizeDrawing(
+                        JSON.parse(fs.readFileSync(summaryPath, 'utf8')),
+                        main.path.slice(1),
+                      ),
+                    ),
+                  }
+                : {}),
               stdout,
               stderr,
               error: false,
@@ -403,7 +527,7 @@ export class OpenSCADWrapper {
           fileExt = 'stl'
         }
 
-        const outPath = path.join(runDir, `out.${fileExt}`)
+        const outPath = path.join(outputDirectory, `out.${fileExt}`)
 
         const args = [
           '-o',
@@ -411,17 +535,15 @@ export class OpenSCADWrapper {
           `--export-format=${openSCADFormat}`,
           '--backend=manifold',
           '--enable=lazy-union',
+          ...summaryArgs,
           ...varArgs,
           mainFilePath,
         ]
 
-        const { stdout, stderr, exitCode } = await runOpenSCAD(
-          binaryPath,
-          args,
-          spawnEnv,
-        )
+        const { stdout, stderr, exitCode } = await run(args)
         const error =
-          exitCode !== 0 || stderr.some((line) => line.includes('ERROR:'))
+          exitCode !== 0 ||
+          stderr.some((line) => /^ERROR:/i.test(line.trimStart()))
 
         if (!error && fs.existsSync(outPath)) {
           const blob = await fsPromises.readFile(outPath)

@@ -8,6 +8,7 @@ import type { BuildReport, BuildRequest, GeometrySummary } from 'shared'
 
 import { build } from '../../../../agent/tools/build'
 import type { BuildRequester } from '../../../../agent/tools/build'
+import { formatBuildReport } from '../../../../agent/tools/build/formatResult'
 import { toolFailed } from '../../../../agent/tools/types'
 
 const SOURCE = [
@@ -297,4 +298,36 @@ describe('what the model reads back', () => {
     )
     expect(toolFailed(output)).toBe(true)
   })
+})
+
+test('OpenSCAD mesh summaries reach the model without fabricated B-rep properties', () => {
+  const report = buildReportSchema.parse({
+    status: 'succeeded',
+    durationMs: 5,
+    shapes: [{ name: 'main.scad', kind: '3d', rendered: true }],
+    logs: [],
+    geometry: {
+      parts: [
+        {
+          kind: 'mesh',
+          name: 'main.scad',
+          bounds: { min: [0, 0, 0], max: [10, 20, 30] },
+          vertexCount: 8,
+          faceCount: 6,
+        },
+      ],
+      overall: null,
+    },
+  })
+  const output = formatBuildReport(
+    { file: 'main.scad', source: 'cube([10,20,30]);' },
+    report,
+  )
+  expect(output).toContain('tessellated mesh')
+  expect(output).toContain('size [10, 20, 30]')
+  expect(output).toContain('vertices 8; polygon faces 6')
+  expect(output).toContain(
+    'Volume, surface area, solid count and topology validity were not checked.',
+  )
+  expect(output).not.toContain('valid true')
 })

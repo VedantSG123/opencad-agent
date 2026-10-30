@@ -37,7 +37,7 @@ const KERNEL_PROFILES: Record<SupportedCADKernels, KernelProfile> = {
   },
   openscad: {
     prompt: inlineFile('agent/kernels/openscad.md'),
-    tools: [],
+    tools: [BUILD_TOOL_NAME],
     library: null,
   },
   build123d: {

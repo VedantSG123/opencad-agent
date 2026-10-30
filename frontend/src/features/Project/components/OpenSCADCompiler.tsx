@@ -8,7 +8,7 @@ import { toFsPath } from '@/lib/utils'
 
 import { useEditor } from './editor/context'
 
-export function OpenSCADCompiler() {
+export function useOpenSCADMainFile() {
   const { project, readFile } = useEditor()
 
   const mainFilePath = React.useMemo(() => {
@@ -47,7 +47,7 @@ export function OpenSCADCompiler() {
       .catch((error: unknown) => {
         if (cancelled) return
         if (error instanceof FSNotReadyError) return
-        toast.error('Failed to read file from remote FS')
+        toast.error(`Failed to read ${normalizedPath}`)
       })
 
     return () => {
@@ -55,7 +55,17 @@ export function OpenSCADCompiler() {
     }
   }, [mainFilePath, editorContent, readFile])
 
-  const mainFileContent = editorContent ?? fsContent
+  return { mainFilePath, mainFileContent: editorContent ?? fsContent }
+}
+
+export function OpenSCADCompiler({
+  mainFilePath,
+  mainFileContent,
+}: {
+  mainFilePath: string | null
+  mainFileContent: string | undefined
+}) {
+  const { project } = useEditor()
 
   const scadFilesSerialized = useKernelFiles(
     React.useCallback((state: KernelFilesState) => {

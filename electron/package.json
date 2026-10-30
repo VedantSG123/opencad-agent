@@ -23,7 +23,6 @@
     "@zenfs/archives": "^1.3.6",
     "@zenfs/core": "^2.5.7",
     "chokidar": "^5.0.0",
-    "comctx": "^1.7.5",
     "fflate": "^0.8.3",
     "shared": "workspace:*"
   },

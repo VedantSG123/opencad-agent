@@ -1,4 +1,4 @@
-export const prompt = `Build the project's main file in the app - the same build the user's viewport shows - and report whether it worked.
+export const prompt = `Build the project's saved main file with the app's CAD kernel and report whether it worked.
 
 WHEN TO USE: after every edit or create that changes the model, before you tell
   the user the change is done. Again after each fix, until it builds.
@@ -18,10 +18,13 @@ GEOMETRY: omit geometrySummary for an ordinary build. Set geometrySummary: true
   Skip it for color, opacity, names, and other appearance-only changes.
   If a comparison matters, request a summary before editing and another after;
   compare their measurements. Do not request a summary on every build by habit.
-  It adds per-part bounds, surface area, solid count, validity and shell closure,
+  Replicad and build123d add per-part bounds, area, solid count, validity and shell closure,
   plus volume and centre of mass for valid closed solid geometry. An open shell
   can be valid; a successful build is not proof that geometry meets the brief.
   Volumes and areas in overall totals are sums of parts, not a geometric union.
+  OpenSCAD summaries are limited to tessellated mesh bounds and vertex/polygon
+  face counts, or 2D bounds. They do not check volume, area, solid count or
+  topology validity. Mesh output does not preserve named CAD parts.
 
   A result starting with "Error" means the app could not run the build at all,
   not that the code is wrong: do not retry it, tell the user.`

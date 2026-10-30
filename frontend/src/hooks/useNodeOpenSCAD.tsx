@@ -1,8 +1,11 @@
 import * as React from 'react'
+import type { BuildReport, BuildRequest } from 'shared'
+import { buildReportSchema } from 'shared/build'
 import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
 import type { ParameterSet } from '@/features/Project/components/editor/openscad/customizer-types'
+import { AgentBuilderProvider } from '@/hooks/useAgentBuilds'
 import { kernelFilesStore } from '@/hooks/useKernelFiles'
 import {
   type CompileResult,
@@ -125,6 +128,7 @@ export function parseOpenSCADDiagnostics(
 }
 
 type NodeOpenSCADActions = {
+  buildForAgent: (request: BuildRequest) => Promise<BuildReport>
   checkSyntax: (
     main: { path: string; code: string },
     projectDirectory?: string,
@@ -146,7 +150,7 @@ type NodeOpenSCADActions = {
 
 export type NodeOpenSCADStore = ReturnType<typeof createNodeOpenSCADStore>
 
-export function createNodeOpenSCADStore() {
+export function createNodeOpenSCADStore(projectDirectory?: string) {
   const api = createNodeOpenSCADApi()
 
   return createStore<NodeOpenSCADState & NodeOpenSCADActions>((set, get) => {
@@ -314,6 +318,27 @@ export function createNodeOpenSCADStore() {
       markers: [],
       parameterSet: null,
       vars: {},
+      buildForAgent: async (request) => {
+        if (!projectDirectory || !window.electron)
+          return {
+            status: 'unavailable',
+            reason: 'Open the project in the desktop app to build OpenSCAD.',
+          }
+        try {
+          const response = await window.electron.buildOpenSCAD({
+            ...request,
+            projectDirectory,
+          })
+          return response.success
+            ? buildReportSchema.parse(response.data)
+            : { status: 'unavailable', reason: response.error.message }
+        } catch (error) {
+          return {
+            status: 'unavailable',
+            reason: error instanceof Error ? error.message : String(error),
+          }
+        }
+      },
       checkSyntax: runCheckSyntax,
       compile: runCompile,
       export: async (
@@ -360,14 +385,20 @@ const NodeOpenSCADContext = React.createContext<NodeOpenSCADStore | null>(null)
 
 export function NodeOpenSCADProvider({
   children,
+  projectDirectory,
 }: {
   children: React.ReactNode
+  projectDirectory?: string
 }) {
-  const [store] = React.useState(createNodeOpenSCADStore)
+  const [store] = React.useState(() =>
+    createNodeOpenSCADStore(projectDirectory),
+  )
 
   return (
     <NodeOpenSCADContext.Provider value={store}>
-      {children}
+      <AgentBuilderProvider value={store.getState().buildForAgent}>
+        {children}
+      </AgentBuilderProvider>
     </NodeOpenSCADContext.Provider>
   )
 }
