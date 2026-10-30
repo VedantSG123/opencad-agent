@@ -18,14 +18,14 @@ export function formatGeometry(summary: GeometrySummary): string[] {
 
 function formatPart(part: GeometryPart): string {
   switch (part.kind) {
-    case 'mesh':
-      return `- "${part.name}" (tessellated mesh): bounds ${formatBounds(part.bounds)}; vertices ${part.vertexCount}; polygon faces ${part.faceCount}. Volume, surface area, solid count and topology validity were not checked.`
+    case 'polygon-mesh':
+      return `- "${part.name}" (polygon mesh): bounds ${formatBounds(part.bounds)}; vertices ${part.vertexCount}; polygon faces ${part.faceCount}.`
     case 'unavailable':
       return `- "${part.name}": geometry analysis unavailable: ${part.reason}`
-    case '2d':
-      return `- "${part.name}" (2D): bounds ${formatBounds(part.bounds)}.`
-    case '3d':
-      return `- "${part.name}" (3D): bounds ${formatBounds(part.bounds)}; solids ${part.solidCount}; valid ${part.valid}; shells closed ${part.shellsClosed === null ? 'not applicable' : String(part.shellsClosed)}; surface area ${quantity(part.surfaceArea)}; volume ${quantity(part.volume)}; centre of mass ${part.centerOfMass === null ? 'unavailable' : vector(part.centerOfMass)}.`
+    case 'svg':
+      return `- "${part.name}" (SVG): bounds ${formatBounds(part.bounds)}.`
+    case 'brep':
+      return `- "${part.name}" (BRep): bounds ${formatBounds(part.bounds)}; solids ${part.solidCount}; valid ${part.valid}; shells closed ${part.shellsClosed === null ? 'not applicable' : String(part.shellsClosed)}; surface area ${quantity(part.surfaceArea)}; volume ${quantity(part.volume)}; centre of mass ${part.centerOfMass === null ? 'unavailable' : vector(part.centerOfMass)}.`
   }
 }
 

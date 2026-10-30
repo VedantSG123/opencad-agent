@@ -41,14 +41,14 @@ export const openSCADDrawingSummarySchema = z.object({
 
 const geometryPartSchema = z.discriminatedUnion('kind', [
   z.object({
-    kind: z.literal('mesh'),
+    kind: z.literal('polygon-mesh'),
     name: z.string(),
     bounds: bounds3Schema,
     vertexCount: z.number().int().nonnegative(),
     faceCount: z.number().int().nonnegative(),
   }),
   z.object({
-    kind: z.literal('3d'),
+    kind: z.literal('brep'),
     name: z.string(),
     bounds: bounds3Schema,
     solidCount: z.number().int().nonnegative(),
@@ -59,7 +59,7 @@ const geometryPartSchema = z.discriminatedUnion('kind', [
     centerOfMass: point3Schema.nullable(),
   }),
   z.object({
-    kind: z.literal('2d'),
+    kind: z.literal('svg'),
     name: z.string(),
     bounds: bounds2Schema,
   }),

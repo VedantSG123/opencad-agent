@@ -22,7 +22,7 @@ describe('Replicad geometry summary', () => {
       expect(summary.parts).toHaveLength(1)
       expect(summary.parts[0]).toMatchObject({
         name: 'bracket',
-        kind: '3d',
+        kind: 'brep',
         solidCount: 1,
         valid: true,
         shellsClosed: true,
@@ -130,7 +130,7 @@ describe('Replicad geometry summary', () => {
     const drawing = cad.drawRectangle(10, 20)
     const input = [{ name: 'outline', shape: drawing }]
     const summary = summarizeGeometry(input)
-    expect(summary.parts[0]).toMatchObject({ kind: '2d', name: 'outline' })
+    expect(summary.parts[0]).toMatchObject({ kind: 'svg', name: 'outline' })
     expect(summary.overall).toBeNull()
     expect(summarizeGeometry(input)).toEqual(summary)
     expect(drawing.toSVGViewBox()).toBeTruthy()
@@ -150,7 +150,7 @@ describe('Replicad geometry summary', () => {
         kind: 'unavailable',
         name: 'broken',
       })
-      expect(summary.parts[1]).toMatchObject({ kind: '3d', volume: 6000 })
+      expect(summary.parts[1]).toMatchObject({ kind: 'brep', volume: 6000 })
       expect(summary.overall).toBeNull()
     } finally {
       box.delete()

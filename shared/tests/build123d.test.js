@@ -369,7 +369,7 @@ test('preview results retain requested geometry and reject malformed summaries',
   const geometry = {
     parts: [
       {
-        kind: '3d',
+        kind: 'brep',
         name: 'box',
         bounds: { min: [0, 0, 0], max: [1, 2, 3] },
         solidCount: 1,

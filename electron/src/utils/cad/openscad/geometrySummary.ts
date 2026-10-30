@@ -49,7 +49,13 @@ export function summarizeOff(text: string, name: string): GeometryPart {
     )
       throw new Error('The OFF mesh contains invalid faces.')
   }
-  return { kind: 'mesh', name, bounds: { min, max }, vertexCount, faceCount }
+  return {
+    kind: 'polygon-mesh',
+    name,
+    bounds: { min, max },
+    vertexCount,
+    faceCount,
+  }
 }
 
 export function summarizeDrawing(value: unknown, name: string): GeometryPart {
@@ -57,7 +63,7 @@ export function summarizeDrawing(value: unknown, name: string): GeometryPart {
     openSCADDrawingSummarySchema.parse(value).geometry
   if (bounds.min.some((value, axis) => value > bounds.max[axis]))
     throw new Error('The drawing has invalid bounds.')
-  return { kind: '2d', name, bounds }
+  return { kind: 'svg', name, bounds }
 }
 
 export function summarizeOpenSCAD(
