@@ -18,6 +18,8 @@ export function formatGeometry(summary: GeometrySummary): string[] {
 
 function formatPart(part: GeometryPart): string {
   switch (part.kind) {
+    case 'mesh':
+      return `- "${part.name}" (tessellated mesh): bounds ${formatBounds(part.bounds)}; vertices ${part.vertexCount}; polygon faces ${part.faceCount}. Volume, surface area, solid count and topology validity were not checked.`
     case 'unavailable':
       return `- "${part.name}": geometry analysis unavailable: ${part.reason}`
     case '2d':

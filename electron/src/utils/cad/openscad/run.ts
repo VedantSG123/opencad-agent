@@ -2,6 +2,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { app } from 'electron'
+import type { OpenSCADBuildRequest } from 'shared'
 
 import type { CompileResult } from './OpenSCADWrapper.js'
 import { OpenSCADWrapper } from './OpenSCADWrapper.js'
@@ -19,15 +20,23 @@ export interface OpenSCADRequest {
   format?: string
 }
 
-export function executeOpenSCAD(
-  request: OpenSCADRequest,
-): Promise<CompileResult> {
+function createWrapper() {
   const openscadResourcesPath = app.isPackaged
     ? path.join(process.resourcesPath, 'openscad-libs')
     : path.join(__dirname, '../../../..', 'openscad-libs')
 
-  return new OpenSCADWrapper(
-    openscadResourcesPath,
-    app.getPath('userData'),
-  ).execute(request)
+  return new OpenSCADWrapper(openscadResourcesPath, app.getPath('userData'))
+}
+
+export function executeOpenSCAD(
+  request: OpenSCADRequest,
+): Promise<CompileResult> {
+  return createWrapper().execute(request)
+}
+
+export function buildOpenSCAD(
+  request: OpenSCADBuildRequest,
+  signal: AbortSignal,
+) {
+  return createWrapper().buildForAgent(request, signal)
 }

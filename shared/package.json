@@ -18,6 +18,10 @@
       "types": "./dist/build123d.d.ts",
       "default": "./dist/build123d.js"
     },
+    "./build": {
+      "types": "./dist/build.d.ts",
+      "default": "./dist/build.js"
+    },
     "./attachments": {
       "types": "./dist/attachments.d.ts",
       "default": "./dist/attachments.js"

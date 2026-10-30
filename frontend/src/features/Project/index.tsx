@@ -184,7 +184,12 @@ export function ProjectPage() {
         <ReplicadProvider key={project.id}>{content}</ReplicadProvider>
       )}
       {project.cad_kernel === 'openscad' && (
-        <NodeOpenSCADProvider key={project.id}>{content}</NodeOpenSCADProvider>
+        <NodeOpenSCADProvider
+          key={project.id}
+          projectDirectory={project.directory}
+        >
+          {content}
+        </NodeOpenSCADProvider>
       )}
       {project.cad_kernel === 'build123d' && (
         <Build123dProvider

@@ -1,5 +1,6 @@
 import type { IpcRendererEvent } from 'electron'
 import { contextBridge, ipcRenderer } from 'electron'
+import type { BuildReport, OpenSCADBuildRequest } from 'shared'
 // Preload compiles to CommonJS but 'shared' ships ESM only — import types
 // only here (fully erased at compile time) so no runtime require() happens.
 import type {
@@ -77,6 +78,7 @@ export interface ElectronAPI {
   onWatch: (handler: (event: WatchEvent) => void) => () => void
   refreshProjectRoots: () => Promise<Result<{ count: number }>>
   addProjectRoot: (directory: string) => Promise<Result<{ count: number }>>
+  buildOpenSCAD: (request: OpenSCADBuildRequest) => Promise<Result<BuildReport>>
   compileOpenSCAD: (
     main: { path: string; code: string },
     overrides?: Record<string, { content: string }>,
@@ -215,6 +217,7 @@ const api: ElectronAPI = {
   refreshProjectRoots: () => ipcRenderer.invoke('projects:refresh-roots'),
   addProjectRoot: (directory) =>
     ipcRenderer.invoke('projects:add-root', directory),
+  buildOpenSCAD: (request) => ipcRenderer.invoke('openscad:build', request),
   compileOpenSCAD: (main, overrides, projectDirectory, vars) =>
     ipcRenderer.invoke(
       'openscad:compile',
