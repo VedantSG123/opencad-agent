@@ -113,7 +113,7 @@ class GeometrySummaryTests(unittest.TestCase):
         group, instances = to_ocpgroup(Box(1, 1, 1), Box(2, 2, 2))
         instances[group.objects[1].ref]['obj'] = None
         summary = summarize_geometry(group, instances)
-        self.assertEqual(summary['parts'][0]['kind'], '3d')
+        self.assertEqual(summary['parts'][0]['kind'], 'brep')
         self.assertEqual(summary['parts'][1]['kind'], 'unavailable')
         self.assertIsNone(summary['overall'])
 

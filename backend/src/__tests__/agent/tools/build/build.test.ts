@@ -135,7 +135,7 @@ describe('what the model reads back', () => {
     const geometry: GeometrySummary = {
       parts: [
         {
-          kind: '3d',
+          kind: 'brep',
           name: 'bracket',
           bounds,
           solidCount: 1,
@@ -309,7 +309,7 @@ test('OpenSCAD mesh summaries reach the model without fabricated B-rep propertie
     geometry: {
       parts: [
         {
-          kind: 'mesh',
+          kind: 'polygon-mesh',
           name: 'main.scad',
           bounds: { min: [0, 0, 0], max: [10, 20, 30] },
           vertexCount: 8,
@@ -323,11 +323,8 @@ test('OpenSCAD mesh summaries reach the model without fabricated B-rep propertie
     { file: 'main.scad', source: 'cube([10,20,30]);' },
     report,
   )
-  expect(output).toContain('tessellated mesh')
-  expect(output).toContain('size [10, 20, 30]')
-  expect(output).toContain('vertices 8; polygon faces 6')
-  expect(output).toContain(
-    'Volume, surface area, solid count and topology validity were not checked.',
+  expect(output.split('\n')).toContain(
+    '- "main.scad" (polygon mesh): bounds [0, 0, 0] to [10, 20, 30], size [10, 20, 30]; vertices 8; polygon faces 6.',
   )
   expect(output).not.toContain('valid true')
 })

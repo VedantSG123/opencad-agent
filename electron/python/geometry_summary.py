@@ -36,7 +36,7 @@ def _measure(name, shape):
         if measured > 0:
             volume, center = measured, _point(properties.CentreOfMass())
     return {
-        'kind': '3d',
+        'kind': 'brep',
         'name': name,
         'bounds': {'min': [_finite(v) for v in box.min], 'max': [_finite(v) for v in box.max]},
         'solidCount': len(solids),
@@ -49,7 +49,7 @@ def _measure(name, shape):
 
 
 def _overall(parts):
-    if not parts or any(part['kind'] != '3d' for part in parts):
+    if not parts or any(part['kind'] != 'brep' for part in parts):
         return None
     return {
         'bounds': {

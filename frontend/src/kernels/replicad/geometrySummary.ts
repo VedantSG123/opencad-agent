@@ -12,7 +12,7 @@ import type { GeometryPart, GeometrySummary } from 'shared'
 
 import type { CleanedShape } from './shape-format'
 
-type Geometry3D = Extract<GeometryPart, { kind: '3d' }>
+type BRepGeometry = Extract<GeometryPart, { kind: 'brep' }>
 
 export function summarizeGeometry(
   shapes: Pick<CleanedShape, 'name' | 'shape'>[],
@@ -29,7 +29,7 @@ function summarizePart({
     if (!(shape instanceof Shape)) {
       // Drawings cache and own their 2D box; deleting it breaks later SVG rendering.
       const [min, max] = shape.boundingBox.bounds
-      return { name, kind: '2d', bounds: { min, max } }
+      return { name, kind: 'svg', bounds: { min, max } }
     }
 
     const box = shape.boundingBox
@@ -85,7 +85,7 @@ function summarizePart({
       }
 
       let volume: number | null = null
-      let centerOfMass: Geometry3D['centerOfMass'] = null
+      let centerOfMass: BRepGeometry['centerOfMass'] = null
       if (
         valid &&
         solidCount > 0 &&
@@ -107,7 +107,7 @@ function summarizePart({
 
       return {
         name,
-        kind: '3d',
+        kind: 'brep',
         bounds: { min, max },
         solidCount,
         valid,
@@ -146,10 +146,10 @@ function faceHash(face: Parameters<typeof iterTopo>[0]): number {
 }
 
 function summarizeOverall(parts: GeometryPart[]): GeometrySummary['overall'] {
-  const measured = parts.filter((part) => part.kind === '3d')
+  const measured = parts.filter((part) => part.kind === 'brep')
   if (measured.length === 0 || measured.length !== parts.length) return null
 
-  const bounds: Geometry3D['bounds'] = {
+  const bounds: BRepGeometry['bounds'] = {
     min: [...measured[0].bounds.min],
     max: [...measured[0].bounds.max],
   }

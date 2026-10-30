@@ -66,7 +66,7 @@ nativeTest(
     expect(report.geometry).toEqual({
       parts: [
         {
-          kind: 'mesh',
+          kind: 'polygon-mesh',
           name: 'main.scad',
           bounds: { min: [0, 0, 0], max: [10, 20, 30] },
           vertexCount: 8,
@@ -129,7 +129,7 @@ nativeTest(
     ])
     expect(report.geometry.parts).toEqual([
       {
-        kind: '2d',
+        kind: 'svg',
         name: 'main.scad',
         bounds: { min: [5, -3], max: [15, 17] },
       },
