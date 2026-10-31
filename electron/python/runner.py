@@ -16,6 +16,7 @@ import build123d  # noqa: F401
 import numpy as np
 from ocp_tessellate.convert import tessellate_group, to_ocpgroup
 
+from entity_facts import entity_facts
 from script_runner import execute, exit_without_finalizing, read_request
 
 
@@ -107,10 +108,14 @@ def tessellate(shown, geometry_summary=False):
         geometry = summarize_geometry(group, instances)
     meshed, shapes, _mapping = tessellate_group(group, instances, {})
     encode_inline_buffers(shapes)
+    facts = entity_facts(instances, meshed)
 
     return {
         "ok": True,
-        "instances": [encode_instance(instance) for instance in meshed],
+        "instances": [
+            {**encode_instance(instance), **({"facts": found} if found else {})}
+            for instance, found in zip(meshed, facts)
+        ],
         "shapes": shapes,
         **({"geometry": geometry} if geometry_summary else {}),
     }
