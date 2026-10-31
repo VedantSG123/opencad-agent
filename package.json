@@ -9,6 +9,7 @@
     "electron"
   ],
   "scripts": {
+    "setup:python": "bun run build:shared && bun electron/scripts/setup-uv.ts && bun electron/scripts/setup-python.ts",
     "dev": "bun run build:shared && concurrently -k -n \"frontend,electron\" -c \"blue,green\" \"(cd frontend && bun dev)\" \"(cd electron && bun dev)\"",
     "build:shared": "(cd shared && bun run build)",
     "build:frontend": "(cd frontend && bun run build)",
