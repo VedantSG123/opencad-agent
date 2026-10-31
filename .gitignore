@@ -1,5 +1,8 @@
 # Dependencies
 node_modules
+.python/
+.venv/
+__pycache__/
 
 # OS-specific files
 .DS_Store

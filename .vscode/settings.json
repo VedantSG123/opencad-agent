@@ -1,5 +1,6 @@
 {
   "files.eol": "\n",
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv",
   "[javascript]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
