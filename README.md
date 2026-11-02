@@ -40,6 +40,10 @@ workspace defaults to `.venv`; if you previously selected another environment,
 run **Python: Select Interpreter** and choose `.venv/bin/python` on Linux/macOS or
 `.venv\Scripts\python.exe` on Windows.
 
+Zed's project settings launch the pinned Pyright and Ruff language servers.
+Python uses four-space indentation, with Ruff formatting and fixes on save.
+Select `.venv` with `toolchain: select` if Zed does not select it automatically.
+
 Ruff provides Python linting, import sorting, and formatting. The workspace uses
 it to format Python on save and apply lint/import fixes on explicit saves.
 Settings live in `ruff.toml`, with single quotes, LF endings, and an 80-column
