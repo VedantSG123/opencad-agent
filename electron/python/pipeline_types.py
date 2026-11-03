@@ -36,3 +36,26 @@ class EncodedBuffer(TypedDict):
     dtype: str
     buffer: str
     codec: Literal['b64']
+
+
+Quantity = Literal[
+    'length', 'area', 'angle', 'point', 'direction', 'faces', 'label'
+]
+EdgeClass = Literal['seam', 'boundary', 'nonmanifold', 'tangent', 'feature']
+
+
+class Fact(TypedDict):
+    name: str
+    quantity: Quantity
+    value: float | list[float] | list[int] | str
+
+
+class EntityFacts(TypedDict):
+    ordinal: int
+    type: str
+    facts: list[Fact]
+
+
+class InstanceFacts(TypedDict):
+    faces: list[EntityFacts]
+    edges: list[EntityFacts]
