@@ -1,10 +1,11 @@
 import type { ShapeNode } from 'shared/build123d'
+import { geometryTypeLabel } from 'shared/geometry'
 
 import { activeSelection } from '@/components/cad/activeSelection'
 import type { ComponentKind, SelectedComponent } from '@/types'
 
 import type { DecodedModel } from './decode'
-import { worldFacts } from './facts'
+import { build123dReference, worldFacts } from './facts'
 import type { VisibilityKind, VisibilityMap } from './tree'
 import { initialVisibility, leafIds } from './tree'
 
@@ -133,11 +134,7 @@ export function build123dReadout(
     ...(entity && {
       geometryType: geometryTypeLabel(entity.type),
       facts: entity.facts,
+      reference: build123dReference(part, kind, value.index),
     }),
   }
-}
-
-/** build123d's `GeomType` names are upper case: 'PLANE' reads as 'Plane'. */
-function geometryTypeLabel(type: string): string {
-  return type.charAt(0) + type.slice(1).toLowerCase()
 }

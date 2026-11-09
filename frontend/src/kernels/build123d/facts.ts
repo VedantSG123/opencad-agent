@@ -1,4 +1,6 @@
-import type { EntityFact, EntityFacts } from 'shared/build123d'
+import type { EntityFacts } from 'shared/build123d'
+import type { EntityFact, GeometryRef } from 'shared/geometry'
+import { isReferenceFact } from 'shared/geometry'
 
 import type { ComponentKind } from '@/types'
 
@@ -31,5 +33,34 @@ export function worldFacts(
   return {
     ...entity,
     facts: entity.facts.map((fact) => placeFact(fact, part)),
+  }
+}
+
+/**
+ * The selection as the agent will read it, with face indices swapped for the
+ * faces they name - an index means nothing once this build is replaced.
+ */
+export function build123dReference(
+  part: DecodedPart,
+  kind: ComponentKind,
+  index: number,
+): GeometryRef | undefined {
+  const entity = worldFacts(part, kind, index)
+  if (!entity) return undefined
+  const adjacent = entity.facts.flatMap((fact) =>
+    fact.quantity === 'faces' ? fact.value : [],
+  )
+  const adjacentFaces = adjacent.flatMap((face) => {
+    const found = worldFacts(part, 'face', face)
+    return found
+      ? [{ type: found.type, facts: found.facts.filter(isReferenceFact) }]
+      : []
+  })
+  return {
+    part: part.name,
+    kind,
+    type: entity.type,
+    facts: entity.facts.filter(isReferenceFact),
+    ...(adjacentFaces.length > 0 && { adjacentFaces }),
   }
 }

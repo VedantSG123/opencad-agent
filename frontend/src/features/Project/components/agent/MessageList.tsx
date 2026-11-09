@@ -5,7 +5,7 @@ import type { FileChanged, PermissionPrompt } from 'shared'
 import { Icon } from '@/components/icons/HugeIcon'
 import type { AgentUIMessage, AgentUIPart } from '@/types/agent'
 
-import { CopyButton } from './CopyButton'
+import { CopyButton } from '@/components/CopyButton'
 import { Markdown } from './Markdown'
 import { splitTurn } from './turn'
 import { WorkRail } from './WorkRail'

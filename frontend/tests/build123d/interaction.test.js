@@ -9,6 +9,7 @@ import {
 const RADIUS = { name: 'radius', quantity: 'length', value: 3 }
 const AXIS = { name: 'axis', quantity: 'direction', value: [0, 0, 1] }
 const DIRECTION = { name: 'direction', quantity: 'direction', value: [1, 0, 0] }
+const BETWEEN = { name: 'faces', quantity: 'faces', value: [0, 1] }
 
 function model(name = 'plate', state = [1, 1]) {
   const node = { id: '/root/0', name, shape: { ref: 0 }, state }
@@ -30,7 +31,7 @@ function model(name = 'plate', state = [1, 1]) {
               { ordinal: 1, type: 'PLANE', facts: [] },
               { ordinal: 2, type: 'CYLINDER', facts: [RADIUS, AXIS] },
             ],
-            edges: [{ ordinal: 1, type: 'LINE', facts: [DIRECTION] }],
+            edges: [{ ordinal: 1, type: 'LINE', facts: [DIRECTION, BETWEEN] }],
           },
         },
       },
@@ -85,6 +86,7 @@ describe('build123d viewer interactions', () => {
       subject: 'plate',
       geometryType: 'Plane',
       facts: [],
+      reference: { part: 'plate', kind: 'face', type: 'PLANE', facts: [] },
     })
     expect(state.visibility['/root/0']).toEqual({ faces: true, edges: false })
   })
@@ -158,7 +160,17 @@ describe('build123d viewer interactions', () => {
       index: 0,
       subject: 'plate',
       geometryType: 'Line',
-      facts: [DIRECTION],
+      facts: [DIRECTION, BETWEEN],
+      reference: {
+        part: 'plate',
+        kind: 'edge',
+        type: 'LINE',
+        facts: [DIRECTION],
+        adjacentFaces: [
+          { type: 'PLANE', facts: [] },
+          { type: 'CYLINDER', facts: [RADIUS, AXIS] },
+        ],
+      },
     })
     state = apply(state, { type: 'edge', partId: '/root/0', index: 0 })
     expect(build123dReadout(state)).toEqual({
@@ -167,6 +179,12 @@ describe('build123d viewer interactions', () => {
       subject: 'plate',
       geometryType: 'Cylinder',
       facts: [RADIUS, AXIS],
+      reference: {
+        part: 'plate',
+        kind: 'face',
+        type: 'CYLINDER',
+        facts: [RADIUS, AXIS],
+      },
     })
     state = apply(state, { type: 'face', partId: '/root/0', index: 1 })
     expect(build123dReadout(state)).toBeNull()

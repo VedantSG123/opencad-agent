@@ -1,7 +1,9 @@
+import { factLabel, factValue, geometryRefText } from 'shared/geometry'
+
+import { CopyButton } from '@/components/CopyButton'
 import { cn } from '@/lib/utils'
 import type { SelectedComponent } from '@/types'
 
-import { factLabel, factValue } from './factText'
 import { VIEWPORT_PILL } from './ViewportStatusBar'
 
 const KIND_LABEL: Record<SelectedComponent['kind'], string> = {
@@ -26,7 +28,7 @@ export function SelectionReadout({
     return null
   }
 
-  const { kind, index, subject, geometryType, facts } = selection
+  const { kind, index, subject, geometryType, facts, reference } = selection
 
   return (
     <div className={cn('relative', className)}>
@@ -62,6 +64,13 @@ export function SelectionReadout({
             <span className='text-foreground/25'>·</span>
             <span className='truncate text-foreground/50'>{subject}</span>
           </>
+        )}
+        {reference && (
+          <CopyButton
+            text={geometryRefText(reference)}
+            label='Copy reference'
+            className='pointer-events-auto -my-1 -mr-2 h-5 w-5'
+          />
         )}
       </div>
     </div>

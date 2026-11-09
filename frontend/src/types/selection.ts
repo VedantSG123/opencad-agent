@@ -1,4 +1,4 @@
-import type { EntityFact } from 'shared/build123d'
+import type { EntityFact, GeometryRef } from 'shared/geometry'
 
 /** Which kind of BRep component a selection names. */
 export type ComponentKind = 'face' | 'edge'
@@ -7,8 +7,8 @@ export type ComponentKind = 'face' | 'edge'
  * A selected BRep component, in the terms a reader needs rather than the ones
  * picking produces.
  *
- * `geometryType` and `facts` are optional because only build123d reports
- * them; replicad's mesh output does not.
+ * `geometryType`, `facts` and `reference` are optional because only build123d
+ * reports them; replicad's mesh output does not.
  */
 export type SelectedComponent = {
   kind: ComponentKind
@@ -20,4 +20,5 @@ export type SelectedComponent = {
   geometryType?: string
   /** Measurements in world coordinates. */
   facts?: EntityFact[]
+  reference?: GeometryRef
 }
