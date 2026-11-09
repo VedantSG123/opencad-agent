@@ -2,6 +2,7 @@ import { Chat, useChat } from '@ai-sdk/react'
 import type { FileUIPart } from 'ai'
 import { useEffect, useRef, useState } from 'react'
 import type { Attachment } from 'shared/attachments'
+import type { GeometryRef } from 'shared/geometry'
 
 import type { SelectedModel } from '@/features/Providers/components/ModelSelectButton'
 import { useAgentData } from '@/hooks/useAgentData'
@@ -104,10 +105,23 @@ function ChatView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function send(text: string, files: Attachment[]) {
+  function send(
+    text: string,
+    files: Attachment[],
+    geometry: GeometryRef[] = [],
+  ) {
     if (!model) return
     void sendMessage(
-      { text, files: files.map(toFilePart) },
+      {
+        parts: [
+          ...files.map(toFilePart),
+          { type: 'text', text },
+          ...geometry.map((ref) => ({
+            type: 'data-geometry' as const,
+            data: ref,
+          })),
+        ],
+      },
       { body: { model } },
     )
   }
