@@ -2,10 +2,11 @@ import { AlertCircleIcon, File02Icon } from '@hugeicons/core-free-icons'
 import { useEffect, useRef } from 'react'
 import type { FileChanged, PermissionPrompt } from 'shared'
 
+import { CopyButton } from '@/components/CopyButton'
 import { Icon } from '@/components/icons/HugeIcon'
 import type { AgentUIMessage, AgentUIPart } from '@/types/agent'
 
-import { CopyButton } from '@/components/CopyButton'
+import { GeometryChip } from './GeometryChip'
 import { Markdown } from './Markdown'
 import { splitTurn } from './turn'
 import { WorkRail } from './WorkRail'
@@ -96,6 +97,9 @@ function UserMessage({ message }: { message: AgentUIMessage }) {
                 {part.filename ?? part.mediaType}
               </span>
             )
+          }
+          if (part.type === 'data-geometry') {
+            return <GeometryChip key={index} reference={part.data} />
           }
           if (part.type === 'text' && part.text) {
             return (
