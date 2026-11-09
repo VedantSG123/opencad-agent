@@ -93,6 +93,12 @@ const entityFactsSchema = z.object({
 })
 export type EntityFacts = z.infer<typeof entityFactsSchema>
 
+const instanceFactsSchema = z.object({
+  faces: z.array(entityFactsSchema),
+  edges: z.array(entityFactsSchema),
+})
+export type InstanceFacts = z.infer<typeof instanceFactsSchema>
+
 const encodedInstanceSchema = z
   .object({
     vertices: floatBufferSchema.optional(),
@@ -105,12 +111,7 @@ const encodedInstanceSchema = z
     triangles_per_face: indexBufferSchema.optional(),
     segments_per_edge: indexBufferSchema.optional(),
     uvs: floatBufferSchema.optional(),
-    facts: z
-      .object({
-        faces: z.array(entityFactsSchema),
-        edges: z.array(entityFactsSchema),
-      })
-      .optional(),
+    facts: instanceFactsSchema.optional(),
   })
   .superRefine((instance, context) => {
     const multipleOf = (
