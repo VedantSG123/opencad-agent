@@ -193,6 +193,26 @@ describe('toUIMessages', () => {
     expect(restored.metadata).toEqual({ created: 'now', completed: 'now' })
   })
 
+  test('selected geometry comes back on the user message it was sent with', () => {
+    const ref = {
+      part: 'bracket',
+      kind: 'face' as const,
+      type: 'PLANE',
+      facts: [],
+    }
+    const [restored] = toUIMessages([
+      stored('user', (id) => [
+        { ...partBase(id), type: 'text', text: 'this one' },
+        { ...partBase(id), type: 'geometry', ref },
+      ]),
+    ])
+
+    expect(restored.parts).toEqual([
+      { type: 'text', text: 'this one', state: 'done' },
+      { type: 'data-geometry', data: ref },
+    ])
+  })
+
   test('a user message carries no metadata', () => {
     const [restored] = toUIMessages([
       stored('user', (id) => [{ ...partBase(id), type: 'text', text: 'hi' }]),

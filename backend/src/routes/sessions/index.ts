@@ -2,6 +2,7 @@ import { createUIMessageStream, createUIMessageStreamResponse } from 'ai'
 import { Elysia, t } from 'elysia'
 import { buildReportSchema } from 'shared'
 import type { PermissionScope } from 'shared'
+import { geometryRefSchema } from 'shared/geometry'
 
 import type { ModelRef } from '../../agent/model'
 import { resolveModel } from '../../agent/model'
@@ -68,6 +69,9 @@ const promptBody = t.Object({
   // answers with a sentence instead of a schema violation. `readPromptBody`
   // is what stops an absurd array being read at all.
   files: t.Optional(t.Array(attachment)),
+  // Checked in the handler against the shared schema the frontend built the
+  // references with, rather than restated here.
+  geometry: t.Optional(t.Array(t.Unknown())),
 })
 
 /**
@@ -149,8 +153,18 @@ export const sessionsRoutes = new Elysia({ prefix: '/sessions' })
       }
 
       const files = body.files ?? []
-      if (!body.prompt.trim() && files.length === 0) {
-        return status(400, { message: 'Send something to say, or a file.' })
+      const geometry = geometryRefSchema.array().safeParse(body.geometry ?? [])
+      if (!geometry.success) {
+        return status(400, { message: 'A selected face or edge is malformed.' })
+      }
+      if (
+        !body.prompt.trim() &&
+        files.length === 0 &&
+        geometry.data.length === 0
+      ) {
+        return status(400, {
+          message: 'Send something to say, a file, or a selection.',
+        })
       }
 
       const model: ModelRef = {
@@ -174,7 +188,14 @@ export const sessionsRoutes = new Elysia({ prefix: '/sessions' })
       if (refusal) return status(400, { message: refusal })
 
       try {
-        startRun({ session, project, model, prompt: body.prompt, files })
+        startRun({
+          session,
+          project,
+          model,
+          prompt: body.prompt,
+          files,
+          geometry: geometry.data,
+        })
       } catch (error) {
         if (error instanceof RunInFlightError) {
           return status(409, { message: error.message })

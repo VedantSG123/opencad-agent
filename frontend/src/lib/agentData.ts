@@ -13,6 +13,7 @@ export function createAgentDataHandler(
       case 'data-permission':
       case 'data-file-changed':
       case 'data-keep-alive':
+      case 'data-geometry':
         return
     }
     const unhandled: never = part

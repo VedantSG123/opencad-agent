@@ -4,6 +4,7 @@ import type {
   ToolResultPart,
   UserContent,
 } from 'ai'
+import { geometryRefText } from 'shared/geometry'
 
 import type { CompactionPart, Part } from '../../session/messageSchema'
 import type { StoredMessage } from './history'
@@ -80,6 +81,7 @@ function summaryPrompt(marker: CompactionPart): string {
 
 function projectUser(entry: StoredMessage): ModelMessage[] {
   const content: UserContent = []
+  let geometryIndex = 0
 
   for (const part of entry.parts) {
     if (part.type === 'text' && part.text) {
@@ -97,6 +99,14 @@ function projectUser(entry: StoredMessage): ModelMessage[] {
               ...(part.filename ? { filename: part.filename } : {}),
             },
       )
+      continue
+    }
+    if (part.type === 'geometry') {
+      geometryIndex += 1
+      content.push({
+        type: 'text',
+        text: `<selected-geometry index="${geometryIndex}">\n${geometryRefText(part.ref)}\n</selected-geometry>`,
+      })
     }
   }
 

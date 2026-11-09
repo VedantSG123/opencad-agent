@@ -1,4 +1,5 @@
 import type { BuildReport, PermissionScope } from 'shared'
+import type { GeometryRef } from 'shared/geometry'
 
 import type { Project } from '../../project/schema'
 import type { Session } from '../../session/schema'
@@ -44,6 +45,7 @@ export type StartRunInput = {
   model: ModelRef
   prompt: string
   files?: FileAttachment[]
+  geometry?: GeometryRef[]
 }
 
 export class RunInFlightError extends Error {
@@ -89,6 +91,7 @@ export function startRun(input: StartRunInput): void {
     model: input.model,
     prompt: input.prompt,
     files: input.files,
+    geometry: input.geometry,
     abortSignal: run.abort.signal,
     onEvent: (event) => {
       for (const chunk of toUIChunks(event)) publish(run, chunk)

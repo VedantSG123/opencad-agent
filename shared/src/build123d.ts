@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { geometrySummarySchema } from './build.js'
+import { entityFactSchema } from './geometry.js'
 
 const countSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)
 const finiteSchema = z.number().finite()
@@ -53,36 +54,6 @@ const floatBufferSchema = encodedBufferSchema
 const indexBufferSchema = encodedBufferSchema
   .extend({ dtype: z.literal('uint32') })
   .superRefine(validateBuffer)
-const pointSchema = z.tuple([finiteSchema, finiteSchema, finiteSchema])
-
-/**
- * One named measurement of a face or an edge. The runner decides which facts
- * an entity carries; `quantity` only says how a value is read - a point moves
- * with its part, a direction only turns with it, a length does neither.
- */
-const entityFactSchema = z.discriminatedUnion('quantity', [
-  z.object({
-    name: z.string(),
-    quantity: z.enum(['length', 'area', 'angle']),
-    value: finiteSchema,
-  }),
-  z.object({
-    name: z.string(),
-    quantity: z.enum(['point', 'direction']),
-    value: pointSchema,
-  }),
-  z.object({
-    name: z.string(),
-    quantity: z.literal('faces'),
-    value: z.array(countSchema),
-  }),
-  z.object({
-    name: z.string(),
-    quantity: z.literal('label'),
-    value: z.string(),
-  }),
-])
-export type EntityFact = z.infer<typeof entityFactSchema>
 
 const entityFactsSchema = z.object({
   /** The kernel's `TopExp.MapShapes` ordinal, which the viewer's index is not. */

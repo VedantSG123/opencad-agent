@@ -7,6 +7,7 @@ import type {
   ToolSet,
 } from 'ai'
 import { streamText } from 'ai'
+import type { GeometryRef } from 'shared/geometry'
 
 import type { Project } from '../project/schema'
 import type {
@@ -43,6 +44,7 @@ export type AgentRunInput = AgentCallbacks & {
   model: ModelRef
   prompt: string
   files?: FileAttachment[]
+  geometry?: GeometryRef[]
   abortSignal?: AbortSignal
   maxSteps?: number
 }
@@ -79,7 +81,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   await installKernelLibrary(input.project)
   const system = buildSystemPrompt(input.project)
 
-  writer.userMessage(input.prompt, input.files)
+  writer.userMessage(input.prompt, input.files, input.geometry)
 
   // Read back from storage rather than appended in memory: the projection is
   // the single place that decides what the model sees, so a compacted session
