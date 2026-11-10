@@ -21,6 +21,7 @@ import { ErrorNote, MessageList } from './MessageList'
 export interface PendingMessage {
   text: string
   files: Attachment[]
+  geometry: GeometryRef[]
 }
 
 interface ConversationProps {
@@ -100,16 +101,13 @@ function ChatView({
     if (started.current) return
     started.current = true
     if (detail.running) void chat.resumeStream()
-    else if (pending && model) send(pending.text, pending.files)
+    else if (pending && model)
+      send(pending.text, pending.files, pending.geometry)
     if (pending) onPendingSent()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function send(
-    text: string,
-    files: Attachment[],
-    geometry: GeometryRef[] = [],
-  ) {
+  function send(text: string, files: Attachment[], geometry: GeometryRef[]) {
     if (!model) return
     void sendMessage(
       {

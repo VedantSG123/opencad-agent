@@ -1,6 +1,10 @@
+import { Tooltip } from '@heroui/react'
+import { MessageAdd01Icon, Tick02Icon } from '@hugeicons/core-free-icons'
+import type { GeometryRef } from 'shared/geometry'
 import { factLabel, factValue, geometryRefText } from 'shared/geometry'
 
 import { CopyButton } from '@/components/CopyButton'
+import { Icon } from '@/components/icons/HugeIcon'
 import { cn } from '@/lib/utils'
 import type { SelectedComponent } from '@/types'
 
@@ -19,9 +23,14 @@ const KIND_LABEL: Record<SelectedComponent['kind'], string> = {
  */
 export function SelectionReadout({
   selection,
+  chat,
   className,
 }: {
   selection: SelectedComponent | null
+  chat?: {
+    isAttached: (reference: GeometryRef) => boolean
+    attach: (reference: GeometryRef) => void
+  }
   className?: string
 }) {
   if (!selection) {
@@ -65,6 +74,12 @@ export function SelectionReadout({
             <span className='truncate text-foreground/50'>{subject}</span>
           </>
         )}
+        {reference && chat && (
+          <AddToChatButton
+            isAttached={chat.isAttached(reference)}
+            onAttach={() => chat.attach(reference)}
+          />
+        )}
         {reference && (
           <CopyButton
             text={geometryRefText(reference)}
@@ -74,5 +89,33 @@ export function SelectionReadout({
         )}
       </div>
     </div>
+  )
+}
+
+function AddToChatButton({
+  isAttached,
+  onAttach,
+}: {
+  isAttached: boolean
+  onAttach: () => void
+}) {
+  const label = isAttached ? 'In the chat' : 'Add to chat'
+  return (
+    <Tooltip>
+      <button
+        type='button'
+        aria-label={label}
+        disabled={isAttached}
+        onClick={onAttach}
+        className='pointer-events-auto -my-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-muted/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none disabled:hover:bg-transparent'
+      >
+        <Icon
+          icon={isAttached ? Tick02Icon : MessageAdd01Icon}
+          size={14}
+          className={isAttached ? 'text-success' : undefined}
+        />
+      </button>
+      <Tooltip.Content>{label}</Tooltip.Content>
+    </Tooltip>
   )
 }
