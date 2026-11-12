@@ -1,4 +1,5 @@
 import * as React from 'react'
+import type { GeometryRef } from 'shared/geometry'
 
 import { Build123dViewer } from '@/components-3d/cad-viewer/Build123dViewer'
 import type { StageHandle } from '@/components-3d/helpers/Stage'
@@ -16,6 +17,8 @@ import { useBuild123d } from '@/hooks/useBuild123d'
 import { useBuild123dInteraction } from '@/hooks/useBuild123dInteraction'
 import { usePythonEnv } from '@/hooks/usePythonEnv'
 
+import { useChatGeometry } from '../context/ChatGeometryContext'
+import { usePanelContext } from '../context/PanelContext'
 import { Build123dCompiler } from './Build123dCompiler'
 import { Build123dExportDialog } from './Build123dExportDialog'
 import { useEditor } from './editor/context'
@@ -29,6 +32,17 @@ function Build123dViewportInner() {
 
   const interaction = useBuild123dInteraction(model)
   const stageRef = React.useRef<StageHandle>(null)
+  const chatGeometry = useChatGeometry()
+  const { agentRef, setIsAgentCollapsed } = usePanelContext()
+
+  function attachToChat(reference: GeometryRef) {
+    chatGeometry.attach(reference)
+    const panel = agentRef.current
+    if (panel?.isCollapsed()) {
+      panel.expand()
+      setIsAgentCollapsed(false)
+    }
+  }
 
   return (
     <div className='relative h-full w-full'>
@@ -64,7 +78,10 @@ function Build123dViewportInner() {
 
       <ViewportStatusBar>
         <ResetViewButton stageRef={stageRef} />
-        <SelectionReadout selection={interaction.selection} />
+        <SelectionReadout
+          selection={interaction.selection}
+          chat={{ isAttached: chatGeometry.isAttached, attach: attachToChat }}
+        />
         <BusyIndicator active={isBuilding} label='Building...' />
       </ViewportStatusBar>
 

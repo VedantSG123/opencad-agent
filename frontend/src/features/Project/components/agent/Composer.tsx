@@ -13,6 +13,7 @@ import {
   attachmentRefusal,
   attachmentSetRefusal,
 } from 'shared/attachments'
+import type { GeometryRef } from 'shared/geometry'
 
 import { Icon } from '@/components/icons/HugeIcon'
 import {
@@ -21,12 +22,15 @@ import {
 } from '@/features/Providers/components/ModelSelectButton'
 import { useProviders } from '@/hooks/useProviders'
 
+import { useChatGeometry } from '../../context/ChatGeometryContext'
+import { GeometryChip } from './GeometryChip'
+
 interface ComposerProps {
   model: SelectedModel | null
   onModelChange: (model: SelectedModel) => void
   preferredModel?: SelectedModel
   isWorking: boolean
-  onSend: (text: string, files: Attachment[]) => void
+  onSend: (text: string, files: Attachment[], geometry: GeometryRef[]) => void
   onStop: () => void
   initialText?: string
   autoFocus?: boolean
@@ -45,6 +49,7 @@ export function Composer({
   const [text, setText] = useState(initialText)
   const [files, setFiles] = useState<Attachment[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  const { geometry, detach, clear } = useChatGeometry()
   const capabilities = useAttachmentCapabilities(model)
 
   const refusal =
@@ -53,16 +58,17 @@ export function Composer({
       .find((reason) => reason !== null) ?? attachmentSetRefusal(files)
   const canAttach = capabilities.image || capabilities.pdf
   const canSend =
-    (text.trim().length > 0 || files.length > 0) &&
+    (text.trim().length > 0 || files.length > 0 || geometry.length > 0) &&
     model !== null &&
     refusal === null &&
     !isWorking
 
   function send() {
     if (!canSend) return
-    onSend(text, files)
+    onSend(text, files, geometry)
     setText('')
     setFiles([])
+    clear()
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -86,8 +92,15 @@ export function Composer({
   return (
     <div className='border-t border-border p-2'>
       <div className='flex flex-col rounded-2xl border border-border bg-surface'>
-        {files.length > 0 && (
+        {files.length + geometry.length > 0 && (
           <div className='flex flex-wrap gap-1.5 px-3 pt-3'>
+            {geometry.map((reference, index) => (
+              <GeometryChip
+                key={`geometry-${index}`}
+                reference={reference}
+                onRemove={() => detach(index)}
+              />
+            ))}
             {files.map((file, index) => (
               <AttachmentChip
                 key={`${file.filename}-${index}`}

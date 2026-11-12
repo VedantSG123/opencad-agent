@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { decodeModel } from '../../src/kernels/build123d/decode'
+import { worldFacts } from '../../src/kernels/build123d/facts'
 
 function encoded(values, dtype = 'float32') {
   const array =
@@ -222,5 +223,86 @@ describe('build123d geometry decoding', () => {
     ])
     result.shapes.parts = []
     expect(decodeModel(result).parts).toEqual([])
+  })
+})
+
+function withFacts() {
+  const result = model()
+  result.instances[0].facts = {
+    faces: [
+      {
+        ordinal: 1,
+        type: 'PLANE',
+        facts: [
+          { name: 'area', quantity: 'area', value: 0.5 },
+          { name: 'centroid', quantity: 'point', value: [1, 0, 0] },
+          { name: 'normal', quantity: 'direction', value: [1, 0, 0] },
+        ],
+      },
+    ],
+    edges: [
+      {
+        ordinal: 1,
+        type: 'LINE',
+        facts: [
+          { name: 'class', quantity: 'label', value: 'boundary' },
+          { name: 'faces', quantity: 'faces', value: [0] },
+        ],
+      },
+    ],
+  }
+  // A quarter turn about Z.
+  result.shapes.parts[0].loc = [
+    [2, 3, 4],
+    [0, 0, Math.SQRT1_2, Math.SQRT1_2],
+  ]
+  return result
+}
+
+function expectClose(actual, expected) {
+  expect(actual).toHaveLength(expected.length)
+  expected.forEach((value, axis) => expect(actual[axis]).toBeCloseTo(value))
+}
+
+describe('build123d entity facts', () => {
+  test('facts reach the viewer in the part placement, not the instance frame', () => {
+    const part = decodeModel(withFacts()).parts[0]
+    const face = worldFacts(part, 'face', 0)
+    expect(face.type).toBe('PLANE')
+    const [area, centroid, normal] = face.facts
+    expect(area).toEqual({ name: 'area', quantity: 'area', value: 0.5 })
+    expectClose(centroid.value, [2, 4, 4])
+    expectClose(normal.value, [0, 1, 0])
+  })
+
+  test('labels and face indices pass through unplaced', () => {
+    const part = decodeModel(withFacts()).parts[0]
+    expect(worldFacts(part, 'edge', 0).facts).toEqual([
+      { name: 'class', quantity: 'label', value: 'boundary' },
+      { name: 'faces', quantity: 'faces', value: [0] },
+    ])
+  })
+
+  test('parts sharing an instance each get facts in their own placement', () => {
+    const result = withFacts()
+    result.shapes.parts.push({
+      id: 'copy',
+      name: 'triangle',
+      shape: { ref: 0 },
+      loc: [
+        [0, 0, 0],
+        [0, 0, 0, 1],
+      ],
+    })
+    const [placed, copy] = decodeModel(result).parts
+    expectClose(worldFacts(placed, 'face', 0).facts[1].value, [2, 4, 4])
+    expectClose(worldFacts(copy, 'face', 0).facts[1].value, [1, 0, 0])
+  })
+
+  test('an entity without facts reads as having none', () => {
+    const part = decodeModel(model()).parts[0]
+    expect(worldFacts(part, 'face', 0)).toBeUndefined()
+    const placed = decodeModel(withFacts()).parts[0]
+    expect(worldFacts(placed, 'edge', 5)).toBeUndefined()
   })
 })

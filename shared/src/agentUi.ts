@@ -1,4 +1,5 @@
 import type { BuildPrompt } from './build.js'
+import type { GeometryRef } from './geometry.js'
 import type { PermissionPrompt } from './permissions.js'
 
 /**
@@ -23,6 +24,7 @@ export type AgentUIDataTypes = {
   permission: PermissionPrompt
   build: BuildPrompt
   'file-changed': FileChanged
+  geometry: GeometryRef
   /**
    * Nothing to render - it exists so the connection has traffic on it while a
    * turn is quiet. Sent `transient`, so the SDK does not keep it in the

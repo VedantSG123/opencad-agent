@@ -1,10 +1,11 @@
 import type { ShapeNode } from 'shared/build123d'
+import { geometryTypeLabel } from 'shared/geometry'
 
 import { activeSelection } from '@/components/cad/activeSelection'
 import type { ComponentKind, SelectedComponent } from '@/types'
 
 import type { DecodedModel } from './decode'
-import { curveTypeName, surfaceTypeName } from './geometryTypes'
+import { build123dReference, worldFacts } from './facts'
 import type { VisibilityKind, VisibilityMap } from './tree'
 import { initialVisibility, leafIds } from './tree'
 
@@ -125,13 +126,15 @@ export function build123dReadout(
   const { kind, value } = active
   const part = selectedPart(state.model, value, kind)
   if (!part) return null
+  const entity = worldFacts(part, kind, value.index)
   return {
     kind,
     index: value.index,
     subject: part.name,
-    geometryType:
-      kind === 'edge'
-        ? curveTypeName(part.instance.edgeTypes[value.index])
-        : surfaceTypeName(part.instance.faceTypes[value.index]),
+    ...(entity && {
+      geometryType: geometryTypeLabel(entity.type),
+      facts: entity.facts,
+      reference: build123dReference(part, kind, value.index),
+    }),
   }
 }

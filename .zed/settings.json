@@ -1,12 +1,40 @@
 {
   "format_on_save": "on",
   "tab_size": 2,
+  "lsp": {
+    "pyright": {
+      "binary": {
+        "path": "bun",
+        "arguments": ["run", "--bun", "pyright-langserver", "--stdio"]
+      }
+    },
+    "ruff": {
+      "binary": {
+        "path": "bun",
+        "arguments": ["electron/scripts/ruff.ts", "server"]
+      }
+    }
+  },
 
   // oxfmt formats via stdin and picks up the repo's .oxfmtrc.json, so an
   // external formatter works whether or not the Oxc Zed extension is
   // installed. The Oxc extension is still worth installing for oxlint
   // diagnostics and quick fixes.
   "languages": {
+    "Python": {
+      "tab_size": 4,
+      "preferred_line_length": 80,
+      "language_servers": ["pyright", "ruff"],
+      "formatter": {
+        "language_server": {
+          "name": "ruff"
+        }
+      },
+      "code_actions_on_format": {
+        "source.fixAll.ruff": true,
+        "source.organizeImports.ruff": true
+      }
+    },
     "JavaScript": {
       "formatter": {
         "external": {

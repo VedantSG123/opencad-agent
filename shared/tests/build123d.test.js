@@ -48,6 +48,33 @@ function preview() {
   }
 }
 
+function facts() {
+  return {
+    faces: [
+      {
+        ordinal: 1,
+        type: 'PLANE',
+        facts: [
+          { name: 'area', quantity: 'area', value: 0.5 },
+          { name: 'centroid', quantity: 'point', value: [0.33, 0.33, 0] },
+          { name: 'normal', quantity: 'direction', value: [0, 0, 1] },
+        ],
+      },
+    ],
+    edges: [
+      {
+        ordinal: 1,
+        type: 'LINE',
+        facts: [
+          { name: 'length', quantity: 'length', value: 1 },
+          { name: 'class', quantity: 'label', value: 'boundary' },
+          { name: 'faces', quantity: 'faces', value: [0] },
+        ],
+      },
+    ],
+  }
+}
+
 describe('build123d preview protocol', () => {
   test('accepts mesh data and strips producer fields the app does not consume', () => {
     const value = preview()
@@ -58,6 +85,13 @@ describe('build123d preview protocol', () => {
     expect(parsed.shapes.parts[0].shape).toEqual({ ref: 0 })
     expect(parsed.shapes.version).toBeUndefined()
     expect(parsed.logs).toBe('built model')
+  })
+
+  test('keeps face and edge facts beside the mesh', () => {
+    const value = preview()
+    value.instances[0].facts = facts()
+    const parsed = parseBuild123dResult(value)
+    expect(parsed.instances[0].facts).toEqual(facts())
   })
 
   test('accepts empty groups, reused instances, inline wires and inline vertices', () => {
@@ -95,6 +129,22 @@ describe('build123d preview protocol', () => {
   })
 
   for (const [name, mutate, path] of [
+    [
+      'face facts that do not match the face count',
+      (value) => {
+        value.instances[0].facts = facts()
+        value.instances[0].facts.faces.push(facts().faces[0])
+      },
+      'instances.0.facts.faces',
+    ],
+    [
+      'a point fact without three coordinates',
+      (value) => {
+        value.instances[0].facts = facts()
+        value.instances[0].facts.faces[0].facts[1].value = [0, 0]
+      },
+      'instances.0.facts.faces.0.facts.1.value',
+    ],
     [
       'missing geometry',
       (value) => {

@@ -11,6 +11,7 @@ export function buildSystemPrompt(project: Project): string {
     kernelPrompt(project.cad_kernel),
     toolPolicy(),
     workflow(),
+    ...(project.cad_kernel === 'build123d' ? [selectedGeometry()] : []),
   ].join('\n\n')
 }
 
@@ -69,4 +70,22 @@ function workflow(): string {
 4. After editing, say in one line what changed and what the user should see in
    the viewport. The app re-renders the main file on its own whenever it
    changes.`
+}
+
+function selectedGeometry(): string {
+  return `## Geometry the user selected
+
+A user message can carry \`<selected-geometry>\` blocks: faces or edges the
+user picked in the viewport, numbered in the order they were attached. "This
+edge" or "the second one" means one of them.
+
+- The values were measured on the model that was on screen when the user
+  picked it, in world coordinates and millimetres. It may have been rebuilt
+  since.
+- A block does not name the code that made it. Find that feature by matching
+  the type and dimensions - radius, centre, axis or normal, and the faces an
+  edge lies between - against the operations and parameters in the script.
+- Several features can share the same facts: four holes of one size share a
+  radius. Tell them apart by position, and if more than one still fits, say
+  which one you changed.`
 }

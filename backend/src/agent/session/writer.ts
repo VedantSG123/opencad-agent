@@ -1,7 +1,10 @@
+import type { GeometryRef } from 'shared/geometry'
+
 import type {
   AssistantMessage,
   CompactionPart,
   FilePart,
+  GeometryPart,
   ReasoningPart,
   TextPart,
   ToolPart,
@@ -68,7 +71,11 @@ export class SessionWriter {
     private readonly model: ModelRef,
   ) {}
 
-  userMessage(text: string, files: FileAttachment[] = []): UserMessage {
+  userMessage(
+    text: string,
+    files: FileAttachment[] = [],
+    geometry: GeometryRef[] = [],
+  ): UserMessage {
     const message = upsertMessage({
       id: generateIdWithPrefix('message'),
       session_id: this.sessionId,
@@ -86,6 +93,13 @@ export class SessionWriter {
         url: file.url,
         ...(file.filename ? { filename: file.filename } : {}),
       } satisfies FilePart)
+    }
+    for (const ref of geometry) {
+      upsertPart({
+        ...this.partBase(message.id),
+        type: 'geometry',
+        ref,
+      } satisfies GeometryPart)
     }
 
     return message

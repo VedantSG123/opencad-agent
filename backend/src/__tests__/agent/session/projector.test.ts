@@ -83,6 +83,53 @@ describe('toModelMessages', () => {
     ])
   })
 
+  test('selected geometry follows the words, numbered in the order attached', () => {
+    const id = nextId('msg')
+    const edge = (type: string, radius: number) => ({
+      part: 'bracket',
+      kind: 'edge' as const,
+      type,
+      facts: [{ name: 'radius', quantity: 'length' as const, value: radius }],
+    })
+    const messages = toModelMessages([
+      {
+        message: message(id, 'user'),
+        parts: [
+          text(id, 'make these 8 mm'),
+          { ...partBase(id), type: 'geometry', ref: edge('CIRCLE', 3) },
+          { ...partBase(id), type: 'geometry', ref: edge('CIRCLE', 9) },
+        ],
+      },
+    ])
+
+    expect(messages).toEqual([
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'make these 8 mm' },
+          {
+            type: 'text',
+            text: [
+              '<selected-geometry index="1">',
+              'Edge of part "bracket": Circle (world coordinates)',
+              '- Radius: 3 mm',
+              '</selected-geometry>',
+            ].join('\n'),
+          },
+          {
+            type: 'text',
+            text: [
+              '<selected-geometry index="2">',
+              'Edge of part "bracket": Circle (world coordinates)',
+              '- Radius: 9 mm',
+              '</selected-geometry>',
+            ].join('\n'),
+          },
+        ],
+      },
+    ])
+  })
+
   test('a tool call becomes an assistant turn followed by its results', () => {
     const messages = toModelMessages([
       user('read the file'),
