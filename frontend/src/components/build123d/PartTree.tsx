@@ -13,15 +13,20 @@ import type {
   VisibilityKind,
   VisibilityMap,
 } from '@/kernels/build123d/tree'
-import { componentLeafIds, groupState, isGroup } from '@/kernels/build123d/tree'
+import {
+  componentLeafIds,
+  groupState,
+  isGroup,
+  leafIds,
+} from '@/kernels/build123d/tree'
 import { cn } from '@/lib/utils'
 
 type PartTreeProps = {
   tree: ShapeNode
   visibility: VisibilityMap
   onToggle: (ids: string[], kind: VisibilityKind, value: boolean) => void
-  selectedId?: string | null
-  onSelect?: (node: ShapeNode) => void
+  pickedParts?: ReadonlySet<string>
+  onSelect?: (node: ShapeNode, additive: boolean) => void
 }
 
 const TOGGLE_ICON: Record<VisibilityKind, typeof EyeIcon> = {
@@ -78,11 +83,13 @@ function PartTreeNode({
   level,
   visibility,
   onToggle,
-  selectedId,
+  pickedParts,
   onSelect,
 }: PartTreeProps & { node: ShapeNode; level: number }) {
   const [open, setOpen] = React.useState(true)
   const group = isGroup(node)
+  const parts = React.useMemo(() => leafIds(node), [node])
+  const isPicked = parts.length > 0 && parts.every((id) => pickedParts?.has(id))
 
   // A toggle acts on the leaves that have the component, so a Line - which
   // has no faces at all - neither offers a faces toggle nor drags the tri-
@@ -102,10 +109,10 @@ function PartTreeNode({
   return (
     <div>
       <div
-        onClick={() => onSelect?.(node)}
+        onClick={(event) => onSelect?.(node, event.shiftKey)}
         className={cn(
           'flex items-center gap-1 rounded px-1 py-0.5 text-xs cursor-default select-none',
-          selectedId === node.id ? 'bg-accent-soft' : 'hover:bg-muted/10',
+          isPicked ? 'bg-accent-soft' : 'hover:bg-muted/10',
         )}
         style={{ paddingLeft: level * 12 + 4 }}
       >
@@ -157,7 +164,7 @@ function PartTreeNode({
               tree={child}
               visibility={visibility}
               onToggle={onToggle}
-              selectedId={selectedId}
+              pickedParts={pickedParts}
               onSelect={onSelect}
             />
           ))}
@@ -171,7 +178,7 @@ export function PartTree({
   tree,
   visibility,
   onToggle,
-  selectedId,
+  pickedParts,
   onSelect,
 }: PartTreeProps) {
   return (
@@ -189,7 +196,7 @@ export function PartTree({
           tree={tree}
           visibility={visibility}
           onToggle={onToggle}
-          selectedId={selectedId}
+          pickedParts={pickedParts}
           onSelect={onSelect}
         />
       </div>

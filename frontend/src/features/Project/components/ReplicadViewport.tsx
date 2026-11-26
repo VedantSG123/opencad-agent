@@ -6,6 +6,8 @@ import { CadViewer } from '@/components-3d/cad-viewer/ReplicadViewer'
 import type { StageHandle } from '@/components-3d/helpers/Stage'
 import { BusyIndicator } from '@/components/cad/BusyIndicator'
 import { ExportButton } from '@/components/cad/export/ExportButton'
+import { PickModeMenu } from '@/components/cad/PickModeMenu'
+import type { PickMode } from '@/components/cad/picks'
 import { ResetViewButton } from '@/components/cad/ResetViewButton'
 import { SelectionReadout } from '@/components/cad/SelectionReadout'
 import { ViewportStatusBar } from '@/components/cad/ViewportStatusBar'
@@ -31,6 +33,7 @@ export function ReplicadViewport() {
   const [selection, setSelection] = React.useState<SelectedComponent | null>(
     null,
   )
+  const [mode, setMode] = React.useState<PickMode>('faces-and-edges')
   const [showParams, setShowParams] = React.useState(true)
   const [isExportOpen, setIsExportOpen] = React.useState(false)
 
@@ -58,6 +61,7 @@ export function ReplicadViewport() {
         <CadViewer
           shapes={shapes || []}
           hasError={hasError}
+          mode={mode}
           stageRef={stageRef}
           onSelect={setSelection}
         />
@@ -88,6 +92,7 @@ export function ReplicadViewport() {
             </Button>
           )}
 
+          <PickModeMenu value={mode} onChange={setMode} />
           <ExportButton onPress={() => setIsExportOpen(true)} />
         </div>
       )}

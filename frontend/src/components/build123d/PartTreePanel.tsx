@@ -13,8 +13,8 @@ type PartTreePanelProps = {
   tree: ShapeNode
   visibility: VisibilityMap
   onToggle: (ids: string[], kind: VisibilityKind, value: boolean) => void
-  selectedId?: string | null
-  onSelect?: (node: ShapeNode) => void
+  pickedParts?: ReadonlySet<string>
+  onSelect?: (node: ShapeNode, additive: boolean) => void
   className?: string
 }
 
@@ -28,7 +28,7 @@ export function PartTreePanel({
   tree,
   visibility,
   onToggle,
-  selectedId,
+  pickedParts,
   onSelect,
   className,
 }: PartTreePanelProps) {
@@ -61,7 +61,7 @@ export function PartTreePanel({
             tree={tree}
             visibility={visibility}
             onToggle={onToggle}
-            selectedId={selectedId}
+            pickedParts={pickedParts}
             onSelect={onSelect}
           />
         </div>

@@ -1,16 +1,18 @@
 import { Tooltip } from '@heroui/react'
 import { MessageAdd01Icon } from '@hugeicons/core-free-icons'
 import type { GeometryRef } from 'shared/geometry'
-import { factLabel, factValue, geometryRefText } from 'shared/geometry'
+import { factLabel, factValue } from 'shared/geometry'
+import type { PartRef } from 'shared/references'
+import { referenceText } from 'shared/references'
 
 import { CopyButton } from '@/components/CopyButton'
 import { Icon } from '@/components/icons/HugeIcon'
 import { cn } from '@/lib/utils'
-import type { SelectedComponent } from '@/types'
+import type { ComponentKind, SelectedComponent } from '@/types'
 
 import { VIEWPORT_PILL } from './ViewportStatusBar'
 
-const KIND_LABEL: Record<SelectedComponent['kind'], string> = {
+const KIND_LABEL: Record<ComponentKind, string> = {
   face: 'Face',
   edge: 'Edge',
 }
@@ -27,14 +29,17 @@ export function SelectionReadout({
   className,
 }: {
   selection: SelectedComponent | null
-  onMention?: (reference: GeometryRef) => void
+  onMention?: (reference: GeometryRef | PartRef) => void
   className?: string
 }) {
   if (!selection) {
     return null
   }
 
-  const { kind, index, subject, geometryType, facts, reference } = selection
+  const { subject, reference } = selection
+  const isPart = selection.kind === 'part'
+  const facts = isPart ? undefined : selection.facts
+  const geometryType = isPart ? undefined : selection.geometryType
 
   return (
     <div className={cn('relative', className)}>
@@ -57,7 +62,9 @@ export function SelectionReadout({
       )}
       <div className={cn(VIEWPORT_PILL, 'gap-1.5 select-none')}>
         <span className='font-medium text-foreground'>
-          {KIND_LABEL[kind]} {index}
+          {selection.kind === 'part'
+            ? 'Part'
+            : `${KIND_LABEL[selection.kind]} ${selection.index}`}
         </span>
         {geometryType && (
           <>
@@ -76,7 +83,7 @@ export function SelectionReadout({
         )}
         {reference && (
           <CopyButton
-            text={geometryRefText(reference)}
+            text={referenceText(reference)}
             label='Copy reference'
             className='pointer-events-auto -my-1 -mr-2 h-5 w-5'
           />

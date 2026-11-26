@@ -1,5 +1,6 @@
 import * as React from 'react'
 
+import { picksByPart } from '@/components/cad/picks'
 import { ErrorBoundary } from '@/components/custom/ErrorBoundary'
 import type { Build123dInteraction } from '@/hooks/useBuild123dInteraction'
 import { partsBounds } from '@/kernels/build123d/bounds'
@@ -25,11 +26,16 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
   hasError = false,
   stageRef,
 }) => {
+  const { pickedParts } = interaction
   const selected = React.useMemo(() => {
-    if (!model || !interaction.selectedParts.length) return null
-    const wanted = new Set(interaction.selectedParts)
-    return partsBounds(model.parts.filter((part) => wanted.has(part.id)))
-  }, [model, interaction.selectedParts])
+    if (!model || !pickedParts.size) return null
+    return partsBounds(model.parts.filter((part) => pickedParts.has(part.id)))
+  }, [model, pickedParts])
+
+  const highlighted = React.useMemo(
+    () => picksByPart(interaction.picked),
+    [interaction.picked],
+  )
 
   return (
     <ErrorBoundary
@@ -39,7 +45,12 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
         </div>
       }
     >
-      <Canvas orthographic>
+      <Canvas
+        orthographic
+        onPointerMissed={(event) => {
+          if (!event.shiftKey) interaction.clearPicks()
+        }}
+      >
         <Scene stageRef={stageRef}>
           {hasError ? (
             <ErrorMesh />
@@ -49,18 +60,9 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
                 key={`${interaction.revision}:${part.id}`}
                 part={part}
                 visible={interaction.visibility[part.id]}
-                selectedFace={
-                  interaction.face?.partId === part.id
-                    ? interaction.face.index
-                    : null
-                }
-                selectedEdge={
-                  interaction.edge?.partId === part.id
-                    ? interaction.edge.index
-                    : null
-                }
-                onFaceClick={interaction.selectFace}
-                onEdgeClick={interaction.selectEdge}
+                mode={interaction.mode}
+                picks={highlighted.get(part.id)}
+                onPick={interaction.pick}
               />
             ))
           )}

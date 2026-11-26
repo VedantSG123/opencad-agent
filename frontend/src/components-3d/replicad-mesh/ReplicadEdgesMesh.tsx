@@ -13,6 +13,7 @@ export const ReplicadEdgesMesh: React.FC<ReplicadEdgesMeshProps> = ({
   edges,
   defaultHighlights,
   highlights = NONE,
+  hoverable = true,
   opacity,
   color,
   ...rest
@@ -43,7 +44,7 @@ export const ReplicadEdgesMesh: React.FC<ReplicadEdgesMeshProps> = ({
     <lineSegments
       geometry={geometry}
       material={material}
-      onPointerMove={handleHover}
+      onPointerMove={hoverable ? handleHover : undefined}
       onPointerOut={() => setHovered(null)}
       {...rest}
     />
@@ -54,6 +55,7 @@ type ReplicadEdgesMeshProps = ThreeElements['lineSegments'] & {
   edges: ReplicadMeshedEdges
   defaultHighlights?: number[]
   highlights?: number[]
+  hoverable?: boolean
   opacity?: number
   color?: string
 }

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import type { GeometryRef } from './geometry.js'
 import { geometryRefSchema, geometryRefText } from './geometry.js'
 
 const partRefSchema = z.object({
@@ -13,6 +14,8 @@ const fileRefSchema = z.object({
   /** Relative to the project directory, as the agent's tools take it. */
   path: z.string().min(1),
 })
+
+export type PartRef = z.infer<typeof partRefSchema>
 
 export const referenceSchema = z.discriminatedUnion('kind', [
   geometryRefSchema,
@@ -114,6 +117,6 @@ export function promptForModel(
   return [sentence, ...blocks].join('\n\n')
 }
 
-function referenceText(ref: Exclude<Reference, { kind: 'file' }>): string {
+export function referenceText(ref: GeometryRef | PartRef): string {
   return ref.kind === 'part' ? `Part "${ref.part}"` : geometryRefText(ref)
 }
