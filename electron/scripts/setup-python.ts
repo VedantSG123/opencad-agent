@@ -3,6 +3,9 @@ import path from 'node:path'
 
 import { PYTHON_INSTALL_SPECS, PYTHON_VERSION } from 'shared/python'
 
+const RUFF_VERSION = '0.17.3'
+const OCP_STUBS_VERSION = '8.0.1.1.0'
+
 const root = path.resolve(import.meta.dirname, '../..')
 const environment = path.join(root, '.venv')
 const isWindows = process.platform === 'win32'
@@ -61,6 +64,8 @@ async function main(): Promise<void> {
     interpreter,
     '--compile-bytecode',
     ...PYTHON_INSTALL_SPECS,
+    `ruff==${RUFF_VERSION}`,
+    `cadquery-ocp-stubs==${OCP_STUBS_VERSION}`,
   ])
   process.stdout.write(`Python development environment ready: ${interpreter}\n`)
 }

@@ -1,19 +1,27 @@
+import type { EntityFact, GeometryRef } from 'shared/geometry'
+import type { PartRef } from 'shared/references'
+
 /** Which kind of BRep component a selection names. */
 export type ComponentKind = 'face' | 'edge'
 
 /**
- * A selected BRep component, in the terms a reader needs rather than the ones
- * picking produces.
+ * What is selected, in the terms a reader needs rather than the ones picking
+ * produces.
  *
- * `geometryType` is optional because only some kernels report one: build123d
- * carries OCCT's surface and curve types, replicad's mesh output does not.
+ * `geometryType`, `facts` and `reference` are optional because only build123d
+ * reports them; replicad's mesh output does not.
  */
-export type SelectedComponent = {
-  kind: ComponentKind
-  /** Position among the shape's faces or edges. */
-  index: number
-  /** The part or shape it belongs to, named for display. */
-  subject?: string
-  /** 'Plane', 'Cylinder', 'Circle'… where the kernel reports it. */
-  geometryType?: string
-}
+export type SelectedComponent =
+  | {
+      kind: ComponentKind
+      /** Position among the shape's faces or edges. */
+      index: number
+      /** The part or shape it belongs to, named for display. */
+      subject?: string
+      /** 'Plane', 'Cylinder', 'Circle'… where the kernel reports it. */
+      geometryType?: string
+      /** Measurements in world coordinates. */
+      facts?: EntityFact[]
+      reference?: GeometryRef
+    }
+  | { kind: 'part'; subject: string; reference?: PartRef }

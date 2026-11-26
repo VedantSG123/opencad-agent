@@ -193,6 +193,26 @@ describe('toUIMessages', () => {
     expect(restored.metadata).toEqual({ created: 'now', completed: 'now' })
   })
 
+  test('a reference comes back on the user message it was sent with', () => {
+    const ref = {
+      part: 'bracket',
+      kind: 'face' as const,
+      type: 'PLANE',
+      facts: [],
+    }
+    const [restored] = toUIMessages([
+      stored('user', (id) => [
+        { ...partBase(id), type: 'text', text: 'this one' },
+        { ...partBase(id), type: 'reference', reference: { id: 1, ref } },
+      ]),
+    ])
+
+    expect(restored.parts).toEqual([
+      { type: 'text', text: 'this one', state: 'done' },
+      { type: 'data-reference', data: { id: 1, ref } },
+    ])
+  })
+
   test('a user message carries no metadata', () => {
     const [restored] = toUIMessages([
       stored('user', (id) => [{ ...partBase(id), type: 'text', text: 'hi' }]),

@@ -1,0 +1,8 @@
+{
+  "include": ["electron/python", "electron/tests/build123d"],
+  "extraPaths": ["electron/python"],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "standard"
+}

@@ -20,6 +20,7 @@ import { EditorProvider } from './components/editor/context'
 import { FileSync } from './components/FileSync'
 import { TopBar } from './components/TopBar'
 import { ViewportPanel } from './components/ViewportPanel'
+import { ChatMentionProvider } from './context/ChatMentionContext'
 import { PanelProvider, usePanelContext } from './context/PanelContext'
 
 function ProjectLayout({ project }: { project: Project }) {
@@ -169,7 +170,9 @@ export function ProjectPage() {
     <div className='h-screen flex flex-col overflow-hidden'>
       <TopBar project={project} />
       <div className='flex-1 flex overflow-hidden rounded-t-lg bg-background'>
-        <ProjectLayout project={project} />
+        <ChatMentionProvider>
+          <ProjectLayout project={project} />
+        </ChatMentionProvider>
       </div>
     </div>
   )

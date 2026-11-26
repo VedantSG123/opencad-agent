@@ -2,6 +2,7 @@ import { createUIMessageStream, createUIMessageStreamResponse } from 'ai'
 import { Elysia, t } from 'elysia'
 import { buildReportSchema } from 'shared'
 import type { PermissionScope } from 'shared'
+import { messageReferenceSchema, referencesRefusal } from 'shared/references'
 
 import type { ModelRef } from '../../agent/model'
 import { resolveModel } from '../../agent/model'
@@ -68,6 +69,9 @@ const promptBody = t.Object({
   // answers with a sentence instead of a schema violation. `readPromptBody`
   // is what stops an absurd array being read at all.
   files: t.Optional(t.Array(attachment)),
+  // Checked in the handler against the shared schema the frontend built the
+  // references with, rather than restated here.
+  references: t.Optional(t.Array(t.Unknown())),
 })
 
 /**
@@ -149,6 +153,14 @@ export const sessionsRoutes = new Elysia({ prefix: '/sessions' })
       }
 
       const files = body.files ?? []
+      const references = messageReferenceSchema
+        .array()
+        .safeParse(body.references ?? [])
+      if (!references.success) {
+        return status(400, { message: 'A reference is malformed.' })
+      }
+      const mismatch = referencesRefusal(body.prompt, references.data)
+      if (mismatch) return status(400, { message: mismatch })
       if (!body.prompt.trim() && files.length === 0) {
         return status(400, { message: 'Send something to say, or a file.' })
       }
@@ -174,7 +186,14 @@ export const sessionsRoutes = new Elysia({ prefix: '/sessions' })
       if (refusal) return status(400, { message: refusal })
 
       try {
-        startRun({ session, project, model, prompt: body.prompt, files })
+        startRun({
+          session,
+          project,
+          model,
+          prompt: body.prompt,
+          files,
+          references: references.data,
+        })
       } catch (error) {
         if (error instanceof RunInFlightError) {
           return status(409, { message: error.message })

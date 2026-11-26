@@ -1,3 +1,4 @@
+import { messageReferenceSchema } from 'shared/references'
 import z from 'zod'
 
 const PartBaseSchema = z.object({
@@ -32,6 +33,13 @@ export const FilePartSchema = PartBaseSchema.extend({
 })
 
 export type FilePart = z.infer<typeof FilePartSchema>
+
+export const ReferencePartSchema = PartBaseSchema.extend({
+  type: z.literal('reference'),
+  reference: messageReferenceSchema,
+})
+
+export type ReferencePart = z.infer<typeof ReferencePartSchema>
 
 const ToolStatePending = z.object({
   state: z.literal('pending'),
@@ -100,6 +108,7 @@ export const PartSchema = z.discriminatedUnion('type', [
   TextPartSchema,
   ReasoningPartSchema,
   FilePartSchema,
+  ReferencePartSchema,
   ToolPartSchema,
   CompactionPartSchema,
 ])

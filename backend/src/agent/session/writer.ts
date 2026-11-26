@@ -1,7 +1,10 @@
+import type { MessageReference } from 'shared/references'
+
 import type {
   AssistantMessage,
   CompactionPart,
   FilePart,
+  ReferencePart,
   ReasoningPart,
   TextPart,
   ToolPart,
@@ -68,7 +71,11 @@ export class SessionWriter {
     private readonly model: ModelRef,
   ) {}
 
-  userMessage(text: string, files: FileAttachment[] = []): UserMessage {
+  userMessage(
+    text: string,
+    files: FileAttachment[] = [],
+    references: MessageReference[] = [],
+  ): UserMessage {
     const message = upsertMessage({
       id: generateIdWithPrefix('message'),
       session_id: this.sessionId,
@@ -86,6 +93,13 @@ export class SessionWriter {
         url: file.url,
         ...(file.filename ? { filename: file.filename } : {}),
       } satisfies FilePart)
+    }
+    for (const reference of references) {
+      upsertPart({
+        ...this.partBase(message.id),
+        type: 'reference',
+        reference,
+      } satisfies ReferencePart)
     }
 
     return message

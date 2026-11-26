@@ -2,6 +2,7 @@ import { Button, Tooltip } from '@heroui/react'
 import { ArrowLeft01Icon, ChatAdd01Icon } from '@hugeicons/core-free-icons'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
+import { plainPrompt } from 'shared/references'
 import { toast } from 'sonner'
 
 import { Icon } from '@/components/icons/HugeIcon'
@@ -59,7 +60,7 @@ export function AgentPanel({ project }: { project: Project }) {
   useEffect(() => {
     if (initialPrompt.text && model) {
       initialPrompt.consume()
-      startSession({ text: initialPrompt.text, files: [] })
+      startSession({ text: initialPrompt.text, files: [], references: [] })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPrompt.text, model])
@@ -146,7 +147,9 @@ export function AgentPanel({ project }: { project: Project }) {
         onModelChange={changeModel}
         preferredModel={preferences?.lastUsedModel}
         isWorking={createSession.isPending}
-        onSend={(text, files) => startSession({ text, files })}
+        onSend={(text, files, references) =>
+          startSession({ text, files, references })
+        }
         onStop={() => {}}
         initialText={initialPrompt.text ?? ''}
         autoFocus
@@ -200,7 +203,7 @@ function useInitialPrompt() {
 }
 
 function titleFrom({ text, files }: PendingMessage): string {
-  const line = text.trim().split('\n')[0] ?? ''
+  const line = plainPrompt(text).trim().split('\n')[0] ?? ''
   if (!line) return files[0]?.filename ?? 'New chat'
   return line.length > TITLE_LENGTH
     ? `${line.slice(0, TITLE_LENGTH - 1)}…`

@@ -1,10 +1,12 @@
 import * as React from 'react'
+import type { Reference } from 'shared/references'
 
 import { Build123dViewer } from '@/components-3d/cad-viewer/Build123dViewer'
 import type { StageHandle } from '@/components-3d/helpers/Stage'
 import { PartTreePanel } from '@/components/build123d/PartTreePanel'
 import { BusyIndicator } from '@/components/cad/BusyIndicator'
 import { ExportButton } from '@/components/cad/export/ExportButton'
+import { PickModeMenu } from '@/components/cad/PickModeMenu'
 import { ResetViewButton } from '@/components/cad/ResetViewButton'
 import { SelectionReadout } from '@/components/cad/SelectionReadout'
 import { ViewportStatusBar } from '@/components/cad/ViewportStatusBar'
@@ -16,6 +18,8 @@ import { useBuild123d } from '@/hooks/useBuild123d'
 import { useBuild123dInteraction } from '@/hooks/useBuild123dInteraction'
 import { usePythonEnv } from '@/hooks/usePythonEnv'
 
+import { useChatMention } from '../context/ChatMentionContext'
+import { usePanelContext } from '../context/PanelContext'
 import { Build123dCompiler } from './Build123dCompiler'
 import { Build123dExportDialog } from './Build123dExportDialog'
 import { useEditor } from './editor/context'
@@ -29,6 +33,17 @@ function Build123dViewportInner() {
 
   const interaction = useBuild123dInteraction(model)
   const stageRef = React.useRef<StageHandle>(null)
+  const { mention } = useChatMention()
+  const { agentRef, setIsAgentCollapsed } = usePanelContext()
+
+  function mentionInChat(reference: Reference) {
+    const panel = agentRef.current
+    if (panel?.isCollapsed()) {
+      panel.expand()
+      setIsAgentCollapsed(false)
+    }
+    mention(reference)
+  }
 
   return (
     <div className='relative h-full w-full'>
@@ -44,7 +59,7 @@ function Build123dViewportInner() {
           tree={model.tree}
           visibility={interaction.visibility}
           onToggle={interaction.setVisible}
-          selectedId={interaction.selectedNode}
+          pickedParts={interaction.pickedParts}
           onSelect={interaction.selectNode}
         />
       )}
@@ -52,6 +67,10 @@ function Build123dViewportInner() {
       {/* Viewport Ribbon Bar */}
       {model && (
         <div className='pointer-events-none absolute top-2 right-2 left-2 z-20 flex justify-end gap-2'>
+          <PickModeMenu
+            value={interaction.mode}
+            onChange={interaction.setMode}
+          />
           <ExportButton onPress={() => setIsExportOpen(true)} />
         </div>
       )}
@@ -64,7 +83,10 @@ function Build123dViewportInner() {
 
       <ViewportStatusBar>
         <ResetViewButton stageRef={stageRef} />
-        <SelectionReadout selection={interaction.selection} />
+        <SelectionReadout
+          selection={interaction.selection}
+          onMention={mentionInChat}
+        />
         <BusyIndicator active={isBuilding} label='Building...' />
       </ViewportStatusBar>
 

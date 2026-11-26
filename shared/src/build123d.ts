@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { geometrySummarySchema } from './build.js'
+import { entityFactSchema } from './geometry.js'
 
 const countSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)
 const finiteSchema = z.number().finite()
@@ -53,6 +54,22 @@ const floatBufferSchema = encodedBufferSchema
 const indexBufferSchema = encodedBufferSchema
   .extend({ dtype: z.literal('uint32') })
   .superRefine(validateBuffer)
+
+const entityFactsSchema = z.object({
+  /** The kernel's `TopExp.MapShapes` ordinal, which the viewer's index is not. */
+  ordinal: countSchema.positive(),
+  /** build123d's `GeomType` name. */
+  type: z.string(),
+  facts: z.array(entityFactSchema),
+})
+export type EntityFacts = z.infer<typeof entityFactsSchema>
+
+const instanceFactsSchema = z.object({
+  faces: z.array(entityFactsSchema),
+  edges: z.array(entityFactsSchema),
+})
+export type InstanceFacts = z.infer<typeof instanceFactsSchema>
+
 const encodedInstanceSchema = z
   .object({
     vertices: floatBufferSchema.optional(),
@@ -65,9 +82,13 @@ const encodedInstanceSchema = z
     triangles_per_face: indexBufferSchema.optional(),
     segments_per_edge: indexBufferSchema.optional(),
     uvs: floatBufferSchema.optional(),
+    facts: instanceFactsSchema.optional(),
   })
   .superRefine((instance, context) => {
-    const multipleOf = (field: keyof typeof instance, width: number) => {
+    const multipleOf = (
+      field: Exclude<keyof typeof instance, 'facts'>,
+      width: number,
+    ) => {
       if (scalarCount(instance[field]) % width !== 0) {
         context.addIssue({
           code: 'custom',
@@ -120,6 +141,22 @@ const encodedInstanceSchema = z
         path: ['edge_types'],
         message: 'Edge types must match the per-edge counts.',
       })
+    }
+    if (instance.facts) {
+      if (instance.facts.faces.length !== scalarCount(instance.face_types)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['facts', 'faces'],
+          message: 'Face facts must match the face count.',
+        })
+      }
+      if (instance.facts.edges.length !== scalarCount(instance.edge_types)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['facts', 'edges'],
+          message: 'Edge facts must match the edge count.',
+        })
+      }
     }
   })
 export type EncodedInstance = z.infer<typeof encodedInstanceSchema>

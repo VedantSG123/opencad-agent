@@ -1,6 +1,13 @@
 {
   "files.eol": "\n",
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
   "[javascript]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
@@ -25,10 +32,6 @@
   "[html]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
-  // The repo's .oxlintrc.json does not set options.typeAware — `bun run lint`
-  // turns it on with --type-aware so that `lint:fast` can skip it. Enable it
-  // here so editor diagnostics match CI. If typing feels laggy, either set
-  // this to false or set "oxc.lint.run": "onSave".
   "oxc.typeAware": true,
   "editor.codeActionsOnSave": {
     "source.fixAll.oxc": "explicit"

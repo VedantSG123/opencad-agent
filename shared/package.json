@@ -18,6 +18,14 @@
       "types": "./dist/build123d.d.ts",
       "default": "./dist/build123d.js"
     },
+    "./geometry": {
+      "types": "./dist/geometry.d.ts",
+      "default": "./dist/geometry.js"
+    },
+    "./references": {
+      "types": "./dist/references.d.ts",
+      "default": "./dist/references.js"
+    },
     "./build": {
       "types": "./dist/build.d.ts",
       "default": "./dist/build.js"

@@ -1,5 +1,6 @@
 import type { BuildPrompt } from './build.js'
 import type { PermissionPrompt } from './permissions.js'
+import type { MessageReference } from './references.js'
 
 /**
  * A file a turn wrote. Derived from what a tool call declared it would touch,
@@ -23,6 +24,7 @@ export type AgentUIDataTypes = {
   permission: PermissionPrompt
   build: BuildPrompt
   'file-changed': FileChanged
+  reference: MessageReference
   /**
    * Nothing to render - it exists so the connection has traffic on it while a
    * turn is quiet. Sent `transient`, so the SDK does not keep it in the

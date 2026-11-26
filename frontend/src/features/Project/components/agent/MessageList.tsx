@@ -1,12 +1,14 @@
 import { AlertCircleIcon, File02Icon } from '@hugeicons/core-free-icons'
 import { useEffect, useRef } from 'react'
 import type { FileChanged, PermissionPrompt } from 'shared'
+import { parsePrompt, promptForModel } from 'shared/references'
 
+import { CopyButton } from '@/components/CopyButton'
 import { Icon } from '@/components/icons/HugeIcon'
 import type { AgentUIMessage, AgentUIPart } from '@/types/agent'
 
-import { CopyButton } from './CopyButton'
 import { Markdown } from './Markdown'
+import { ReferenceChip } from './ReferenceChip'
 import { splitTurn } from './turn'
 import { WorkRail } from './WorkRail'
 
@@ -67,13 +69,17 @@ export function MessageList({
 }
 
 function UserMessage({ message }: { message: AgentUIMessage }) {
+  const sent = message.parts.flatMap((part) =>
+    part.type === 'data-reference' ? [part.data] : [],
+  )
+  const references = new Map(sent.map(({ id, ref }) => [id, ref]))
   const text = textOf(message.parts)
   return (
     <div className='group flex w-full items-end justify-end gap-1'>
       {text && (
         <CopyButton
-          text={text}
-          label='Copy message'
+          text={promptForModel(text, sent)}
+          label='Copy as the agent read it'
           className='opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
         />
       )}
@@ -103,7 +109,15 @@ function UserMessage({ message }: { message: AgentUIMessage }) {
                 key={index}
                 className='text-sm whitespace-pre-wrap text-foreground'
               >
-                {part.text}
+                {parsePrompt(part.text).map((run, at) => {
+                  if (run.type === 'text') return run.text
+                  const ref = references.get(run.id)
+                  return ref ? (
+                    <ReferenceChip key={at} reference={ref} />
+                  ) : (
+                    run.label
+                  )
+                })}
               </p>
             )
           }

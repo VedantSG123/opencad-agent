@@ -2,6 +2,7 @@ import type {
   Build123dResult,
   EncodedBuffer,
   EncodedInstance,
+  InstanceFacts,
   ShapeLocation,
   ShapeNode,
 } from 'shared/build123d'
@@ -22,6 +23,12 @@ export type DecodedInstance = {
   faceOffsets: Uint32Array
   /** Running segment totals, one longer than `segmentsPerEdge`. */
   edgeOffsets: Uint32Array
+  /**
+   * In the instance's own frame, which ocp_tessellate moves the shape's
+   * location out of, so a centred box spans 0..10 here. Read through
+   * `worldFacts`.
+   */
+  localFacts?: InstanceFacts
 }
 
 /** A leaf of the assembly tree, with its location resolved to world space. */
@@ -192,6 +199,7 @@ function decodeInstance(
     uvs: uvs?.length ? uvs : undefined,
     faceOffsets,
     edgeOffsets,
+    localFacts: instance.facts,
   }
 }
 

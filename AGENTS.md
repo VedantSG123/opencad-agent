@@ -14,12 +14,12 @@ Three-package monorepo (Bun workspaces) for a desktop CAD application where an A
 |---|---|---|
 | `bun run dev` | root | Starts frontend (Vite) + Electron concurrently |
 | `bun run build` | root | Builds all three packages |
-| `bun run lint` | root | oxlint across all packages, including type-aware rules (~10s) |
-| `bun run lint:fast` | root | oxlint without type-aware rules (~0.1s) — use while iterating |
-| `bun run lint:fix` | root | oxlint with autofix |
+| `bun run lint` | root | oxlint with type-aware rules, then Ruff and Pyright for Python |
+| `bun run lint:python` | root | Ruff and Pyright across Python source and tests |
+| `bun run lint:fix` | root | oxlint and Ruff autofix, then Pyright |
 | `bun run typecheck` | root | `tsc --noEmit` across all packages (TypeScript 7) |
-| `bun run format` | root | oxfmt write (no semicolons, single quotes, LF, 2-space) |
-| `bun run format:check` | root | oxfmt check only |
+| `bun run format` | root | oxfmt for JS/TS assets and Ruff for Python |
+| `bun run format:check` | root | oxfmt and Ruff formatting checks |
 | `bun run package` | root | Full build then electron-builder (Linux AppImage/deb) |
 | `bun run dev` | backend/ | Run backend with `--watch` |
 | `bun run build` | backend/ | Compile backend to standalone binary (`dist/backend-api`); runs `prebuild` first |
@@ -111,6 +111,7 @@ Some tests depend on what the machine has and skip rather than fail when it is m
 - **React Router**: `react-router` v7 with `<Routes>` and `<Route>`
 - **Comments**: only for what the code cannot state — third-party behaviour we don't control (ripgrep flags, a package that throws on import), provider/tooling constraints, real exceptions. Never restate what a name or signature already says; if the code needs prose to be followed, fix the code. Same for JSDoc.
 - **Concrete over generic**: one explicitly named function per case (`addRipgrepBinary`), not a descriptor table covering a family. Unify only once cases prove identical.
+- **Python types**: annotate production function parameters and return values. Reuse build123d/OCP classes and `ocp_tessellate.types` for CAD objects and buffers; shared request and display dictionaries live in `electron/python/pipeline_types.py`. Validate JSON before constructing typed request dictionaries.
 
 ## Key Gotchas & Non-Obvious Patterns
 
@@ -148,7 +149,7 @@ Some tests depend on what the machine has and skip rather than fail when it is m
 
 17. **Single-format `bun run format`** — Must be run from root. Applies to all three packages. oxfmt config at root `.oxfmtrc.json`. oxfmt also sorts imports (`sortImports`), which replaces the old `simple-import-sort` ESLint rule. Coverage is wider than Prettier's old glob: JS/TS/JSX/TSX, JSON/JSONC, CSS/SCSS/Less, HTML, YAML, TOML, GraphQL and more. `*.md` and `*.yml` stay excluded via `ignorePatterns`, carried over from the old `.prettierignore`.
 
-18. **Lint config is a single root `.oxlintrc.json`** — there are no per-workspace lint configs. oxlint discovers the root config by walking upward, so `bun run lint` from root and `cd frontend && bun run lint` both apply the same rules. Type-aware rules require the `oxlint-tsgolint` binary and dominate lint time; `bun run lint:fast` skips them.
+18. **Lint config is a single root `.oxlintrc.json`** — there are no per-workspace lint configs. oxlint discovers the root config by walking upward, so `bun run lint` from root and `cd frontend && bun run lint` both apply the same rules. Type-aware rules require the `oxlint-tsgolint` binary and dominate lint time.
 
 19. **TypeScript 7 (Go compiler)** — `tsc` is the Go-native compiler. Two constraints it enforces that the old compiler did not: `baseUrl` is removed (use `paths` relative to the tsconfig), and `@types/*` packages are no longer auto-discovered, so every tsconfig must list what it needs in `types`. `electron/tsconfig.preload.json` must stay `module: commonjs`, which forces `moduleResolution: bundler` — the only pairing TS 7 accepts.
 
