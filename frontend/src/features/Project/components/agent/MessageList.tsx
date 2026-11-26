@@ -1,13 +1,14 @@
 import { AlertCircleIcon, File02Icon } from '@hugeicons/core-free-icons'
 import { useEffect, useRef } from 'react'
 import type { FileChanged, PermissionPrompt } from 'shared'
+import { parsePrompt, plainPrompt } from 'shared/references'
 
 import { CopyButton } from '@/components/CopyButton'
 import { Icon } from '@/components/icons/HugeIcon'
 import type { AgentUIMessage, AgentUIPart } from '@/types/agent'
 
-import { GeometryChip } from './GeometryChip'
 import { Markdown } from './Markdown'
+import { ReferenceChip } from './ReferenceChip'
 import { splitTurn } from './turn'
 import { WorkRail } from './WorkRail'
 
@@ -68,7 +69,12 @@ export function MessageList({
 }
 
 function UserMessage({ message }: { message: AgentUIMessage }) {
-  const text = textOf(message.parts)
+  const references = new Map(
+    message.parts.flatMap((part) =>
+      part.type === 'data-reference' ? [[part.data.id, part.data.ref]] : [],
+    ),
+  )
+  const text = plainPrompt(textOf(message.parts))
   return (
     <div className='group flex w-full items-end justify-end gap-1'>
       {text && (
@@ -98,19 +104,21 @@ function UserMessage({ message }: { message: AgentUIMessage }) {
               </span>
             )
           }
-          if (part.type === 'data-reference') {
-            const { ref } = part.data
-            return ref.kind === 'face' || ref.kind === 'edge' ? (
-              <GeometryChip key={index} reference={ref} />
-            ) : null
-          }
           if (part.type === 'text' && part.text) {
             return (
               <p
                 key={index}
                 className='text-sm whitespace-pre-wrap text-foreground'
               >
-                {part.text}
+                {parsePrompt(part.text).map((run, at) => {
+                  if (run.type === 'text') return run.text
+                  const ref = references.get(run.id)
+                  return ref ? (
+                    <ReferenceChip key={at} reference={ref} />
+                  ) : (
+                    run.label
+                  )
+                })}
               </p>
             )
           }

@@ -23,7 +23,7 @@ import {
 import { useProviders } from '@/hooks/useProviders'
 
 import { useChatGeometry } from '../../context/ChatGeometryContext'
-import { GeometryChip } from './GeometryChip'
+import { ReferenceChip } from './ReferenceChip'
 
 interface ComposerProps {
   model: SelectedModel | null
@@ -95,7 +95,7 @@ export function Composer({
         {files.length + geometry.length > 0 && (
           <div className='flex flex-wrap gap-1.5 px-3 pt-3'>
             {geometry.map((reference, index) => (
-              <GeometryChip
+              <ReferenceChip
                 key={`geometry-${index}`}
                 reference={reference}
                 onRemove={() => detach(index)}

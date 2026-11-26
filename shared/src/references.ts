@@ -58,6 +58,13 @@ export function parsePrompt(text: string): PromptRun[] {
   return runs
 }
 
+/** The text with each link read as its label, for a title or the clipboard. */
+export function plainPrompt(text: string): string {
+  return parsePrompt(text)
+    .map((run) => (run.type === 'text' ? run.text : run.label))
+    .join('')
+}
+
 export function referencesRefusal(
   text: string,
   references: MessageReference[],

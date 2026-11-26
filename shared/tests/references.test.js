@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   messageReferenceSchema,
   parsePrompt,
+  plainPrompt,
   promptForModel,
   referenceLink,
   referencesRefusal,
@@ -44,6 +45,12 @@ describe('reference links', () => {
     expect(parsePrompt(referenceLink(label, 4))).toEqual([
       { type: 'reference', label, id: 4 },
     ])
+  })
+
+  test('plain text reads each link as its label', () => {
+    expect(plainPrompt(`round ${referenceLink('Edge · [r3]', 1)} off`)).toBe(
+      'round Edge · [r3] off',
+    )
   })
 
   test('an ordinary link and plain brackets stay text', () => {

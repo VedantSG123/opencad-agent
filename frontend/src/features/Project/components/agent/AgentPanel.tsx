@@ -3,6 +3,7 @@ import { ArrowLeft01Icon, ChatAdd01Icon } from '@hugeicons/core-free-icons'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { factLabel } from 'shared/geometry'
+import { plainPrompt } from 'shared/references'
 import { toast } from 'sonner'
 
 import { Icon } from '@/components/icons/HugeIcon'
@@ -203,7 +204,7 @@ function useInitialPrompt() {
 }
 
 function titleFrom({ text, files, geometry }: PendingMessage): string {
-  const line = text.trim().split('\n')[0] ?? ''
+  const line = plainPrompt(text).trim().split('\n')[0] ?? ''
   if (!line) {
     const ref = geometry[0]
     return (
