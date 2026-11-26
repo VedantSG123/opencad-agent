@@ -44,12 +44,23 @@ function apply(state, action) {
   return updateBuild123dViewState(state, { model: state.model, ...action })
 }
 
+function pick(state, kind, index, additive = false, partId = '/root/0') {
+  return apply(state, {
+    type: 'pick',
+    pick: { kind, partId, index },
+    additive,
+  })
+}
+
+const FACE_1 = { kind: 'face', partId: '/root/0', index: 1 }
+const EDGE_0 = { kind: 'edge', partId: '/root/0', index: 0 }
+
 describe('build123d viewer interactions', () => {
   test('a new model clears all selections and resets visibility even when IDs are reused', () => {
     const first = model()
     let state = build123dViewState(first)
-    state = apply(state, { type: 'face', partId: '/root/0', index: 1 })
-    state = apply(state, { type: 'edge', partId: '/root/0', index: 0 })
+    state = pick(state, 'face', 1)
+    state = pick(state, 'edge', 0, true)
     state = apply(state, { type: 'node', node: first.tree })
     state = apply(state, {
       type: 'visibility',
@@ -58,8 +69,7 @@ describe('build123d viewer interactions', () => {
       value: false,
     })
     const rebuilt = build123dViewState(model('replacement'), state)
-    expect(rebuilt.face).toBeNull()
-    expect(rebuilt.edge).toBeNull()
+    expect(rebuilt.picked).toEqual([])
     expect(rebuilt.selectedNode).toBeNull()
     expect(rebuilt.selectedParts).toEqual([])
     expect(rebuilt.visibility).toEqual({
@@ -72,7 +82,7 @@ describe('build123d viewer interactions', () => {
   test('the same model preserves its user visibility toggles and selections', () => {
     const current = model()
     let state = build123dViewState(current)
-    state = apply(state, { type: 'face', partId: '/root/0', index: 0 })
+    state = pick(state, 'face', 0)
     state = apply(state, {
       type: 'visibility',
       ids: ['/root/0'],
@@ -114,12 +124,8 @@ describe('build123d viewer interactions', () => {
   for (const type of ['face', 'edge']) {
     for (const index of [-1, 0.5, 2, Infinity]) {
       test(`rejects invalid ${type} index ${index}`, () => {
-        const state = apply(build123dViewState(model()), {
-          type,
-          partId: '/root/0',
-          index,
-        })
-        expect(state[type]).toBeNull()
+        const state = pick(build123dViewState(model()), type, index)
+        expect(state.picked).toEqual([])
         expect(build123dReadout(state)).toBeNull()
       })
     }
@@ -127,12 +133,12 @@ describe('build123d viewer interactions', () => {
 
   test('missing parts and nodes cannot become selected', () => {
     let state = build123dViewState(model())
-    state = apply(state, { type: 'face', partId: 'missing', index: 0 })
+    state = pick(state, 'face', 0, false, 'missing')
     state = apply(state, {
       type: 'node',
       node: { id: 'missing', name: 'old part', shape: { ref: 0 } },
     })
-    expect(state.face).toBeNull()
+    expect(state.picked).toEqual([])
     expect(state.selectedNode).toBeNull()
     expect(state.selectedParts).toEqual([])
     expect(build123dReadout(state)).toBeNull()
@@ -143,18 +149,48 @@ describe('build123d viewer interactions', () => {
     const current = build123dViewState(model('new model'))
     const next = updateBuild123dViewState(current, {
       model: old,
-      type: 'face',
-      partId: '/root/0',
-      index: 0,
+      type: 'pick',
+      pick: { kind: 'face', partId: '/root/0', index: 0 },
+      additive: false,
     })
     expect(next).toBe(current)
     expect(build123dReadout(next)).toBeNull()
   })
 
-  test('face and edge toggles keep the latest valid readout and fall back to the survivor', () => {
+  test('a click replaces the picks, and a click on the only pick clears it', () => {
     let state = build123dViewState(model())
-    state = apply(state, { type: 'face', partId: '/root/0', index: 1 })
-    state = apply(state, { type: 'edge', partId: '/root/0', index: 0 })
+    state = pick(state, 'face', 1)
+    state = pick(state, 'edge', 0, true)
+    state = pick(state, 'face', 0)
+    expect(state.picked).toEqual([
+      { kind: 'face', partId: '/root/0', index: 0 },
+    ])
+    state = pick(state, 'face', 0)
+    expect(state.picked).toEqual([])
+  })
+
+  test('a click on one of several picks keeps only that one', () => {
+    let state = build123dViewState(model())
+    state = pick(state, 'face', 1)
+    state = pick(state, 'edge', 0, true)
+    state = pick(state, 'face', 1)
+    expect(state.picked).toEqual([FACE_1])
+  })
+
+  test('clearing drops every pick', () => {
+    let state = build123dViewState(model())
+    state = pick(state, 'face', 1)
+    state = pick(state, 'edge', 0, true)
+    state = apply(state, { type: 'clear' })
+    expect(state.picked).toEqual([])
+    expect(apply(state, { type: 'clear' })).toBe(state)
+  })
+
+  test('shift-clicks add and remove picks, and the readout names the last', () => {
+    let state = build123dViewState(model())
+    state = pick(state, 'face', 1)
+    state = pick(state, 'edge', 0, true)
+    expect(state.picked).toEqual([FACE_1, EDGE_0])
     expect(build123dReadout(state)).toEqual({
       kind: 'edge',
       index: 0,
@@ -172,7 +208,8 @@ describe('build123d viewer interactions', () => {
         ],
       },
     })
-    state = apply(state, { type: 'edge', partId: '/root/0', index: 0 })
+    state = pick(state, 'edge', 0, true)
+    expect(state.picked).toEqual([FACE_1])
     expect(build123dReadout(state)).toEqual({
       kind: 'face',
       index: 1,
@@ -186,18 +223,15 @@ describe('build123d viewer interactions', () => {
         facts: [RADIUS, AXIS],
       },
     })
-    state = apply(state, { type: 'face', partId: '/root/0', index: 1 })
+    state = pick(state, 'face', 1, true)
+    expect(state.picked).toEqual([])
     expect(build123dReadout(state)).toBeNull()
   })
 
   test('a component the runner sent no facts for is named without a type', () => {
     const current = model()
     delete current.parts[0].instance.localFacts
-    const state = apply(build123dViewState(current), {
-      type: 'face',
-      partId: '/root/0',
-      index: 1,
-    })
+    const state = pick(build123dViewState(current), 'face', 1)
     expect(build123dReadout(state)).toEqual({
       kind: 'face',
       index: 1,
@@ -210,15 +244,13 @@ describe('build123d viewer interactions', () => {
     expect(
       build123dReadout({
         ...state,
-        face: { partId: '/root/0', index: 9 },
-        lastKind: 'face',
+        picked: [{ kind: 'face', partId: '/root/0', index: 9 }],
       }),
     ).toBeNull()
     expect(
       build123dReadout({
         ...state,
-        face: { partId: 'missing', index: 0 },
-        lastKind: 'face',
+        picked: [{ kind: 'face', partId: 'missing', index: 0 }],
       }),
     ).toBeNull()
   })

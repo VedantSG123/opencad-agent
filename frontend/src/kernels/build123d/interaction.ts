@@ -1,7 +1,6 @@
 import type { ShapeNode } from 'shared/build123d'
 import { geometryTypeLabel } from 'shared/geometry'
 
-import { activeSelection } from '@/components/cad/activeSelection'
 import type { ComponentKind, SelectedComponent } from '@/types'
 
 import type { DecodedModel } from './decode'
@@ -9,21 +8,25 @@ import { build123dReference, worldFacts } from './facts'
 import type { VisibilityKind, VisibilityMap } from './tree'
 import { initialVisibility, leafIds } from './tree'
 
-export type Build123dSelection = { partId: string; index: number }
+export type Build123dPick = {
+  kind: ComponentKind
+  partId: string
+  index: number
+}
 
 export type Build123dViewState = {
   model: DecodedModel | null
   revision: number
-  face: Build123dSelection | null
-  edge: Build123dSelection | null
-  lastKind: ComponentKind | null
+  /** In the order picked; the readout names the last. */
+  picked: Build123dPick[]
   selectedNode: string | null
   selectedParts: string[]
   visibility: VisibilityMap
 }
 
 type Action = { model: DecodedModel | null } & (
-  | { type: 'face' | 'edge'; partId: string; index: number }
+  | { type: 'pick'; pick: Build123dPick; additive: boolean }
+  | { type: 'clear' }
   | { type: 'node'; node: ShapeNode }
   | { type: 'visibility'; ids: string[]; kind: VisibilityKind; value: boolean }
 )
@@ -36,9 +39,7 @@ export function build123dViewState(
   return {
     model,
     revision: previous ? previous.revision + 1 : 0,
-    face: null,
-    edge: null,
-    lastKind: null,
+    picked: [],
     selectedNode: null,
     selectedParts: [],
     visibility: model ? initialVisibility(model.tree) : {},
@@ -53,26 +54,18 @@ function findNode(tree: ShapeNode, id: string): ShapeNode | undefined {
   }
 }
 
-function selectedPart(
-  model: DecodedModel | null,
-  selection: Build123dSelection | null,
-  kind: ComponentKind,
-) {
-  if (
-    !model ||
-    !selection ||
-    !Number.isInteger(selection.index) ||
-    selection.index < 0
-  )
-    return
-  const part = model.parts.find(
-    (candidate) => candidate.id === selection.partId,
-  )
+function pickedPart(model: DecodedModel | null, pick: Build123dPick) {
+  if (!model || !Number.isInteger(pick.index) || pick.index < 0) return
+  const part = model.parts.find((candidate) => candidate.id === pick.partId)
   const count =
-    kind === 'face'
+    pick.kind === 'face'
       ? part?.instance.faceTypes.length
       : part?.instance.edgeTypes.length
-  return count !== undefined && selection.index < count ? part : undefined
+  return count !== undefined && pick.index < count ? part : undefined
+}
+
+function samePick(a: Build123dPick, b: Build123dPick) {
+  return a.kind === b.kind && a.partId === b.partId && a.index === b.index
 }
 
 export function updateBuild123dViewState(
@@ -100,41 +93,38 @@ export function updateBuild123dViewState(
     }
     return { ...state, visibility }
   }
-  if (
-    !selectedPart(
-      state.model,
-      { partId: action.partId, index: action.index },
-      action.type,
-    )
-  )
-    return state
-  const current = state[action.type]
-  const next =
-    current?.partId === action.partId && current.index === action.index
-      ? null
-      : { partId: action.partId, index: action.index }
-  return { ...state, [action.type]: next, lastKind: next ? action.type : null }
+  if (action.type === 'clear') {
+    return state.picked.length ? { ...state, picked: [] } : state
+  }
+  const { pick, additive } = action
+  if (!pickedPart(state.model, pick)) return state
+  const isPicked = state.picked.some((held) => samePick(held, pick))
+  if (additive) {
+    const picked = isPicked
+      ? state.picked.filter((held) => !samePick(held, pick))
+      : [...state.picked, pick]
+    return { ...state, picked }
+  }
+  const onlyThis = isPicked && state.picked.length === 1
+  return { ...state, picked: onlyThis ? [] : [pick] }
 }
 
 export function build123dReadout(
   state: Build123dViewState,
 ): SelectedComponent | null {
-  const face = selectedPart(state.model, state.face, 'face') ? state.face : null
-  const edge = selectedPart(state.model, state.edge, 'edge') ? state.edge : null
-  const active = activeSelection(state.lastKind, face, edge)
-  if (!state.model || !active) return null
-  const { kind, value } = active
-  const part = selectedPart(state.model, value, kind)
-  if (!part) return null
-  const entity = worldFacts(part, kind, value.index)
+  const last = state.picked.at(-1)
+  const part = last && pickedPart(state.model, last)
+  if (!last || !part) return null
+  const { kind, index } = last
+  const entity = worldFacts(part, kind, index)
   return {
     kind,
-    index: value.index,
+    index,
     subject: part.name,
     ...(entity && {
       geometryType: geometryTypeLabel(entity.type),
       facts: entity.facts,
-      reference: build123dReference(part, kind, value.index),
+      reference: build123dReference(part, kind, index),
     }),
   }
 }

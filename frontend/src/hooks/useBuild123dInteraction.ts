@@ -2,6 +2,7 @@ import * as React from 'react'
 import type { ShapeNode } from 'shared/build123d'
 
 import type { DecodedModel } from '@/kernels/build123d/decode'
+import type { Build123dPick } from '@/kernels/build123d/interaction'
 import {
   build123dReadout,
   build123dViewState,
@@ -14,23 +15,18 @@ export function useBuild123dInteraction(model: DecodedModel | null) {
   const state = build123dViewState(model, stored)
   if (state !== stored) setState(state)
 
-  const selectFace = (partId: string, index: number) =>
+  const pick = (picked: Build123dPick, additive: boolean) =>
     setState((previous) =>
       updateBuild123dViewState(previous, {
         model,
-        type: 'face',
-        partId,
-        index,
+        type: 'pick',
+        pick: picked,
+        additive,
       }),
     )
-  const selectEdge = (partId: string, index: number) =>
+  const clearPicks = () =>
     setState((previous) =>
-      updateBuild123dViewState(previous, {
-        model,
-        type: 'edge',
-        partId,
-        index,
-      }),
+      updateBuild123dViewState(previous, { model, type: 'clear' }),
     )
   const selectNode = (node: ShapeNode) =>
     setState((previous) =>
@@ -50,8 +46,8 @@ export function useBuild123dInteraction(model: DecodedModel | null) {
   return {
     ...state,
     selection: build123dReadout(state),
-    selectFace,
-    selectEdge,
+    pick,
+    clearPicks,
     selectNode,
     setVisible,
   }

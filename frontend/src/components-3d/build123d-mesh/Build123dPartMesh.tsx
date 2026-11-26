@@ -4,6 +4,7 @@ import * as React from 'react'
 import * as THREE from 'three'
 
 import type { DecodedPart } from '@/kernels/build123d/decode'
+import type { Build123dPick } from '@/kernels/build123d/interaction'
 import { edgeOfVertex, faceOfTriangle } from '@/kernels/build123d/picking'
 
 import { useEdgeHighlightMaterial } from '../highlight/useEdgeHighlightMaterial'
@@ -19,19 +20,18 @@ const NONE: number[] = []
 type Build123dPartMeshProps = {
   part: DecodedPart
   visible?: { faces: boolean; edges: boolean }
-  selectedFace?: number | null
-  selectedEdge?: number | null
-  onFaceClick?: (partId: string, face: number) => void
-  onEdgeClick?: (partId: string, edge: number) => void
+  /** Face and edge indices to highlight; memoise them, compared by identity. */
+  selectedFaces?: readonly number[]
+  selectedEdges?: readonly number[]
+  onPick?: (pick: Build123dPick, additive: boolean) => void
 }
 
 export function Build123dPartMesh({
   part,
   visible,
-  selectedFace,
-  selectedEdge,
-  onFaceClick,
-  onEdgeClick,
+  selectedFaces = NONE,
+  selectedEdges = NONE,
+  onPick,
 }: Build123dPartMeshProps) {
   const faceGeometry = useBuild123dFaceGeometry(part.instance)
   const edgeGeometry = useBuild123dEdgeGeometry(part.instance)
@@ -42,15 +42,6 @@ export function Build123dPartMesh({
 
   const colors = getMeshColors(part.color ?? DEFAULT_COLOR)
   const transparent = part.alpha !== undefined && part.alpha < 1
-
-  const selectedFaces = React.useMemo(
-    () => (selectedFace != null && selectedFace >= 0 ? [selectedFace] : NONE),
-    [selectedFace],
-  )
-  const selectedEdges = React.useMemo(
-    () => (selectedEdge != null && selectedEdge >= 0 ? [selectedEdge] : NONE),
-    [selectedEdge],
-  )
 
   const faceMaterial = useFaceHighlightMaterial({
     matcap,
@@ -74,19 +65,21 @@ export function Build123dPartMesh({
   })
 
   const handleFaceClick = (event: ThreeEvent<MouseEvent>) => {
-    if (!onFaceClick || event.faceIndex == null) {
+    if (!onPick || event.faceIndex == null) {
       return
     }
     event.stopPropagation()
-    onFaceClick(part.id, faceOfTriangle(part.instance, event.faceIndex))
+    const index = faceOfTriangle(part.instance, event.faceIndex)
+    onPick({ kind: 'face', partId: part.id, index }, event.shiftKey)
   }
 
   const handleEdgeClick = (event: ThreeEvent<MouseEvent>) => {
-    if (!onEdgeClick || event.index == null) {
+    if (!onPick || event.index == null) {
       return
     }
     event.stopPropagation()
-    onEdgeClick(part.id, edgeOfVertex(part.instance, event.index))
+    const index = edgeOfVertex(part.instance, event.index)
+    onPick({ kind: 'edge', partId: part.id, index }, event.shiftKey)
   }
 
   // Dragging the camera keeps the pointer moving over the model, and tracking

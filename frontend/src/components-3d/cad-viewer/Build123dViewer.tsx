@@ -31,6 +31,16 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
     return partsBounds(model.parts.filter((part) => wanted.has(part.id)))
   }, [model, interaction.selectedParts])
 
+  const highlighted = React.useMemo(() => {
+    const byPart = new Map<string, { faces: number[]; edges: number[] }>()
+    for (const { kind, partId, index } of interaction.picked) {
+      const held = byPart.get(partId) ?? { faces: [], edges: [] }
+      held[kind === 'face' ? 'faces' : 'edges'].push(index)
+      byPart.set(partId, held)
+    }
+    return byPart
+  }, [interaction.picked])
+
   return (
     <ErrorBoundary
       fallback={
@@ -39,7 +49,12 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
         </div>
       }
     >
-      <Canvas orthographic>
+      <Canvas
+        orthographic
+        onPointerMissed={(event) => {
+          if (!event.shiftKey) interaction.clearPicks()
+        }}
+      >
         <Scene stageRef={stageRef}>
           {hasError ? (
             <ErrorMesh />
@@ -49,18 +64,9 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
                 key={`${interaction.revision}:${part.id}`}
                 part={part}
                 visible={interaction.visibility[part.id]}
-                selectedFace={
-                  interaction.face?.partId === part.id
-                    ? interaction.face.index
-                    : null
-                }
-                selectedEdge={
-                  interaction.edge?.partId === part.id
-                    ? interaction.edge.index
-                    : null
-                }
-                onFaceClick={interaction.selectFace}
-                onEdgeClick={interaction.selectEdge}
+                selectedFaces={highlighted.get(part.id)?.faces}
+                selectedEdges={highlighted.get(part.id)?.edges}
+                onPick={interaction.pick}
               />
             ))
           )}
