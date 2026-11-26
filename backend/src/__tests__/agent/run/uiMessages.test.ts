@@ -193,7 +193,7 @@ describe('toUIMessages', () => {
     expect(restored.metadata).toEqual({ created: 'now', completed: 'now' })
   })
 
-  test('selected geometry comes back on the user message it was sent with', () => {
+  test('a reference comes back on the user message it was sent with', () => {
     const ref = {
       part: 'bracket',
       kind: 'face' as const,
@@ -203,13 +203,13 @@ describe('toUIMessages', () => {
     const [restored] = toUIMessages([
       stored('user', (id) => [
         { ...partBase(id), type: 'text', text: 'this one' },
-        { ...partBase(id), type: 'geometry', ref },
+        { ...partBase(id), type: 'reference', reference: { id: 1, ref } },
       ]),
     ])
 
     expect(restored.parts).toEqual([
       { type: 'text', text: 'this one', state: 'done' },
-      { type: 'data-geometry', data: ref },
+      { type: 'data-reference', data: { id: 1, ref } },
     ])
   })
 

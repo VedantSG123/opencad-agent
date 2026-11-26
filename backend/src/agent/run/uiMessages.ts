@@ -189,8 +189,8 @@ function storedPart(part: Part): AgentUIMessage['parts'] {
         },
       ]
 
-    case 'geometry':
-      return [{ type: 'data-geometry', data: part.ref }]
+    case 'reference':
+      return [{ type: 'data-reference', data: part.reference }]
 
     case 'tool':
       return [

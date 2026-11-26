@@ -1,10 +1,10 @@
-import type { GeometryRef } from 'shared/geometry'
+import type { MessageReference } from 'shared/references'
 
 import type {
   AssistantMessage,
   CompactionPart,
   FilePart,
-  GeometryPart,
+  ReferencePart,
   ReasoningPart,
   TextPart,
   ToolPart,
@@ -74,7 +74,7 @@ export class SessionWriter {
   userMessage(
     text: string,
     files: FileAttachment[] = [],
-    geometry: GeometryRef[] = [],
+    references: MessageReference[] = [],
   ): UserMessage {
     const message = upsertMessage({
       id: generateIdWithPrefix('message'),
@@ -94,12 +94,12 @@ export class SessionWriter {
         ...(file.filename ? { filename: file.filename } : {}),
       } satisfies FilePart)
     }
-    for (const ref of geometry) {
+    for (const reference of references) {
       upsertPart({
         ...this.partBase(message.id),
-        type: 'geometry',
-        ref,
-      } satisfies GeometryPart)
+        type: 'reference',
+        reference,
+      } satisfies ReferencePart)
     }
 
     return message

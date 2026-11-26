@@ -4,7 +4,7 @@ import type {
   ToolResultPart,
   UserContent,
 } from 'ai'
-import { geometryRefText } from 'shared/geometry'
+import { promptForModel } from 'shared/references'
 
 import type { CompactionPart, Part } from '../../session/messageSchema'
 import type { StoredMessage } from './history'
@@ -81,11 +81,16 @@ function summaryPrompt(marker: CompactionPart): string {
 
 function projectUser(entry: StoredMessage): ModelMessage[] {
   const content: UserContent = []
-  let geometryIndex = 0
+  const references = entry.parts.flatMap((part) =>
+    part.type === 'reference' ? [part.reference] : [],
+  )
 
   for (const part of entry.parts) {
     if (part.type === 'text' && part.text) {
-      content.push({ type: 'text', text: part.text })
+      content.push({
+        type: 'text',
+        text: promptForModel(part.text, references),
+      })
       continue
     }
     if (part.type === 'file') {
@@ -99,14 +104,6 @@ function projectUser(entry: StoredMessage): ModelMessage[] {
               ...(part.filename ? { filename: part.filename } : {}),
             },
       )
-      continue
-    }
-    if (part.type === 'geometry') {
-      geometryIndex += 1
-      content.push({
-        type: 'text',
-        text: `<selected-geometry index="${geometryIndex}">\n${geometryRefText(part.ref)}\n</selected-geometry>`,
-      })
     }
   }
 

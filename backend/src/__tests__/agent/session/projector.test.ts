@@ -83,21 +83,34 @@ describe('toModelMessages', () => {
     ])
   })
 
-  test('selected geometry follows the words, numbered in the order attached', () => {
+  test('references read as labels, with their details after the words', () => {
     const id = nextId('msg')
-    const edge = (type: string, radius: number) => ({
+    const rim = {
       part: 'bracket',
       kind: 'edge' as const,
-      type,
-      facts: [{ name: 'radius', quantity: 'length' as const, value: radius }],
-    })
+      type: 'CIRCLE',
+      facts: [{ name: 'radius', quantity: 'length' as const, value: 3 }],
+    }
+    const script = { kind: 'file' as const, path: 'parts/bracket.py' }
     const messages = toModelMessages([
       {
         message: message(id, 'user'),
         parts: [
-          text(id, 'make these 8 mm'),
-          { ...partBase(id), type: 'geometry', ref: edge('CIRCLE', 3) },
-          { ...partBase(id), type: 'geometry', ref: edge('CIRCLE', 9) },
+          text(
+            id,
+            'make [Edge · Circle](/opencad-reference?refId=1) in ' +
+              '[bracket.py](/opencad-reference?refId=2) 8 mm',
+          ),
+          {
+            ...partBase(id),
+            type: 'reference',
+            reference: { id: 1, ref: rim },
+          },
+          {
+            ...partBase(id),
+            type: 'reference',
+            reference: { id: 2, ref: script },
+          },
         ],
       },
     ])
@@ -106,23 +119,15 @@ describe('toModelMessages', () => {
       {
         role: 'user',
         content: [
-          { type: 'text', text: 'make these 8 mm' },
           {
             type: 'text',
             text: [
-              '<selected-geometry index="1">',
+              'make [edge 1] in parts/bracket.py 8 mm',
+              '',
+              '<reference id="1">',
               'Edge of part "bracket": Circle (world coordinates)',
               '- Radius: 3 mm',
-              '</selected-geometry>',
-            ].join('\n'),
-          },
-          {
-            type: 'text',
-            text: [
-              '<selected-geometry index="2">',
-              'Edge of part "bracket": Circle (world coordinates)',
-              '- Radius: 9 mm',
-              '</selected-geometry>',
+              '</reference>',
             ].join('\n'),
           },
         ],

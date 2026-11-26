@@ -1,7 +1,7 @@
 import type { ChatTransport, InferUIMessageChunk } from 'ai'
 import { parseJsonEventStream, uiMessageChunkSchema } from 'ai'
 import type { Attachment } from 'shared/attachments'
-import type { GeometryRef } from 'shared/geometry'
+import type { MessageReference } from 'shared/references'
 import z from 'zod'
 
 import type { SelectedModel } from '@/features/Providers/components/ModelSelectButton'
@@ -58,7 +58,7 @@ export class AgentTransport implements ChatTransport<AgentUIMessage> {
         prompt: textOf(message),
         model,
         files: filesOf(message),
-        geometry: geometryOf(message),
+        references: referencesOf(message),
       }),
       signal: abortSignal,
     })
@@ -209,9 +209,9 @@ function filesOf(message: AgentUIMessage): Attachment[] {
   )
 }
 
-function geometryOf(message: AgentUIMessage): GeometryRef[] {
+function referencesOf(message: AgentUIMessage): MessageReference[] {
   return message.parts.flatMap((part) =>
-    part.type === 'data-geometry' ? [part.data] : [],
+    part.type === 'data-reference' ? [part.data] : [],
   )
 }
 

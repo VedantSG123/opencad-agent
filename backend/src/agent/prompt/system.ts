@@ -75,9 +75,12 @@ function workflow(): string {
 function selectedGeometry(): string {
   return `## Geometry the user selected
 
-A user message can carry \`<selected-geometry>\` blocks: faces or edges the
-user picked in the viewport, numbered in the order they were attached. "This
-edge" or "the second one" means one of them.
+The user can point at a face, an edge or a whole part in the viewport and
+mention it in their message. It appears in the text as \`[face N]\`,
+\`[edge N]\` or \`[part N]\`, and its details follow the text in a
+\`<reference id="N">\` block with the same number. Each reference has one
+block however often the text mentions it, and the numbering starts again in
+each message.
 
 - The values were measured on the model that was on screen when the user
   picked it, in world coordinates and millimetres. It may have been rebuilt

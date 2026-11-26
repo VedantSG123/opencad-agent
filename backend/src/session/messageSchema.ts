@@ -1,4 +1,4 @@
-import { geometryRefSchema } from 'shared/geometry'
+import { messageReferenceSchema } from 'shared/references'
 import z from 'zod'
 
 const PartBaseSchema = z.object({
@@ -34,12 +34,12 @@ export const FilePartSchema = PartBaseSchema.extend({
 
 export type FilePart = z.infer<typeof FilePartSchema>
 
-export const GeometryPartSchema = PartBaseSchema.extend({
-  type: z.literal('geometry'),
-  ref: geometryRefSchema,
+export const ReferencePartSchema = PartBaseSchema.extend({
+  type: z.literal('reference'),
+  reference: messageReferenceSchema,
 })
 
-export type GeometryPart = z.infer<typeof GeometryPartSchema>
+export type ReferencePart = z.infer<typeof ReferencePartSchema>
 
 const ToolStatePending = z.object({
   state: z.literal('pending'),
@@ -108,7 +108,7 @@ export const PartSchema = z.discriminatedUnion('type', [
   TextPartSchema,
   ReasoningPartSchema,
   FilePartSchema,
-  GeometryPartSchema,
+  ReferencePartSchema,
   ToolPartSchema,
   CompactionPartSchema,
 ])

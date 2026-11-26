@@ -98,8 +98,11 @@ function UserMessage({ message }: { message: AgentUIMessage }) {
               </span>
             )
           }
-          if (part.type === 'data-geometry') {
-            return <GeometryChip key={index} reference={part.data} />
+          if (part.type === 'data-reference') {
+            const { ref } = part.data
+            return ref.kind === 'face' || ref.kind === 'edge' ? (
+              <GeometryChip key={index} reference={ref} />
+            ) : null
           }
           if (part.type === 'text' && part.text) {
             return (

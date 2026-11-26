@@ -2,7 +2,7 @@ import { createUIMessageStream, createUIMessageStreamResponse } from 'ai'
 import { Elysia, t } from 'elysia'
 import { buildReportSchema } from 'shared'
 import type { PermissionScope } from 'shared'
-import { geometryRefSchema } from 'shared/geometry'
+import { messageReferenceSchema, referencesRefusal } from 'shared/references'
 
 import type { ModelRef } from '../../agent/model'
 import { resolveModel } from '../../agent/model'
@@ -71,7 +71,7 @@ const promptBody = t.Object({
   files: t.Optional(t.Array(attachment)),
   // Checked in the handler against the shared schema the frontend built the
   // references with, rather than restated here.
-  geometry: t.Optional(t.Array(t.Unknown())),
+  references: t.Optional(t.Array(t.Unknown())),
 })
 
 /**
@@ -153,18 +153,16 @@ export const sessionsRoutes = new Elysia({ prefix: '/sessions' })
       }
 
       const files = body.files ?? []
-      const geometry = geometryRefSchema.array().safeParse(body.geometry ?? [])
-      if (!geometry.success) {
-        return status(400, { message: 'A selected face or edge is malformed.' })
+      const references = messageReferenceSchema
+        .array()
+        .safeParse(body.references ?? [])
+      if (!references.success) {
+        return status(400, { message: 'A reference is malformed.' })
       }
-      if (
-        !body.prompt.trim() &&
-        files.length === 0 &&
-        geometry.data.length === 0
-      ) {
-        return status(400, {
-          message: 'Send something to say, a file, or a selection.',
-        })
+      const mismatch = referencesRefusal(body.prompt, references.data)
+      if (mismatch) return status(400, { message: mismatch })
+      if (!body.prompt.trim() && files.length === 0) {
+        return status(400, { message: 'Send something to say, or a file.' })
       }
 
       const model: ModelRef = {
@@ -194,7 +192,7 @@ export const sessionsRoutes = new Elysia({ prefix: '/sessions' })
           model,
           prompt: body.prompt,
           files,
-          geometry: geometry.data,
+          references: references.data,
         })
       } catch (error) {
         if (error instanceof RunInFlightError) {
