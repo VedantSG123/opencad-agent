@@ -15,6 +15,7 @@ export const ReplicadFacesMesh: React.FC<ReplicadFacesMeshProps> = ({
   faces,
   defaultHighlights,
   highlights = NONE,
+  hoverable = true,
   opacity,
   color,
   ...rest
@@ -42,7 +43,7 @@ export const ReplicadFacesMesh: React.FC<ReplicadFacesMeshProps> = ({
   const handleHover = (event: ThreeEvent<PointerEvent>) => {
     if (event.buttons !== 0 || event.faceIndex == null) return
     event.stopPropagation()
-    setHovered(getFaceIndexFromEvent(event))
+    if (hoverable) setHovered(getFaceIndexFromEvent(event))
   }
 
   return (
@@ -62,6 +63,7 @@ type ReplicadFacesMeshProps = ThreeElements['mesh'] & {
   faces: ReplicadMeshedFaces
   defaultHighlights?: number[]
   highlights?: number[]
+  hoverable?: boolean
   opacity?: number
   color?: string
 }

@@ -3,7 +3,8 @@ import { useLoader } from '@react-three/fiber'
 import * as React from 'react'
 import * as THREE from 'three'
 
-import type { Pick } from '@/components/cad/picks'
+import type { PartPicks, Pick, PickMode } from '@/components/cad/picks'
+import { allIndices, pickInMode, picksInMode } from '@/components/cad/picks'
 import type { DecodedPart } from '@/kernels/build123d/decode'
 import { edgeOfVertex, faceOfTriangle } from '@/kernels/build123d/picking'
 
@@ -20,17 +21,17 @@ const NONE: number[] = []
 type Build123dPartMeshProps = {
   part: DecodedPart
   visible?: { faces: boolean; edges: boolean }
-  /** Face and edge indices to highlight; memoise them, compared by identity. */
-  selectedFaces?: readonly number[]
-  selectedEdges?: readonly number[]
+  mode: PickMode
+  /** This part's picks; memoise them, the highlights compare by identity. */
+  picks?: PartPicks
   onPick?: (pick: Pick, additive: boolean) => void
 }
 
 export function Build123dPartMesh({
   part,
   visible,
-  selectedFaces = NONE,
-  selectedEdges = NONE,
+  mode,
+  picks,
   onPick,
 }: Build123dPartMeshProps) {
   const faceGeometry = useBuild123dFaceGeometry(part.instance)
@@ -39,6 +40,22 @@ export function Build123dPartMesh({
 
   const [hoveredFace, setHoveredFace] = React.useState<number | null>(null)
   const [hoveredEdge, setHoveredEdge] = React.useState<number | null>(null)
+
+  const faceCount = part.instance.trianglesPerFace.length
+  const selectedFaces = React.useMemo(
+    () => (picks?.whole ? allIndices(faceCount) : (picks?.faces ?? NONE)),
+    [picks, faceCount],
+  )
+  const selectedEdges = picks?.edges ?? NONE
+
+  // R3F only hits objects with handlers, so faces keep theirs in every mode:
+  // without them a click in edges mode would reach an edge hidden behind a
+  // face. Edges drop theirs in faces mode, which is what lets a click through.
+  // Hovering one face while a click picks the whole part says the wrong thing,
+  // so parts mode shows no hover.
+  const pickEdges = picksInMode(mode, 'edge')
+  const hoverFaces = picksInMode(mode, 'face') && mode !== 'parts'
+  const hoverEdges = pickEdges && mode !== 'parts'
 
   const colors = getMeshColors(part.color ?? DEFAULT_COLOR)
   const transparent = part.alpha !== undefined && part.alpha < 1
@@ -50,7 +67,7 @@ export function Build123dPartMesh({
     selectedColor: colors.selected,
     selected: selectedFaces,
     hovered: hoveredFace,
-    componentCount: part.instance.trianglesPerFace.length,
+    componentCount: faceCount,
     opacity: part.alpha,
     transparent,
     doubleSided: part.renderback,
@@ -70,7 +87,8 @@ export function Build123dPartMesh({
     }
     event.stopPropagation()
     const index = faceOfTriangle(part.instance, event.faceIndex)
-    onPick({ kind: 'face', partId: part.id, index }, event.shiftKey)
+    const pick = pickInMode(mode, 'face', part.id, index)
+    if (pick) onPick(pick, event.shiftKey)
   }
 
   const handleEdgeClick = (event: ThreeEvent<MouseEvent>) => {
@@ -79,7 +97,8 @@ export function Build123dPartMesh({
     }
     event.stopPropagation()
     const index = edgeOfVertex(part.instance, event.index)
-    onPick({ kind: 'edge', partId: part.id, index }, event.shiftKey)
+    const pick = pickInMode(mode, 'edge', part.id, index)
+    if (pick) onPick(pick, event.shiftKey)
   }
 
   // Dragging the camera keeps the pointer moving over the model, and tracking
@@ -88,7 +107,8 @@ export function Build123dPartMesh({
   const handleFaceHover = (event: ThreeEvent<PointerEvent>) => {
     if (event.buttons !== 0 || event.faceIndex == null) return
     event.stopPropagation()
-    setHoveredFace(faceOfTriangle(part.instance, event.faceIndex))
+    if (hoverFaces)
+      setHoveredFace(faceOfTriangle(part.instance, event.faceIndex))
   }
 
   const handleEdgeHover = (event: ThreeEvent<PointerEvent>) => {
@@ -120,8 +140,8 @@ export function Build123dPartMesh({
         <lineSegments
           geometry={edgeGeometry}
           material={edgeMaterial}
-          onClick={handleEdgeClick}
-          onPointerMove={handleEdgeHover}
+          onClick={pickEdges ? handleEdgeClick : undefined}
+          onPointerMove={hoverEdges ? handleEdgeHover : undefined}
           onPointerOut={() => setHoveredEdge(null)}
         />
       )}

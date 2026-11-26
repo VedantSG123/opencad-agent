@@ -1,7 +1,7 @@
 import * as React from 'react'
 
-import type { Pick } from '@/components/cad/picks'
-import { applyPick, picksByPart } from '@/components/cad/picks'
+import type { Pick, PickMode } from '@/components/cad/picks'
+import { applyPicks, picksByPart } from '@/components/cad/picks'
 import { ErrorBoundary } from '@/components/custom/ErrorBoundary'
 import { ReplicadSVGViewer } from '@/components/custom/SvgViewer'
 import type {
@@ -33,6 +33,7 @@ const NO_PICKS: Pick[] = []
 export const CadViewer: React.FC<CadViewerProps> = ({
   shapes,
   hasError = false,
+  mode = 'faces-and-edges',
   stageRef,
   onSelect,
 }) => {
@@ -45,9 +46,9 @@ export const CadViewer: React.FC<CadViewerProps> = ({
   const pick = (next: Pick, additive: boolean) =>
     setHeld((previous) => ({
       shapes,
-      picked: applyPick(
+      picked: applyPicks(
         previous.shapes === shapes ? previous.picked : NO_PICKS,
-        next,
+        [next],
         additive,
       ),
     }))
@@ -56,9 +57,10 @@ export const CadViewer: React.FC<CadViewerProps> = ({
 
   const readout = React.useMemo((): SelectedComponent | null => {
     const last = picked.at(-1)
-    return last
-      ? { kind: last.kind, index: last.index, subject: last.partId }
-      : null
+    if (!last) return null
+    return last.kind === 'part'
+      ? { kind: 'part', subject: last.partId }
+      : { kind: last.kind, index: last.index, subject: last.partId }
   }, [picked])
 
   React.useEffect(() => {
@@ -91,9 +93,9 @@ export const CadViewer: React.FC<CadViewerProps> = ({
             shapes.map((shape) =>
               isMeshShape(shape) ? (
                 <ReplicadCombinedMesh
+                  mode={mode}
+                  picks={highlighted.get(shape.name)}
                   onPick={pick}
-                  facesHighlight={highlighted.get(shape.name)?.faces}
-                  edgesHighlight={highlighted.get(shape.name)?.edges}
                   shape={shape}
                   key={shape.name}
                 />
@@ -109,6 +111,7 @@ export const CadViewer: React.FC<CadViewerProps> = ({
 type CadViewerProps = {
   shapes: (MeshRenderOutput | SvgRenderOutput)[]
   hasError?: boolean
+  mode?: PickMode
   stageRef?: React.Ref<StageHandle>
   onSelect?: (selection: SelectedComponent | null) => void
 }

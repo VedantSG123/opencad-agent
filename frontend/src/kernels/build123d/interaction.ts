@@ -2,7 +2,7 @@ import type { ShapeNode } from 'shared/build123d'
 import { geometryTypeLabel } from 'shared/geometry'
 
 import type { Pick } from '@/components/cad/picks'
-import { applyPick } from '@/components/cad/picks'
+import { applyPicks } from '@/components/cad/picks'
 import type { SelectedComponent } from '@/types'
 
 import type { DecodedModel } from './decode'
@@ -15,15 +15,13 @@ export type Build123dViewState = {
   revision: number
   /** In the order picked; the readout names the last. */
   picked: Pick[]
-  selectedNode: string | null
-  selectedParts: string[]
   visibility: VisibilityMap
 }
 
 type Action = { model: DecodedModel | null } & (
   | { type: 'pick'; pick: Pick; additive: boolean }
+  | { type: 'node'; node: ShapeNode; additive: boolean }
   | { type: 'clear' }
-  | { type: 'node'; node: ShapeNode }
   | { type: 'visibility'; ids: string[]; kind: VisibilityKind; value: boolean }
 )
 
@@ -36,8 +34,6 @@ export function build123dViewState(
     model,
     revision: previous ? previous.revision + 1 : 0,
     picked: [],
-    selectedNode: null,
-    selectedParts: [],
     visibility: model ? initialVisibility(model.tree) : {},
   }
 }
@@ -50,14 +46,23 @@ function findNode(tree: ShapeNode, id: string): ShapeNode | undefined {
   }
 }
 
+/** A tree row picks every part under it. */
+function nodePicks(model: DecodedModel | null, node: ShapeNode): Pick[] {
+  const found = model && findNode(model.tree, node.id)
+  return found
+    ? leafIds(found).map((partId): Pick => ({ kind: 'part', partId }))
+    : []
+}
+
 function pickedPart(model: DecodedModel | null, pick: Pick) {
-  if (!model || !Number.isInteger(pick.index) || pick.index < 0) return
-  const part = model.parts.find((candidate) => candidate.id === pick.partId)
+  const part = model?.parts.find((candidate) => candidate.id === pick.partId)
+  if (!part || pick.kind === 'part') return part
+  if (!Number.isInteger(pick.index) || pick.index < 0) return
   const count =
     pick.kind === 'face'
-      ? part?.instance.faceTypes.length
-      : part?.instance.edgeTypes.length
-  return count !== undefined && pick.index < count ? part : undefined
+      ? part.instance.faceTypes.length
+      : part.instance.edgeTypes.length
+  return pick.index < count ? part : undefined
 }
 
 export function updateBuild123dViewState(
@@ -65,18 +70,6 @@ export function updateBuild123dViewState(
   action: Action,
 ): Build123dViewState {
   if (state.model !== action.model) return state
-  if (action.type === 'node') {
-    const node = state.model
-      ? findNode(state.model.tree, action.node.id)
-      : undefined
-    if (!node) return state
-    const same = state.selectedNode === node.id
-    return {
-      ...state,
-      selectedNode: same ? null : node.id,
-      selectedParts: same ? [] : leafIds(node),
-    }
-  }
   if (action.type === 'visibility') {
     const visibility = { ...state.visibility }
     for (const id of action.ids) {
@@ -88,10 +81,14 @@ export function updateBuild123dViewState(
   if (action.type === 'clear') {
     return state.picked.length ? { ...state, picked: [] } : state
   }
-  if (!pickedPart(state.model, action.pick)) return state
+  const picks =
+    action.type === 'pick' ? [action.pick] : nodePicks(state.model, action.node)
+  if (!picks.length || !picks.every((pick) => pickedPart(state.model, pick))) {
+    return state
+  }
   return {
     ...state,
-    picked: applyPick(state.picked, action.pick, action.additive),
+    picked: applyPicks(state.picked, picks, action.additive),
   }
 }
 
@@ -101,6 +98,13 @@ export function build123dReadout(
   const last = state.picked.at(-1)
   const part = last && pickedPart(state.model, last)
   if (!last || !part) return null
+  if (last.kind === 'part') {
+    return {
+      kind: 'part',
+      subject: part.name,
+      reference: { kind: 'part', part: part.name },
+    }
+  }
   const { kind, index } = last
   const entity = worldFacts(part, kind, index)
   return {

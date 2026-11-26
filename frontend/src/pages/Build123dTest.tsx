@@ -112,7 +112,7 @@ function Build123dTestInner() {
               tree={model.tree}
               visibility={interaction.visibility}
               onToggle={interaction.setVisible}
-              selectedId={interaction.selectedNode}
+              pickedParts={interaction.pickedParts}
               onSelect={interaction.selectNode}
             />
           )}

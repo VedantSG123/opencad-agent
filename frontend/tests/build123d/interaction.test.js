@@ -54,6 +54,7 @@ function pick(state, kind, index, additive = false, partId = '/root/0') {
 
 const FACE_1 = { kind: 'face', partId: '/root/0', index: 1 }
 const EDGE_0 = { kind: 'edge', partId: '/root/0', index: 0 }
+const PART = { kind: 'part', partId: '/root/0' }
 
 describe('build123d viewer interactions', () => {
   test('a new model clears all selections and resets visibility even when IDs are reused', () => {
@@ -61,7 +62,7 @@ describe('build123d viewer interactions', () => {
     let state = build123dViewState(first)
     state = pick(state, 'face', 1)
     state = pick(state, 'edge', 0, true)
-    state = apply(state, { type: 'node', node: first.tree })
+    state = apply(state, { type: 'node', node: first.tree, additive: true })
     state = apply(state, {
       type: 'visibility',
       ids: ['/root/0'],
@@ -70,8 +71,6 @@ describe('build123d viewer interactions', () => {
     })
     const rebuilt = build123dViewState(model('replacement'), state)
     expect(rebuilt.picked).toEqual([])
-    expect(rebuilt.selectedNode).toBeNull()
-    expect(rebuilt.selectedParts).toEqual([])
     expect(rebuilt.visibility).toEqual({
       '/root/0': { faces: true, edges: true },
     })
@@ -114,9 +113,10 @@ describe('build123d viewer interactions', () => {
     let state = apply(build123dViewState(original), {
       type: 'node',
       node: original.tree,
+      additive: false,
     })
     state = build123dViewState(null, state)
-    expect(state.selectedParts).toEqual([])
+    expect(state.picked).toEqual([])
     expect(state.visibility).toEqual({})
     expect(build123dReadout(state)).toBeNull()
   })
@@ -137,10 +137,9 @@ describe('build123d viewer interactions', () => {
     state = apply(state, {
       type: 'node',
       node: { id: 'missing', name: 'old part', shape: { ref: 0 } },
+      additive: false,
     })
     expect(state.picked).toEqual([])
-    expect(state.selectedNode).toBeNull()
-    expect(state.selectedParts).toEqual([])
     expect(build123dReadout(state)).toBeNull()
   })
 
@@ -226,6 +225,36 @@ describe('build123d viewer interactions', () => {
     state = pick(state, 'face', 1, true)
     expect(state.picked).toEqual([])
     expect(build123dReadout(state)).toBeNull()
+  })
+
+  test('a tree row picks its parts, and the readout names the part', () => {
+    const current = model()
+    let state = build123dViewState(current)
+    state = pick(state, 'face', 1)
+    state = apply(state, { type: 'node', node: current.tree, additive: true })
+    expect(state.picked).toEqual([FACE_1, PART])
+    expect(build123dReadout(state)).toEqual({
+      kind: 'part',
+      subject: 'plate',
+      reference: { kind: 'part', part: 'plate' },
+    })
+    state = apply(state, { type: 'node', node: current.tree, additive: true })
+    expect(state.picked).toEqual([FACE_1])
+    state = apply(state, { type: 'node', node: current.tree, additive: false })
+    expect(state.picked).toEqual([PART])
+  })
+
+  test('a part picked in the viewport is the same pick as its tree row', () => {
+    const current = model()
+    let state = pick(build123dViewState(current), 'face', 0)
+    state = apply(state, {
+      type: 'pick',
+      pick: PART,
+      additive: false,
+    })
+    expect(state.picked).toEqual([PART])
+    state = apply(state, { type: 'node', node: current.tree, additive: true })
+    expect(state.picked).toEqual([])
   })
 
   test('a component the runner sent no facts for is named without a type', () => {

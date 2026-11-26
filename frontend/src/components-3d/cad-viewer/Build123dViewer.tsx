@@ -26,11 +26,11 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
   hasError = false,
   stageRef,
 }) => {
+  const { pickedParts } = interaction
   const selected = React.useMemo(() => {
-    if (!model || !interaction.selectedParts.length) return null
-    const wanted = new Set(interaction.selectedParts)
-    return partsBounds(model.parts.filter((part) => wanted.has(part.id)))
-  }, [model, interaction.selectedParts])
+    if (!model || !pickedParts.size) return null
+    return partsBounds(model.parts.filter((part) => pickedParts.has(part.id)))
+  }, [model, pickedParts])
 
   const highlighted = React.useMemo(
     () => picksByPart(interaction.picked),
@@ -60,8 +60,8 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
                 key={`${interaction.revision}:${part.id}`}
                 part={part}
                 visible={interaction.visibility[part.id]}
-                selectedFaces={highlighted.get(part.id)?.faces}
-                selectedEdges={highlighted.get(part.id)?.edges}
+                mode={interaction.mode}
+                picks={highlighted.get(part.id)}
                 onPick={interaction.pick}
               />
             ))
