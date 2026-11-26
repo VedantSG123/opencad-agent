@@ -17,7 +17,7 @@ import { useBuild123d } from '@/hooks/useBuild123d'
 import { useBuild123dInteraction } from '@/hooks/useBuild123dInteraction'
 import { usePythonEnv } from '@/hooks/usePythonEnv'
 
-import { useChatGeometry } from '../context/ChatGeometryContext'
+import { useChatMention } from '../context/ChatMentionContext'
 import { usePanelContext } from '../context/PanelContext'
 import { Build123dCompiler } from './Build123dCompiler'
 import { Build123dExportDialog } from './Build123dExportDialog'
@@ -32,16 +32,16 @@ function Build123dViewportInner() {
 
   const interaction = useBuild123dInteraction(model)
   const stageRef = React.useRef<StageHandle>(null)
-  const chatGeometry = useChatGeometry()
+  const { mention } = useChatMention()
   const { agentRef, setIsAgentCollapsed } = usePanelContext()
 
-  function attachToChat(reference: GeometryRef) {
-    chatGeometry.attach(reference)
+  function mentionInChat(reference: GeometryRef) {
     const panel = agentRef.current
     if (panel?.isCollapsed()) {
       panel.expand()
       setIsAgentCollapsed(false)
     }
+    mention(reference)
   }
 
   return (
@@ -80,7 +80,7 @@ function Build123dViewportInner() {
         <ResetViewButton stageRef={stageRef} />
         <SelectionReadout
           selection={interaction.selection}
-          chat={{ isAttached: chatGeometry.isAttached, attach: attachToChat }}
+          onMention={mentionInChat}
         />
         <BusyIndicator active={isBuilding} label='Building...' />
       </ViewportStatusBar>

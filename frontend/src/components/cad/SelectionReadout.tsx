@@ -1,5 +1,5 @@
 import { Tooltip } from '@heroui/react'
-import { MessageAdd01Icon, Tick02Icon } from '@hugeicons/core-free-icons'
+import { MessageAdd01Icon } from '@hugeicons/core-free-icons'
 import type { GeometryRef } from 'shared/geometry'
 import { factLabel, factValue, geometryRefText } from 'shared/geometry'
 
@@ -23,14 +23,11 @@ const KIND_LABEL: Record<SelectedComponent['kind'], string> = {
  */
 export function SelectionReadout({
   selection,
-  chat,
+  onMention,
   className,
 }: {
   selection: SelectedComponent | null
-  chat?: {
-    isAttached: (reference: GeometryRef) => boolean
-    attach: (reference: GeometryRef) => void
-  }
+  onMention?: (reference: GeometryRef) => void
   className?: string
 }) {
   if (!selection) {
@@ -74,11 +71,8 @@ export function SelectionReadout({
             <span className='truncate text-foreground/50'>{subject}</span>
           </>
         )}
-        {reference && chat && (
-          <AddToChatButton
-            isAttached={chat.isAttached(reference)}
-            onAttach={() => chat.attach(reference)}
-          />
+        {reference && onMention && (
+          <AddToChatButton onPress={() => onMention(reference)} />
         )}
         {reference && (
           <CopyButton
@@ -92,30 +86,18 @@ export function SelectionReadout({
   )
 }
 
-function AddToChatButton({
-  isAttached,
-  onAttach,
-}: {
-  isAttached: boolean
-  onAttach: () => void
-}) {
-  const label = isAttached ? 'In the chat' : 'Add to chat'
+function AddToChatButton({ onPress }: { onPress: () => void }) {
   return (
     <Tooltip>
       <button
         type='button'
-        aria-label={label}
-        disabled={isAttached}
-        onClick={onAttach}
-        className='pointer-events-auto -my-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-muted/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none disabled:hover:bg-transparent'
+        aria-label='Add to chat'
+        onClick={onPress}
+        className='pointer-events-auto -my-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-muted/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none'
       >
-        <Icon
-          icon={isAttached ? Tick02Icon : MessageAdd01Icon}
-          size={14}
-          className={isAttached ? 'text-success' : undefined}
-        />
+        <Icon icon={MessageAdd01Icon} size={14} />
       </button>
-      <Tooltip.Content>{label}</Tooltip.Content>
+      <Tooltip.Content>Add to chat</Tooltip.Content>
     </Tooltip>
   )
 }

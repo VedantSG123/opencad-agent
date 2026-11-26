@@ -13,7 +13,7 @@ import {
   attachmentRefusal,
   attachmentSetRefusal,
 } from 'shared/attachments'
-import type { GeometryRef } from 'shared/geometry'
+import type { MessageReference } from 'shared/references'
 
 import { Icon } from '@/components/icons/HugeIcon'
 import {
@@ -22,15 +22,20 @@ import {
 } from '@/features/Providers/components/ModelSelectButton'
 import { useProviders } from '@/hooks/useProviders'
 
-import { useChatGeometry } from '../../context/ChatGeometryContext'
-import { ReferenceChip } from './ReferenceChip'
+import { useMentionTarget } from '../../context/ChatMentionContext'
+import type { PromptEditorHandle } from './PromptEditor'
+import { PromptEditor } from './PromptEditor'
 
 interface ComposerProps {
   model: SelectedModel | null
   onModelChange: (model: SelectedModel) => void
   preferredModel?: SelectedModel
   isWorking: boolean
-  onSend: (text: string, files: Attachment[], geometry: GeometryRef[]) => void
+  onSend: (
+    text: string,
+    files: Attachment[],
+    references: MessageReference[],
+  ) => void
   onStop: () => void
   initialText?: string
   autoFocus?: boolean
@@ -46,10 +51,11 @@ export function Composer({
   initialText = '',
   autoFocus = false,
 }: ComposerProps) {
-  const [text, setText] = useState(initialText)
+  const editor = useRef<PromptEditorHandle>(null)
+  const [hasContent, setHasContent] = useState(Boolean(initialText.trim()))
   const [files, setFiles] = useState<Attachment[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
-  const { geometry, detach, clear } = useChatGeometry()
+  useMentionTarget((reference) => editor.current?.insertReference(reference))
   const capabilities = useAttachmentCapabilities(model)
 
   const refusal =
@@ -58,28 +64,17 @@ export function Composer({
       .find((reason) => reason !== null) ?? attachmentSetRefusal(files)
   const canAttach = capabilities.image || capabilities.pdf
   const canSend =
-    (text.trim().length > 0 || files.length > 0 || geometry.length > 0) &&
+    (hasContent || files.length > 0) &&
     model !== null &&
     refusal === null &&
     !isWorking
 
   function send() {
-    if (!canSend) return
-    onSend(text, files, geometry)
-    setText('')
+    const draft = editor.current?.read()
+    if (!canSend || !draft) return
+    onSend(draft.text, files, draft.references)
+    editor.current?.clear()
     setFiles([])
-    clear()
-  }
-
-  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (
-      event.key === 'Enter' &&
-      !event.shiftKey &&
-      !event.nativeEvent.isComposing
-    ) {
-      event.preventDefault()
-      send()
-    }
   }
 
   async function handleFilesPicked(list: FileList | null) {
@@ -92,15 +87,8 @@ export function Composer({
   return (
     <div className='border-t border-border p-2'>
       <div className='flex flex-col rounded-2xl border border-border bg-surface'>
-        {files.length + geometry.length > 0 && (
+        {files.length > 0 && (
           <div className='flex flex-wrap gap-1.5 px-3 pt-3'>
-            {geometry.map((reference, index) => (
-              <ReferenceChip
-                key={`geometry-${index}`}
-                reference={reference}
-                onRemove={() => detach(index)}
-              />
-            ))}
             {files.map((file, index) => (
               <AttachmentChip
                 key={`${file.filename}-${index}`}
@@ -112,14 +100,13 @@ export function Composer({
             ))}
           </div>
         )}
-        <textarea
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder='Ask the agent to build or change something…'
-          rows={2}
+        <PromptEditor
+          ref={editor}
+          initialText={initialText}
           autoFocus={autoFocus}
-          className='max-h-48 min-h-14 w-full resize-none bg-transparent px-3 pt-3 pb-1 text-sm text-foreground outline-none placeholder:text-foreground/40'
+          placeholder='Ask the agent to build or change something…'
+          onChange={setHasContent}
+          onSubmit={send}
         />
         {refusal && <p className='px-3 pb-1 text-xs text-danger'>{refusal}</p>}
         <div className='flex items-center justify-between gap-2 px-2 pb-2'>

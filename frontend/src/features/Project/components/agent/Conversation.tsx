@@ -2,9 +2,7 @@ import { Chat, useChat } from '@ai-sdk/react'
 import type { FileUIPart } from 'ai'
 import { useEffect, useRef, useState } from 'react'
 import type { Attachment } from 'shared/attachments'
-import type { GeometryRef } from 'shared/geometry'
-import { factLabel, geometryTypeLabel } from 'shared/geometry'
-import { referenceLink } from 'shared/references'
+import type { MessageReference } from 'shared/references'
 
 import type { SelectedModel } from '@/features/Providers/components/ModelSelectButton'
 import { useAgentData } from '@/hooks/useAgentData'
@@ -23,7 +21,7 @@ import { ErrorNote, MessageList } from './MessageList'
 export interface PendingMessage {
   text: string
   files: Attachment[]
-  geometry: GeometryRef[]
+  references: MessageReference[]
 }
 
 interface ConversationProps {
@@ -104,26 +102,22 @@ function ChatView({
     started.current = true
     if (detail.running) void chat.resumeStream()
     else if (pending && model)
-      send(pending.text, pending.files, pending.geometry)
+      send(pending.text, pending.files, pending.references)
     if (pending) onPendingSent()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function send(text: string, files: Attachment[], geometry: GeometryRef[]) {
+  function send(
+    text: string,
+    files: Attachment[],
+    references: MessageReference[],
+  ) {
     if (!model) return
-    // Until the composer places references in the text, they follow it.
-    const references = geometry.map((ref, index) => ({ id: index + 1, ref }))
-    const links = references.map(({ id, ref }) =>
-      referenceLink(
-        `${factLabel(ref.kind)} · ${geometryTypeLabel(ref.type)}`,
-        id,
-      ),
-    )
     void sendMessage(
       {
         parts: [
           ...files.map(toFilePart),
-          { type: 'text', text: [text, ...links].join(' ').trim() },
+          { type: 'text', text },
           ...references.map((reference) => ({
             type: 'data-reference' as const,
             data: reference,
