@@ -1,5 +1,6 @@
 import * as React from 'react'
 
+import { picksByPart } from '@/components/cad/picks'
 import { ErrorBoundary } from '@/components/custom/ErrorBoundary'
 import type { Build123dInteraction } from '@/hooks/useBuild123dInteraction'
 import { partsBounds } from '@/kernels/build123d/bounds'
@@ -31,15 +32,10 @@ export const Build123dViewer: React.FC<Build123dViewerProps> = ({
     return partsBounds(model.parts.filter((part) => wanted.has(part.id)))
   }, [model, interaction.selectedParts])
 
-  const highlighted = React.useMemo(() => {
-    const byPart = new Map<string, { faces: number[]; edges: number[] }>()
-    for (const { kind, partId, index } of interaction.picked) {
-      const held = byPart.get(partId) ?? { faces: [], edges: [] }
-      held[kind === 'face' ? 'faces' : 'edges'].push(index)
-      byPart.set(partId, held)
-    }
-    return byPart
-  }, [interaction.picked])
+  const highlighted = React.useMemo(
+    () => picksByPart(interaction.picked),
+    [interaction.picked],
+  )
 
   return (
     <ErrorBoundary

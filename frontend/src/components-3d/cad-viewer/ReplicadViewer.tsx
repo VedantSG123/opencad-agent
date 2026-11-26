@@ -1,10 +1,10 @@
 import * as React from 'react'
 
-import { activeSelection } from '@/components/cad/activeSelection'
+import type { Pick } from '@/components/cad/picks'
+import { applyPick, picksByPart } from '@/components/cad/picks'
 import { ErrorBoundary } from '@/components/custom/ErrorBoundary'
 import { ReplicadSVGViewer } from '@/components/custom/SvgViewer'
 import type {
-  ComponentKind,
   MeshRenderOutput,
   SelectedComponent,
   SvgRenderOutput,
@@ -14,8 +14,6 @@ import type { StageHandle } from '../helpers/Stage'
 import { ReplicadCombinedMesh } from '../replicad-mesh/ReplicadCombinedMesh'
 import { Canvas } from './Canvas'
 import { ErrorMesh } from './ErrorMesh'
-import type { SelectionType } from './hooks/useSelection'
-import { useSelection } from './hooks/useSelection'
 import { Scene } from './Scene'
 
 const isSvgShapesArray = (
@@ -30,55 +28,38 @@ const isMeshShape = (
   return (shape as MeshRenderOutput).format === '3d'
 }
 
-const highlight = (selection: SelectionType | null, shapeId: string) => {
-  return selection && shapeId === selection.shapeId ? selection.index : null
-}
+const NO_PICKS: Pick[] = []
 
 export const CadViewer: React.FC<CadViewerProps> = ({
   shapes,
   hasError = false,
-  selectionMode = 'all',
   stageRef,
   onSelect,
 }) => {
-  const [selectedFace, selectFace] = useSelection(selectionMode, [
-    'all',
-    'faces',
-  ])
-  const [selectedEdge, selectEdge] = useSelection(selectionMode, [
-    'all',
-    'edges',
-  ])
-  const [lastKind, setLastKind] = React.useState<ComponentKind | null>(null)
+  // A rebuild renumbers faces and edges, so a pick from the previous build
+  // would land on different geometry. Picks are kept with the shapes they
+  // were made on and dropped when those are replaced.
+  const [held, setHeld] = React.useState({ shapes, picked: NO_PICKS })
+  const picked = held.shapes === shapes ? held.picked : NO_PICKS
 
-  // The handler is still built once per render, so the debounce inside
-  // useSelection keeps its identity across a click.
-  const track = (
-    kind: ComponentKind,
-    select: (shapeId: string) => (event: unknown, index: number) => void,
-  ) => {
-    return (shapeId: string) => {
-      const handler = select(shapeId)
-      return (event: unknown, index: number) => {
-        setLastKind(kind)
-        handler(event, index)
-      }
-    }
-  }
+  const pick = (next: Pick, additive: boolean) =>
+    setHeld((previous) => ({
+      shapes,
+      picked: applyPick(
+        previous.shapes === shapes ? previous.picked : NO_PICKS,
+        next,
+        additive,
+      ),
+    }))
 
-  const trackedFace = track('face', selectFace)
-  const trackedEdge = track('edge', selectEdge)
+  const highlighted = React.useMemo(() => picksByPart(picked), [picked])
 
   const readout = React.useMemo((): SelectedComponent | null => {
-    const active = activeSelection(lastKind, selectedFace, selectedEdge)
-    return (
-      active && {
-        kind: active.kind,
-        index: active.value.index,
-        subject: active.value.shapeId,
-      }
-    )
-  }, [lastKind, selectedFace, selectedEdge])
+    const last = picked.at(-1)
+    return last
+      ? { kind: last.kind, index: last.index, subject: last.partId }
+      : null
+  }, [picked])
 
   React.useEffect(() => {
     onSelect?.(readout)
@@ -96,30 +77,28 @@ export const CadViewer: React.FC<CadViewerProps> = ({
         </div>
       }
     >
-      <Canvas key='3d' orthographic>
+      <Canvas
+        key='3d'
+        orthographic
+        onPointerMissed={(event) => {
+          if (!event.shiftKey) setHeld({ shapes, picked: NO_PICKS })
+        }}
+      >
         <Scene stageRef={stageRef} enableDamping>
           {hasError ? (
             <ErrorMesh />
           ) : (
-            shapes.map((shape) => {
-              const facesHighlight = highlight(selectedFace, shape.name)
-              const edgesHighlight = highlight(selectedEdge, shape.name)
-
-              return isMeshShape(shape) ? (
+            shapes.map((shape) =>
+              isMeshShape(shape) ? (
                 <ReplicadCombinedMesh
-                  onEdgeClick={trackedEdge(shape.name)}
-                  onFaceClick={trackedFace(shape.name)}
-                  facesHighlight={
-                    facesHighlight !== null ? [facesHighlight] : undefined
-                  }
-                  edgesHighlight={
-                    edgesHighlight !== null ? [edgesHighlight] : undefined
-                  }
+                  onPick={pick}
+                  facesHighlight={highlighted.get(shape.name)?.faces}
+                  edgesHighlight={highlighted.get(shape.name)?.edges}
                   shape={shape}
                   key={shape.name}
                 />
-              ) : null
-            })
+              ) : null,
+            )
           )}
         </Scene>
       </Canvas>
@@ -130,7 +109,6 @@ export const CadViewer: React.FC<CadViewerProps> = ({
 type CadViewerProps = {
   shapes: (MeshRenderOutput | SvgRenderOutput)[]
   hasError?: boolean
-  selectionMode?: 'all' | 'faces' | 'edges'
   stageRef?: React.Ref<StageHandle>
   onSelect?: (selection: SelectedComponent | null) => void
 }

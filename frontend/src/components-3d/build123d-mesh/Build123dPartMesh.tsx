@@ -3,8 +3,8 @@ import { useLoader } from '@react-three/fiber'
 import * as React from 'react'
 import * as THREE from 'three'
 
+import type { Pick } from '@/components/cad/picks'
 import type { DecodedPart } from '@/kernels/build123d/decode'
-import type { Build123dPick } from '@/kernels/build123d/interaction'
 import { edgeOfVertex, faceOfTriangle } from '@/kernels/build123d/picking'
 
 import { useEdgeHighlightMaterial } from '../highlight/useEdgeHighlightMaterial'
@@ -23,7 +23,7 @@ type Build123dPartMeshProps = {
   /** Face and edge indices to highlight; memoise them, compared by identity. */
   selectedFaces?: readonly number[]
   selectedEdges?: readonly number[]
-  onPick?: (pick: Build123dPick, additive: boolean) => void
+  onPick?: (pick: Pick, additive: boolean) => void
 }
 
 export function Build123dPartMesh({

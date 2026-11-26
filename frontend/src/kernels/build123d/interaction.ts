@@ -1,31 +1,27 @@
 import type { ShapeNode } from 'shared/build123d'
 import { geometryTypeLabel } from 'shared/geometry'
 
-import type { ComponentKind, SelectedComponent } from '@/types'
+import type { Pick } from '@/components/cad/picks'
+import { applyPick } from '@/components/cad/picks'
+import type { SelectedComponent } from '@/types'
 
 import type { DecodedModel } from './decode'
 import { build123dReference, worldFacts } from './facts'
 import type { VisibilityKind, VisibilityMap } from './tree'
 import { initialVisibility, leafIds } from './tree'
 
-export type Build123dPick = {
-  kind: ComponentKind
-  partId: string
-  index: number
-}
-
 export type Build123dViewState = {
   model: DecodedModel | null
   revision: number
   /** In the order picked; the readout names the last. */
-  picked: Build123dPick[]
+  picked: Pick[]
   selectedNode: string | null
   selectedParts: string[]
   visibility: VisibilityMap
 }
 
 type Action = { model: DecodedModel | null } & (
-  | { type: 'pick'; pick: Build123dPick; additive: boolean }
+  | { type: 'pick'; pick: Pick; additive: boolean }
   | { type: 'clear' }
   | { type: 'node'; node: ShapeNode }
   | { type: 'visibility'; ids: string[]; kind: VisibilityKind; value: boolean }
@@ -54,7 +50,7 @@ function findNode(tree: ShapeNode, id: string): ShapeNode | undefined {
   }
 }
 
-function pickedPart(model: DecodedModel | null, pick: Build123dPick) {
+function pickedPart(model: DecodedModel | null, pick: Pick) {
   if (!model || !Number.isInteger(pick.index) || pick.index < 0) return
   const part = model.parts.find((candidate) => candidate.id === pick.partId)
   const count =
@@ -62,10 +58,6 @@ function pickedPart(model: DecodedModel | null, pick: Build123dPick) {
       ? part?.instance.faceTypes.length
       : part?.instance.edgeTypes.length
   return count !== undefined && pick.index < count ? part : undefined
-}
-
-function samePick(a: Build123dPick, b: Build123dPick) {
-  return a.kind === b.kind && a.partId === b.partId && a.index === b.index
 }
 
 export function updateBuild123dViewState(
@@ -96,17 +88,11 @@ export function updateBuild123dViewState(
   if (action.type === 'clear') {
     return state.picked.length ? { ...state, picked: [] } : state
   }
-  const { pick, additive } = action
-  if (!pickedPart(state.model, pick)) return state
-  const isPicked = state.picked.some((held) => samePick(held, pick))
-  if (additive) {
-    const picked = isPicked
-      ? state.picked.filter((held) => !samePick(held, pick))
-      : [...state.picked, pick]
-    return { ...state, picked }
+  if (!pickedPart(state.model, action.pick)) return state
+  return {
+    ...state,
+    picked: applyPick(state.picked, action.pick, action.additive),
   }
-  const onlyThis = isPicked && state.picked.length === 1
-  return { ...state, picked: onlyThis ? [] : [pick] }
 }
 
 export function build123dReadout(

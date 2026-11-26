@@ -1,8 +1,8 @@
 import * as React from 'react'
 import type { ShapeNode } from 'shared/build123d'
 
+import type { Pick } from '@/components/cad/picks'
 import type { DecodedModel } from '@/kernels/build123d/decode'
-import type { Build123dPick } from '@/kernels/build123d/interaction'
 import {
   build123dReadout,
   build123dViewState,
@@ -15,7 +15,7 @@ export function useBuild123dInteraction(model: DecodedModel | null) {
   const state = build123dViewState(model, stored)
   if (state !== stored) setState(state)
 
-  const pick = (picked: Build123dPick, additive: boolean) =>
+  const pick = (picked: Pick, additive: boolean) =>
     setState((previous) =>
       updateBuild123dViewState(previous, {
         model,

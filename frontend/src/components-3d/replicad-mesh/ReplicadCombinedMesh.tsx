@@ -1,5 +1,6 @@
 import type { ThreeEvent } from '@react-three/fiber'
 
+import type { Pick } from '@/components/cad/picks'
 import type { MeshRenderOutput } from '@/types'
 
 import { useEdgeEvent } from './hooks/useEdgeEvent'
@@ -9,13 +10,18 @@ import { ReplicadFacesMesh } from './ReplicadFacesMesh'
 
 export function ReplicadCombinedMesh({
   shape,
-  onEdgeClick,
-  onFaceClick,
+  onPick,
   edgesHighlight,
   facesHighlight,
 }: ReplicadCombinedMeshProps) {
-  const handleEdgeClick = useEdgeEvent(onEdgeClick)
-  const handleFaceClick = useFaceEvent(onFaceClick)
+  // Stopped so that a click on an edge does not also pick the face behind it.
+  const picker =
+    (kind: Pick['kind']) => (event: ThreeEvent<MouseEvent>, index: number) => {
+      event.stopPropagation()
+      onPick?.({ kind, partId: shape.name, index }, event.shiftKey)
+    }
+  const handleEdgeClick = useEdgeEvent(onPick ? picker('edge') : null)
+  const handleFaceClick = useFaceEvent(onPick ? picker('face') : null)
 
   if (!shape.mesh || !shape.edges) {
     return null
@@ -42,8 +48,8 @@ export function ReplicadCombinedMesh({
 
 type ReplicadCombinedMeshProps = {
   shape: MeshRenderOutput
-  onEdgeClick: (e: ThreeEvent<MouseEvent>, index: number) => void
-  onFaceClick: (e: ThreeEvent<MouseEvent>, index: number) => void
+  onPick?: (pick: Pick, additive: boolean) => void
+  /** Memoise these; the highlight materials compare them by identity. */
   edgesHighlight?: number[]
   facesHighlight?: number[]
 }
