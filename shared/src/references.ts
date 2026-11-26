@@ -58,7 +58,7 @@ export function parsePrompt(text: string): PromptRun[] {
   return runs
 }
 
-/** The text with each link read as its label, for a title or the clipboard. */
+/** The text with each link read as its label, for a chat title. */
 export function plainPrompt(text: string): string {
   return parsePrompt(text)
     .map((run) => (run.type === 'text' ? run.text : run.label))

@@ -1,7 +1,7 @@
 import { AlertCircleIcon, File02Icon } from '@hugeicons/core-free-icons'
 import { useEffect, useRef } from 'react'
 import type { FileChanged, PermissionPrompt } from 'shared'
-import { parsePrompt, plainPrompt } from 'shared/references'
+import { parsePrompt, promptForModel } from 'shared/references'
 
 import { CopyButton } from '@/components/CopyButton'
 import { Icon } from '@/components/icons/HugeIcon'
@@ -69,18 +69,17 @@ export function MessageList({
 }
 
 function UserMessage({ message }: { message: AgentUIMessage }) {
-  const references = new Map(
-    message.parts.flatMap((part) =>
-      part.type === 'data-reference' ? [[part.data.id, part.data.ref]] : [],
-    ),
+  const sent = message.parts.flatMap((part) =>
+    part.type === 'data-reference' ? [part.data] : [],
   )
-  const text = plainPrompt(textOf(message.parts))
+  const references = new Map(sent.map(({ id, ref }) => [id, ref]))
+  const text = textOf(message.parts)
   return (
     <div className='group flex w-full items-end justify-end gap-1'>
       {text && (
         <CopyButton
-          text={text}
-          label='Copy message'
+          text={promptForModel(text, sent)}
+          label='Copy as the agent read it'
           className='opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
         />
       )}

@@ -23,7 +23,7 @@ export function ReferenceChip({ reference }: { reference: Reference }) {
   )
 }
 
-/** How a reference reads where chips cannot be drawn: a title, the clipboard. */
+/** How a reference reads where chips cannot be drawn, such as a chat title. */
 export function referenceLabel(reference: Reference): string {
   switch (reference.kind) {
     case 'face':
